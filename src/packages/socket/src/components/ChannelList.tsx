@@ -119,7 +119,7 @@ export const ChannelList = ({
             if (channel) onChannelClick(channel);
           }}
         >
-          <Flex align="center" shrink="0">
+          <Flex align="center" style={{ flexShrink: 0 }}>
             {channel?.type === "voice" ? <MdVolumeUp size={16} /> : <MdChat size={16} />}
           </Flex>
           <Text truncate style={{ flex: 1, minWidth: 0 }}>
