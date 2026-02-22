@@ -1,5 +1,5 @@
-import { Socket } from 'socket.io-client';
 import { jwtDecode } from 'jwt-decode';
+import { Socket } from 'socket.io-client';
 
 import { getServerAccessToken, getServerRefreshToken, getValidIdentityToken } from '@/common';
 

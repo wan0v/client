@@ -178,8 +178,8 @@ const components: Components = {
   ),
 };
 
-const remarkPlugins = [remarkGfm, remarkEmoji] as const;
-const rehypePlugins = [rehypeHighlight] as const;
+const remarkPlugins = [remarkGfm, remarkEmoji];
+const rehypePlugins = [rehypeHighlight];
 
 export const MarkdownRenderer = memo(({
   content,
