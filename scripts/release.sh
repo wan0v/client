@@ -219,6 +219,33 @@ npx electron-builder \
 echo ""
 ok "Release ${BOLD}v${NEW_VERSION}${RESET} published to ${GREEN}https://github.com/${OWNER}/${REPO}/releases${RESET}"
 
+# ── Verify update manifests ──────────────────────────────────────────
+info "Verifying auto-update manifests…"
+
+VERIFY_FAILED=false
+for YML in latest.yml latest-linux.yml latest-mac.yml; do
+  YML_VERSION=$(gh release download "v${NEW_VERSION}" --repo "${OWNER}/${REPO}" -p "$YML" -O - 2>/dev/null \
+    | head -n1 | sed 's/^version: *//')
+  if [ "$YML_VERSION" != "$NEW_VERSION" ]; then
+    err "${YML} has version ${BOLD}${YML_VERSION}${RESET} — expected ${BOLD}${NEW_VERSION}${RESET}"
+    VERIFY_FAILED=true
+  else
+    ok "${YML} → v${YML_VERSION}"
+  fi
+done
+
+if [ "$VERIFY_FAILED" = true ]; then
+  echo ""
+  err "Auto-update manifests are stale! Clients will NOT see this update."
+  err "Re-run with option 5 (re-release) or manually fix the yml assets."
+  echo ""
+  read -rp "$(echo -e "${CYAN}?${RESET}  Continue anyway? ${YELLOW}[y/N]${RESET}: ")" CONTINUE_ANYWAY
+  if [[ ! "$CONTINUE_ANYWAY" =~ ^[Yy]$ ]]; then
+    warn "Aborted. Fix the release manifests before proceeding."
+    exit 1
+  fi
+fi
+
 # ── Git commit & tag (only for new versions, not re-releases) ─────────
 if [ "$RERELEASE" = false ]; then
   echo ""
