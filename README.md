@@ -30,6 +30,10 @@ Full docs at **[docs.gryt.chat/docs/client](https://docs.gryt.chat/docs/client)*
 - [Voice Communication](https://docs.gryt.chat/docs/client/voice-communication) — WebRTC, SFU connection, mute/deafen
 - [User Interface](https://docs.gryt.chat/docs/client/user-interface) — components, theming, responsive design
 
+## Issues
+
+Please report bugs and request features in the [main Gryt repository](https://github.com/Gryt-chat/gryt/issues).
+
 ## License
 
 [AGPL-3.0](https://github.com/Gryt-chat/gryt/blob/main/LICENSE) — Part of [Gryt](https://github.com/Gryt-chat/gryt)
