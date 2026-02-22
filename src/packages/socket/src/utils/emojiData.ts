@@ -151,12 +151,21 @@ export function searchEmojis(query: string, limit = 8): EmojiEntry[] {
 }
 
 export async function fetchCustomEmojis(serverHost: string): Promise<{ name: string; file_id: string }[]> {
+  const base = getServerHttpBase(serverHost);
+  console.log("[EmojiData] fetchCustomEmojis:", { serverHost, url: `${base}/api/emojis` });
   try {
-    const base = getServerHttpBase(serverHost);
     const res = await fetch(`${base}/api/emojis`);
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
+    console.log("[EmojiData] fetchCustomEmojis response:", { status: res.status, ok: res.ok });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.warn("[EmojiData] fetchCustomEmojis failed:", { status: res.status, body: text });
+      return [];
+    }
+    const data = await res.json();
+    console.log("[EmojiData] fetchCustomEmojis got", data.length, "emojis");
+    return data;
+  } catch (err) {
+    console.error("[EmojiData] fetchCustomEmojis error:", err);
     return [];
   }
 }
