@@ -162,36 +162,31 @@ export async function popoutStream(
     }
   }
 
+  // Fallback: window.open with about:blank (works in Electron and browsers)
   try {
-    const video = document.createElement("video");
-    video.srcObject = stream;
-    video.muted = true;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.style.cssText = "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;";
-    document.body.appendChild(video);
-
-    await video.play();
-    await video.requestPictureInPicture();
+    const popup = window.open("about:blank", "_blank", `width=${width},height=${height},resizable=yes`);
+    if (!popup) throw new Error("Popup blocked");
 
     let open = true;
-    video.addEventListener("leavepictureinpicture", () => {
-      open = false;
-      video.remove();
-    });
+    const markClosed = () => { open = false; };
+
+    setupPipWindow(popup, stream, title, markClosed);
+
+    const checkInterval = setInterval(() => {
+      if (popup.closed) { markClosed(); clearInterval(checkInterval); }
+    }, 500);
+
+    popup.addEventListener("beforeunload", markClosed);
 
     return {
       close: () => {
-        if (document.pictureInPictureElement === video) {
-          document.exitPictureInPicture();
-        }
-        open = false;
-        video.remove();
+        if (open) { popup.close(); open = false; }
+        clearInterval(checkInterval);
       },
-      isOpen: () => open,
+      isOpen: () => open && !popup.closed,
     };
   } catch (err) {
-    console.warn("[Popout] PiP fallback also failed:", err);
+    console.warn("[Popout] window.open fallback also failed:", err);
     return null;
   }
 }

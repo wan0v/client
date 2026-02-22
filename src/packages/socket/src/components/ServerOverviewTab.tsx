@@ -62,6 +62,7 @@ export function ServerOverviewTab({
   const [submitting, setSubmitting] = useState(false);
   const [autosaving, setAutosaving] = useState(false);
   const autosaveTimerRef = useRef<number | null>(null);
+  const pendingSaveRef = useRef(false);
   const lastSettingsRef = useRef<{
     displayName: string;
     description: string;
@@ -92,21 +93,30 @@ export function ServerOverviewTab({
     if (!socket.connected) return;
 
     const onSettings = (payload: ServerSettingsPayload) => {
+      const wasSaving = pendingSaveRef.current;
+
       setIsOwner(!!payload.isOwner);
-      setDisplayName(payload.displayName || "");
-      setDescription(payload.description || "");
       setHasPassword(!!payload.hasPassword);
       setIconUrl(payload.iconUrl || null);
-      setAutosaving(false);
 
       const toMbString = (bytes?: number | null) => {
         if (!bytes || !Number.isFinite(bytes)) return "";
         const mb = bytes / (1024 * 1024);
-        // Keep a short, editable value in the input.
         return (Math.round(mb * 10) / 10).toString();
       };
-      setAvatarMaxMb(toMbString(payload.avatarMaxBytes));
-      setUploadMaxMb(toMbString(payload.uploadMaxBytes));
+
+      if (!wasSaving) {
+        // Initial fetch or external update — refresh all fields
+        setDisplayName(payload.displayName || "");
+        setDescription(payload.description || "");
+        setAvatarMaxMb(toMbString(payload.avatarMaxBytes));
+        setUploadMaxMb(toMbString(payload.uploadMaxBytes));
+      } else {
+        toast.success("Settings saved");
+      }
+
+      setAutosaving(false);
+      pendingSaveRef.current = false;
 
       lastSettingsRef.current = {
         displayName: payload.displayName || "",
@@ -160,6 +170,13 @@ export function ServerOverviewTab({
     if (!effectiveAccessToken) { await ensureJoined(); return; }
     if (!isOwner) return;
 
+    // Update lastSettingsRef immediately so subsequent blur events
+    // correctly detect "no change" and don't double-save.
+    if (lastSettingsRef.current) {
+      lastSettingsRef.current = { ...lastSettingsRef.current, ...patch };
+    }
+
+    pendingSaveRef.current = true;
     setAutosaving(true);
     socket.emit("server:settings:update", {
       accessToken: effectiveAccessToken,

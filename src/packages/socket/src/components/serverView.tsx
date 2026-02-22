@@ -87,6 +87,7 @@ export const ServerView = () => {
     }
   }, [isCompact, setShowVoiceView, showVoiceView]);
 
+  const [voiceFocused, setVoiceFocused] = useState(false);
   const [isDraggingResize, setIsDraggingResize] = useState(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(0);
@@ -499,9 +500,10 @@ export const ServerView = () => {
               adminActions={currentAdminActions}
               videoStreams={videoStreams}
               streamSources={streamSources}
+              onFocusChange={setVoiceFocused}
             />
 
-            {!isCompact && (isDraggingResize || (showVoiceView && voiceWidth !== "0px")) && (
+            {!isCompact && !voiceFocused && (isDraggingResize || (showVoiceView && voiceWidth !== "0px")) && (
               <div
                 onMouseDown={handleResizeMouseDown}
                 style={{
@@ -529,13 +531,13 @@ export const ServerView = () => {
 
             <div style={{
               display: 'flex',
-              flex: 1,
+              flex: voiceFocused ? '0 0 320px' : 1,
               minWidth: 0,
               ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
                 opacity: 0.5,
                 pointerEvents: 'none' as const,
               }),
-              transition: 'opacity 0.3s ease',
+              transition: 'opacity 0.3s ease, flex 0.3s ease',
             }}>
               <ChatView
                 chatMessages={chatMessages}
@@ -566,7 +568,7 @@ export const ServerView = () => {
           </Flex>
         )}
 
-        {!isCompact && (
+        {!isCompact && !voiceFocused && (
           <div style={{
             ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
               opacity: 0.5,

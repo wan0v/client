@@ -83,7 +83,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, onQualityC
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content style={{ maxWidth: 640 }}>
+      <Dialog.Content style={{ maxWidth: 640 }} aria-describedby={undefined}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">

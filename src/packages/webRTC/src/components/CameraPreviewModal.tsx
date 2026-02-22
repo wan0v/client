@@ -153,7 +153,7 @@ export function CameraPreviewModal({
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <Dialog.Content style={{ maxWidth: 520 }}>
+      <Dialog.Content style={{ maxWidth: 520 }} aria-describedby={undefined}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
@@ -205,13 +205,14 @@ export function CameraPreviewModal({
               <Select.Root value={localCameraID} onValueChange={setLocalCameraID}>
                 <Select.Trigger variant="soft" style={{ flex: 1 }} />
                 <Select.Content>
-                  {devices.map((d) => (
-                    <Select.Item key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Camera ${devices.indexOf(d) + 1}`}
-                    </Select.Item>
-                  ))}
-                  {devices.length === 0 && (
-                    <Select.Item value="" disabled>No cameras found</Select.Item>
+                  {devices.length === 0 ? (
+                    <Select.Item value="__none__" disabled>No cameras found</Select.Item>
+                  ) : (
+                    devices.map((d) => (
+                      <Select.Item key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Camera ${devices.indexOf(d) + 1}`}
+                      </Select.Item>
+                    ))
                   )}
                 </Select.Content>
               </Select.Root>
