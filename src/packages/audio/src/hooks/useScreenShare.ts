@@ -53,28 +53,21 @@ function useScreenShareHook(): ScreenShareInterface {
       let stream: MediaStream;
 
       if (isElectron() && sourceId) {
-        // In Electron, use getUserMedia with chromeMediaSourceId
-        const videoConstraints: MediaTrackConstraints = {
-          mandatory: {
-            chromeMediaSource: "desktop",
-            chromeMediaSourceId: sourceId,
-          },
-        } as MediaTrackConstraints;
-
+        const mandatory: Record<string, unknown> = {
+          chromeMediaSource: "desktop",
+          chromeMediaSourceId: sourceId,
+          maxFrameRate: q.frameRate,
+        };
         if (q.width) {
-          (videoConstraints.mandatory as Record<string, unknown>).maxWidth = q.width;
-          (videoConstraints.mandatory as Record<string, unknown>).maxHeight = q.height;
+          mandatory.maxWidth = q.width;
+          mandatory.maxHeight = q.height;
         }
-        (videoConstraints.mandatory as Record<string, unknown>).maxFrameRate = q.frameRate;
 
         const constraints: MediaStreamConstraints = {
-          video: videoConstraints,
-          audio: withAudio ? {
-            mandatory: {
-              chromeMediaSource: "desktop",
-              chromeMediaSourceId: sourceId,
-            },
-          } as MediaTrackConstraints : false,
+          video: { mandatory } as unknown as MediaTrackConstraints,
+          audio: withAudio
+            ? { mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId } } as unknown as MediaTrackConstraints
+            : false,
         };
 
         stream = await navigator.mediaDevices.getUserMedia(constraints);
