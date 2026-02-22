@@ -273,6 +273,7 @@ export const ChatView = ({
 
   const groups = useMemo(() => {
     const result: Array<{ senderId: string; messages: ChatMessage[]; dayBreak?: Date }> = [];
+    const GROUP_GAP_MS = 5 * 60 * 1000;
     let lastDay: string | null = null;
 
     for (const m of chatMessages) {
@@ -282,7 +283,10 @@ export const ChatView = ({
       lastDay = dayKey;
 
       const last = result[result.length - 1];
-      if (needsDayBreak || !last || last.senderId !== m.sender_server_id) {
+      const lastMsg = last?.messages[last.messages.length - 1];
+      const timeSinceLastMs = lastMsg ? d.getTime() - toDate(lastMsg.created_at).getTime() : Infinity;
+
+      if (needsDayBreak || !last || last.senderId !== m.sender_server_id || timeSinceLastMs > GROUP_GAP_MS) {
         result.push({ senderId: m.sender_server_id, messages: [m], dayBreak: needsDayBreak ? d : undefined });
       } else {
         last.messages.push(m);
