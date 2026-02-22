@@ -15,8 +15,8 @@ import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
-import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { popoutStream } from "../utils/popoutVideo";
+import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
 import { UserContextMenu } from "./UserContextMenu";
 

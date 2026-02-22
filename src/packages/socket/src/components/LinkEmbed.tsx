@@ -28,7 +28,7 @@ function getEmbedType(url: string): EmbedType {
   return "link";
 }
 
-export function extractUrls(text: string | null): string[] {
+function extractUrls(text: string | null): string[] {
   if (!text) return [];
   let cleaned = text.replace(/```[\s\S]*?```/g, "");
   cleaned = cleaned.replace(/`[^`]+`/g, "");
