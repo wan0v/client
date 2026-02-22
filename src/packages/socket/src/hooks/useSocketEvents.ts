@@ -89,6 +89,7 @@ export interface SocketEventDeps {
   setClients: Dispatch<SetStateAction<{ [host: string]: Clients }>>;
   setMemberLists: Dispatch<SetStateAction<{ [host: string]: MemberInfo[] }>>;
   setServerProfiles: Dispatch<SetStateAction<Record<string, { nickname: string; avatarFileId: string | null; avatarUrl: string | null }>>>;
+  onTokenRefreshed: () => void;
 }
 
 /**
@@ -119,6 +120,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     setClients,
     setMemberLists,
     setServerProfiles,
+    onTokenRefreshed,
   } = deps;
 
   const connectSoundEnabledRef = useRef(connectSoundEnabled);
@@ -127,6 +129,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const disconnectSoundFileRef = useRef(disconnectSoundFile);
   const connectSoundVolumeRef = useRef(connectSoundVolume);
   const disconnectSoundVolumeRef = useRef(disconnectSoundVolume);
+  const onTokenRefreshedRef = useRef(onTokenRefreshed);
 
   useEffect(() => { connectSoundEnabledRef.current = connectSoundEnabled; }, [connectSoundEnabled]);
   useEffect(() => { disconnectSoundEnabledRef.current = disconnectSoundEnabled; }, [disconnectSoundEnabled]);
@@ -134,6 +137,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   useEffect(() => { disconnectSoundFileRef.current = disconnectSoundFile; }, [disconnectSoundFile]);
   useEffect(() => { connectSoundVolumeRef.current = connectSoundVolume; }, [connectSoundVolume]);
   useEffect(() => { disconnectSoundVolumeRef.current = disconnectSoundVolume; }, [disconnectSoundVolume]);
+  useEffect(() => { onTokenRefreshedRef.current = onTokenRefreshed; }, [onTokenRefreshed]);
 
   useEffect(() => {
     Object.entries(sockets).forEach(([host, socket]) => {
@@ -362,6 +366,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       socket.on("token:refreshed", (refreshInfo: { accessToken: string }) => {
         setServerAccessToken(host, refreshInfo.accessToken);
+        onTokenRefreshedRef.current();
 
         setServerDetailsList(prev => {
           if (!prev[host]) {
@@ -523,18 +528,24 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
         if (errorInfo.error === 'token_invalid') {
           removeServerAccessToken(host);
-          removeServerRefreshToken(host);
 
           if (!canAttemptTokenHeal(host)) return;
 
           (async () => {
+            const refreshToken = getServerRefreshToken(host);
             const identityToken = await getValidIdentityToken().catch(() => undefined);
-            socket.emit("server:join", {
-              password: "",
-              nickname,
-              identityToken,
-              inviteCode: serversRef.current[host]?.token || undefined,
-            });
+
+            if (refreshToken && identityToken) {
+              socket.emit("token:refresh", { refreshToken, identityToken });
+            } else {
+              removeServerRefreshToken(host);
+              socket.emit("server:join", {
+                password: "",
+                nickname,
+                identityToken,
+                inviteCode: serversRef.current[host]?.token || undefined,
+              });
+            }
           })();
           return;
         } else {

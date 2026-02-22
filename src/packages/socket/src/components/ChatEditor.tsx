@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
 import { MdAttachFile, MdAudioFile, MdCode, MdDescription, MdFolderZip, MdImage, MdInsertDriveFile, MdVideoFile } from "react-icons/md";
 const FaFilePdf = MdDescription;
 
-import type { EmojiEntry } from "../utils/emojiData";
+import { type EmojiEntry, recordRecentEmoji } from "../utils/emojiData";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
 
 export interface ChatEditorHandle {
@@ -90,7 +90,7 @@ function getEmojiQueryAtCursor(): string | null {
   const offset = range.startOffset;
   const before = text.slice(0, offset);
 
-  const match = before.match(/:([a-zA-Z0-9_+-]{2,})$/);
+  const match = before.match(/:([a-zA-Z0-9_+-]*)$/);
   if (!match) return null;
 
   const afterCursor = text.slice(offset);
@@ -111,7 +111,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
   const offset = range.startOffset;
   const before = text.slice(0, offset);
 
-  const match = before.match(/:([a-zA-Z0-9_+-]{2,})$/);
+  const match = before.match(/:([a-zA-Z0-9_+-]*)$/);
   if (!match) return;
 
   const colonStart = offset - match[0].length;
@@ -254,6 +254,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const handleEmojiSelect = useCallback((entry: EmojiEntry) => {
       replaceEmojiQueryAtCursor(entry);
+      recordRecentEmoji(entry.name, entry.isCustom);
       setShowAutocomplete(false);
       setEmojiQuery(null);
       if (editorRef.current) autoResize(editorRef.current);

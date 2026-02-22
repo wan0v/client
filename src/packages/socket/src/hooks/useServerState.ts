@@ -53,6 +53,7 @@ export function useServerState() {
     serverConnectionStatus,
     reconnectServer,
     requestMemberList,
+    tokenRevision,
   } = useSockets();
 
   const {
@@ -97,7 +98,8 @@ export function useServerState() {
       currentlyViewingServer
         ? getServerAccessToken(currentlyViewingServer.host)
         : null,
-    [currentlyViewingServer],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentlyViewingServer, tokenRevision],
   );
 
   const currentChannelId = extractChannelIdFromRoomId(

@@ -1,23 +1,38 @@
 import { nameToEmoji } from "gemoji";
-import type { PhrasingContent,Root, Text } from "mdast";
+import type { PhrasingContent, Root, Text } from "mdast";
 import type { Plugin } from "unified";
-import { visit } from "unist-util-visit";
-
-const SHORTCODE_RE = /:([a-zA-Z0-9_+-]+):/g;
+import { CONTINUE, visit } from "unist-util-visit";
 
 export type CustomEmojiEntry = {
   name: string;
   url: string;
 };
 
-function buildReplacements(
-  value: string,
-  customEmojis: Map<string, string>,
-): PhrasingContent[] {
+/**
+ * Replace custom emoji shortcodes in a raw content string before markdown
+ * parsing. This runs under React's `useMemo` so the latest emoji list is
+ * always used, avoiding stale-closure issues inside remark plugin pipelines.
+ */
+export function preprocessCustomEmojis(
+  content: string,
+  customEmojis: CustomEmojiEntry[],
+): string {
+  if (customEmojis.length === 0) return content;
+  const map = new Map(customEmojis.map((e) => [e.name, e.url]));
+
+  return content.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code) => {
+    if (nameToEmoji[code]) return match;
+    const url = map.get(code);
+    if (url) return `![${match}](${url})`;
+    return match;
+  });
+}
+
+function buildReplacements(value: string): PhrasingContent[] {
   const parts: PhrasingContent[] = [];
   let lastIndex = 0;
 
-  for (const match of value.matchAll(SHORTCODE_RE)) {
+  for (const match of value.matchAll(/:([a-zA-Z0-9_+-]+):/g)) {
     const code = match[1];
     const start = match.index!;
 
@@ -28,16 +43,6 @@ function buildReplacements(
     const unicode = nameToEmoji[code];
     if (unicode) {
       parts.push({ type: "text", value: unicode } as Text);
-    } else if (customEmojis.has(code)) {
-      const emojiNode = {
-        type: "image" as const,
-        url: customEmojis.get(code)!,
-        alt: `:${code}:`,
-        title: `:${code}:`,
-        data: { hProperties: { className: "inline-emoji", "data-emoji-name": code } },
-      };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      parts.push(emojiNode as any);
     } else {
       parts.push({ type: "text", value: match[0] } as Text);
     }
@@ -52,21 +57,25 @@ function buildReplacements(
   return parts;
 }
 
-export const remarkEmoji: (customEmojis?: CustomEmojiEntry[]) => Plugin<[], Root> =
-  (customEmojis = []) => {
-    const customMap = new Map(customEmojis.map((e) => [e.name, e.url]));
+/**
+ * Remark plugin that converts standard (gemoji) shortcodes like `:smile:` to
+ * their Unicode equivalents. Custom emoji replacement is handled separately
+ * by {@link preprocessCustomEmojis} before the markdown is parsed.
+ */
+export const remarkEmoji: Plugin<[], Root> = () => (tree: Root) => {
+  visit(tree, "text", (node: Text, index, parent) => {
+    if (!parent || index == null) return;
+    if (!/:([a-zA-Z0-9_+-]+):/.test(node.value)) return;
 
-    return () => (tree: Root) => {
-      visit(tree, "text", (node: Text, index, parent) => {
-        if (!parent || index == null) return;
-        if (!SHORTCODE_RE.test(node.value)) return;
-        SHORTCODE_RE.lastIndex = 0;
-
-        const replacements = buildReplacements(node.value, customMap);
-        if (replacements.length === 1 && replacements[0].type === "text" && (replacements[0] as Text).value === node.value) {
-          return;
-        }
-        parent.children.splice(index, 1, ...replacements);
-      });
-    };
-  };
+    const replacements = buildReplacements(node.value);
+    if (
+      replacements.length === 1 &&
+      replacements[0].type === "text" &&
+      (replacements[0] as Text).value === node.value
+    ) {
+      return;
+    }
+    parent.children.splice(index, 1, ...replacements);
+    return [CONTINUE, index] as const;
+  });
+};

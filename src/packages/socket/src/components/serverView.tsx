@@ -15,6 +15,7 @@ import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerState } from "../hooks/useServerState";
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
+import { emitAuthenticated } from "../utils/tokenManager";
 import { ChannelList } from "./ChannelList";
 import { ChatView } from "./ChatView";
 import { MemberSidebar } from "./MemberSidebar";
@@ -217,19 +218,19 @@ export const ServerView = () => {
   }, [insertFromPalette, effectiveSidebarItems]);
 
   const handleDisconnectUser = useCallback((targetServerUserId: string) => {
-    if (!currentConnection || !accessToken) return;
-    currentConnection.emit("voice:disconnect:user", { accessToken, targetServerUserId });
-  }, [currentConnection, accessToken]);
+    if (!currentConnection || !currentlyViewingServer) return;
+    emitAuthenticated(currentConnection, "voice:disconnect:user", { targetServerUserId }, currentlyViewingServer.host);
+  }, [currentConnection, currentlyViewingServer]);
 
   const handleKickUser = useCallback((targetServerUserId: string) => {
-    if (!currentConnection || !accessToken) return;
-    currentConnection.emit("server:kick", { accessToken, targetServerUserId });
-  }, [currentConnection, accessToken]);
+    if (!currentConnection || !currentlyViewingServer) return;
+    emitAuthenticated(currentConnection, "server:kick", { targetServerUserId }, currentlyViewingServer.host);
+  }, [currentConnection, currentlyViewingServer]);
 
   const handleBanUser = useCallback((targetServerUserId: string) => {
-    if (!currentConnection || !accessToken) return;
-    currentConnection.emit("server:ban", { accessToken, targetServerUserId });
-  }, [currentConnection, accessToken]);
+    if (!currentConnection || !currentlyViewingServer) return;
+    emitAuthenticated(currentConnection, "server:ban", { targetServerUserId }, currentlyViewingServer.host);
+  }, [currentConnection, currentlyViewingServer]);
 
   const [pendingDisconnectUser, setPendingDisconnectUser] = useState<{ id: string; nickname: string } | null>(null);
   const [pendingKickUser, setPendingKickUser] = useState<{ id: string; nickname: string } | null>(null);

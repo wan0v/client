@@ -1,4 +1,7 @@
+import { Socket } from 'socket.io-client';
 import { jwtDecode } from 'jwt-decode';
+
+import { getServerAccessToken, getServerRefreshToken, getValidIdentityToken } from '@/common';
 
 interface TokenPayload {
   grytUserId: string;
@@ -41,4 +44,44 @@ export function shouldRefreshToken(token: string): boolean {
     console.error('Failed to decode token:', error);
     return true;
   }
+}
+
+/**
+ * Reads a fresh access token from storage, triggers a refresh if it's
+ * near expiry or expired, waits for the refreshed token, then emits the
+ * socket event with the up-to-date token in the payload.
+ *
+ * Returns true if the event was emitted, false if no valid token could
+ * be obtained.
+ */
+export async function emitAuthenticated(
+  socket: Socket,
+  event: string,
+  payload: Record<string, unknown>,
+  host: string,
+): Promise<boolean> {
+  let accessToken = getServerAccessToken(host);
+  if (!accessToken) return false;
+
+  if (shouldRefreshToken(accessToken)) {
+    const refreshToken = getServerRefreshToken(host);
+    const identityToken = await getValidIdentityToken().catch(() => undefined);
+    if (refreshToken && identityToken) {
+      socket.emit("token:refresh", { refreshToken, identityToken });
+    } else {
+      socket.emit("token:refresh", { accessToken });
+    }
+    const staleToken = accessToken;
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 150));
+      const fresh = getServerAccessToken(host);
+      if (fresh && fresh !== staleToken) {
+        accessToken = fresh;
+        break;
+      }
+    }
+  }
+
+  socket.emit(event, { ...payload, accessToken });
+  return true;
 }

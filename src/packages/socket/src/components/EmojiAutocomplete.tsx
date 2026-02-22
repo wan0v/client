@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { type EmojiEntry,searchEmojis } from "../utils/emojiData";
+import { type EmojiEntry, getRecentEmojis, searchEmojis } from "../utils/emojiData";
 
 interface EmojiAutocompleteProps {
   query: string;
@@ -11,17 +11,26 @@ interface EmojiAutocompleteProps {
 
 export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAutocompleteProps) => {
   const [results, setResults] = useState<EmojiEntry[]>([]);
+  const [isRecent, setIsRecent] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!visible || !query) {
+    if (!visible) {
       setResults([]);
+      setIsRecent(false);
+      setSelectedIndex(0);
+      return;
+    }
+    if (!query) {
+      setResults(getRecentEmojis(8));
+      setIsRecent(true);
       setSelectedIndex(0);
       return;
     }
     const matched = searchEmojis(query, 8);
     setResults(matched);
+    setIsRecent(false);
     setSelectedIndex(0);
   }, [query, visible]);
 
@@ -80,6 +89,21 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAu
         padding: "4px",
       }}
     >
+      {isRecent && results.length > 0 && (
+        <div
+          style={{
+            padding: "4px 10px 2px",
+            fontSize: "11px",
+            fontWeight: 600,
+            color: "var(--gray-9)",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            userSelect: "none",
+          }}
+        >
+          Recently used
+        </div>
+      )}
       {results.map((entry, idx) => (
         <div
           key={`${entry.isCustom ? "c:" : ""}${entry.name}`}

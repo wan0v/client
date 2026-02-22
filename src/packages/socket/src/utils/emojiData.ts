@@ -150,6 +150,67 @@ export function searchEmojis(query: string, limit = 8): EmojiEntry[] {
   return results;
 }
 
+const RECENT_KEY = "gryt:recentEmojis";
+const MAX_RECENT = 30;
+const DEFAULT_RECENT = ["thumbsup", "heart", "joy", "open_mouth", "cry", "thumbsdown", "fire", "100"];
+
+interface StoredRecent {
+  name: string;
+  custom: boolean;
+}
+
+function readRecentStorage(): StoredRecent[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* ignore */ }
+  return [];
+}
+
+function writeRecentStorage(list: StoredRecent[]): void {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+  } catch { /* storage full */ }
+}
+
+export function recordRecentEmoji(name: string, isCustom: boolean): void {
+  const stored = readRecentStorage();
+  const entry: StoredRecent = { name, custom: isCustom };
+  const updated = [entry, ...stored.filter((s) => !(s.name === name && s.custom === isCustom))].slice(0, MAX_RECENT);
+  writeRecentStorage(updated);
+}
+
+export function getRecentEmojis(limit = 8): EmojiEntry[] {
+  const stored = readRecentStorage();
+  const all = getAllEmojis();
+  const byKey = new Map<string, EmojiEntry>();
+  for (const e of all) {
+    byKey.set(e.isCustom ? `custom:${e.name}` : e.name, e);
+  }
+
+  const results: EmojiEntry[] = [];
+  for (const s of stored) {
+    const key = s.custom ? `custom:${s.name}` : s.name;
+    const entry = byKey.get(key);
+    if (entry) {
+      results.push(entry);
+      if (results.length >= limit) return results;
+    }
+  }
+
+  for (const fallback of DEFAULT_RECENT) {
+    if (results.length >= limit) break;
+    const entry = byKey.get(fallback);
+    if (entry && !results.some((r) => r.name === fallback && !r.isCustom)) {
+      results.push(entry);
+    }
+  }
+
+  return results.slice(0, limit);
+}
+
 export async function fetchCustomEmojis(serverHost: string): Promise<{ name: string; file_id: string }[]> {
   const base = getServerHttpBase(serverHost);
   console.log("[EmojiData] fetchCustomEmojis:", { serverHost, url: `${base}/api/emojis` });

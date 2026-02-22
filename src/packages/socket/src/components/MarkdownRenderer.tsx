@@ -4,13 +4,16 @@ import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
-import { type CustomEmojiEntry,remarkEmoji } from "../utils/remarkEmoji";
+import { type CustomEmojiEntry, preprocessCustomEmojis, remarkEmoji } from "../utils/remarkEmoji";
 
 const UNICODE_EMOJI_RE = /\p{Extended_Pictographic}/u;
-const SHORTCODE_RE = /:([a-zA-Z0-9_+-]+):/g;
 
 function isEmojiOnly(text: string): boolean {
-  const stripped = text.replace(SHORTCODE_RE, "").replace(/\p{Extended_Pictographic}\uFE0F?/gu, "").replace(/\u200D/g, "").trim();
+  const stripped = text
+    .replace(/:([a-zA-Z0-9_+-]+):/g, "")
+    .replace(/\p{Extended_Pictographic}\uFE0F?/gu, "")
+    .replace(/\u200D/g, "")
+    .trim();
   return stripped.length === 0 && (UNICODE_EMOJI_RE.test(text) || /:([a-zA-Z0-9_+-]+):/.test(text));
 }
 
@@ -104,8 +107,11 @@ const components: Components = {
     <li style={{ lineHeight: 1.5 }}>{children}</li>
   ),
   img: ({ src, alt, className, ...props }) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (className === "inline-emoji" || (props as any)["data-emoji-name"]) {
+    const isCustomEmoji = className === "inline-emoji"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      || (props as any)["data-emoji-name"]
+      || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
+    if (isCustomEmoji) {
       return (
         <img
           src={src}
@@ -172,6 +178,9 @@ const components: Components = {
   ),
 };
 
+const remarkPlugins = [remarkGfm, remarkEmoji] as const;
+const rehypePlugins = [rehypeHighlight] as const;
+
 export const MarkdownRenderer = memo(({
   content,
   customEmojis,
@@ -179,19 +188,22 @@ export const MarkdownRenderer = memo(({
   content: string | null;
   customEmojis?: CustomEmojiEntry[];
 }) => {
-  const emojiPlugin = useMemo(() => remarkEmoji(customEmojis), [customEmojis]);
   const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
+  const processed = useMemo(
+    () => content ? preprocessCustomEmojis(content, customEmojis ?? []) : null,
+    [content, customEmojis],
+  );
 
-  if (!content) return null;
+  if (!processed) return null;
 
   return (
     <div className={`markdown-message${emojiOnly ? " emoji-only" : ""}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, emojiPlugin]}
-        rehypePlugins={[rehypeHighlight]}
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
         components={components}
       >
-        {content}
+        {processed}
       </ReactMarkdown>
     </div>
   );

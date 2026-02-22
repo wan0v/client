@@ -22,6 +22,7 @@ type Sockets = { [host: string]: Socket };
 
 function useSocketsHook() {
   const [sockets, setSockets] = useState<Sockets>({});
+  const [tokenRevision, setTokenRevision] = useState(0);
   const lastInviteJoinAttemptRef = useRef<Record<string, string | undefined>>({});
   const serversRef = useRef<Servers>({});
   
@@ -106,6 +107,8 @@ function useSocketsHook() {
     }
   }, [newServerInfo, servers, setServers, currentlyViewingServer, setCurrentlyViewingServer]);
 
+  const bumpTokenRevision = useCallback(() => setTokenRevision((n) => n + 1), []);
+
   // Register all socket event handlers via the extracted hook
   useSocketEvents(sockets, {
     servers,
@@ -125,6 +128,7 @@ function useSocketsHook() {
     setClients,
     setMemberLists,
     setServerProfiles,
+    onTokenRefreshed: bumpTokenRevision,
   });
 
   // Create sockets for all servers
@@ -325,7 +329,7 @@ function useSocketsHook() {
     }
   };
 
-  return { sockets, serverDetailsList, clients, memberLists, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, reconnectServer, leaveServer };
+  return { sockets, serverDetailsList, clients, memberLists, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, reconnectServer, leaveServer, tokenRevision };
 }
 
 export const useSockets = singletonHook(
@@ -342,6 +346,7 @@ export const useSockets = singletonHook(
     serverConnectionStatus: {},
     reconnectServer: () => {},
     leaveServer: () => {},
+    tokenRevision: 0,
   },
   useSocketsHook
 );
