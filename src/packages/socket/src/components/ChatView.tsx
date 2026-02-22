@@ -532,8 +532,10 @@ export const ChatView = ({
                             )}
                           </div>
                           {m.reactions && m.reactions.length > 0 && (
-                            <Flex gap="3" wrap="wrap" style={{ marginTop: "6px" }}>
-                              {m.reactions.map((reaction, rIdx) => (
+                            <Flex wrap="wrap" style={{ marginTop: "4px", gap: "2px" }}>
+                              {m.reactions.map((reaction, rIdx) => {
+                                const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
+                                return (
                                 <Tooltip
                                   key={`${reaction.src}-${rIdx}`}
                                   content={reaction.users.map((uid) => {
@@ -549,27 +551,27 @@ export const ChatView = ({
                                       display: "inline-flex",
                                       alignItems: "center",
                                       gap: "4px",
-                                      padding: "3px 8px",
-                                      minWidth: "36px",
-                                      minHeight: "26px",
+                                      padding: "2px 6px",
+                                      minHeight: "24px",
                                       fontSize: "13px",
                                       lineHeight: 1,
-                                      background: "var(--gray-3)",
-                                      border: "1px solid var(--gray-5)",
-                                      borderRadius: "var(--radius-pill)",
+                                      background: isMine ? "var(--accent-3)" : "var(--gray-3)",
+                                      border: `1px solid ${isMine ? "var(--accent-7)" : "var(--gray-5)"}`,
+                                      borderRadius: "var(--radius-3)",
                                       cursor: "pointer",
                                       transition: "background 0.15s, border-color 0.15s",
                                       whiteSpace: "nowrap",
-                                      color: "var(--gray-12)",
+                                      color: isMine ? "var(--accent-11)" : "var(--gray-12)",
                                     }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; e.currentTarget.style.borderColor = "var(--gray-6)"; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; e.currentTarget.style.borderColor = "var(--gray-5)"; }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-4)" : "var(--gray-4)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-8)" : "var(--gray-6)"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-3)" : "var(--gray-3)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-7)" : "var(--gray-5)"; }}
                                   >
-                                    <EmojiText text={reaction.src} emojiSize={18} />
+                                    <EmojiText text={reaction.src} emojiSize={16} />
                                     <span style={{ fontWeight: 500, fontSize: "12px" }}>{reaction.amount}</span>
                                   </button>
                                 </Tooltip>
-                              ))}
+                                );
+                              })}
                             </Flex>
                           )}
                         </Flex>

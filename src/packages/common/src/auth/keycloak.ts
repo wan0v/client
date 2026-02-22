@@ -27,6 +27,7 @@ let keycloakInstance: Keycloak | null = null;
 let initPromise: Promise<KeycloakInitResult> | null = null;
 let handlersInstalled = false;
 let refreshTimerHandle: ReturnType<typeof setTimeout> | null = null;
+let cachedPromiseLogCount = 0;
 
 function clearRefreshTimer(): void {
   if (refreshTimerHandle) {
@@ -247,7 +248,10 @@ async function initKeycloakForBrowser(): Promise<KeycloakInitResult> {
 
 export async function initKeycloak(): Promise<KeycloakInitResult> {
   if (initPromise) {
-    console.log("[Auth:KC] initKeycloak: returning cached promise");
+    if (cachedPromiseLogCount < 3) {
+      cachedPromiseLogCount++;
+      console.log("[Auth:KC] initKeycloak: returning cached promise");
+    }
     return initPromise;
   }
 
@@ -268,6 +272,7 @@ export function resetKeycloakInit(): void {
   initPromise = null;
   handlersInstalled = false;
   keycloakInstance = null;
+  cachedPromiseLogCount = 0;
 }
 
 export async function startLogin(redirectUri?: string): Promise<void> {

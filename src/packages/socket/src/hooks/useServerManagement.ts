@@ -45,24 +45,38 @@ function useServerManagementHook(): ServerManagement {
 
   // Add a new server and optionally focus it
   const addServer = useCallback((server: Server, focusNewServer: boolean = true) => {
-    // Check if server already exists and is the same
     const existingServer = servers[server.host];
-    if (existingServer && existingServer.name === server.name) {
-      if (focusNewServer) {
-        setCurrentlyViewingServer(server.host);
+    if (existingServer) {
+      const nextServer: Server = {
+        ...existingServer,
+        ...server,
+        token: typeof server.token === "string" && server.token.length > 0 ? server.token : existingServer.token,
+      };
+
+      const unchanged =
+        nextServer.name === existingServer.name &&
+        nextServer.host === existingServer.host &&
+        nextServer.token === existingServer.token;
+
+      if (unchanged) {
+        if (focusNewServer) setCurrentlyViewingServer(existingServer.host);
+        return;
       }
+
+      const newServers = { ...servers, [server.host]: nextServer };
+      setServers(newServers);
+      if (focusNewServer) setCurrentlyViewingServer(nextServer.host);
+      setShowAddServer(false);
       return;
     }
-    
+
     const newServers = { ...servers, [server.host]: server };
     setServers(newServers);
-    
-    // Set pending focus for the newly added server if requested
+
     if (focusNewServer) {
       setPendingFocusServer(server.host);
     }
-    
-    // Close the add server modal
+
     setShowAddServer(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servers, setServers, setCurrentlyViewingServer, currentlyViewingServer, setPendingFocusServer]);
