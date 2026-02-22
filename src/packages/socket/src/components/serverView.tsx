@@ -77,6 +77,17 @@ export const ServerView = () => {
     saveSidebarRef.current();
   }, []);
 
+  const compactAutoHiddenRef = useRef(false);
+  useEffect(() => {
+    if (isCompact && showVoiceView) {
+      compactAutoHiddenRef.current = true;
+      setShowVoiceView(false);
+    } else if (!isCompact && compactAutoHiddenRef.current) {
+      compactAutoHiddenRef.current = false;
+      setShowVoiceView(true);
+    }
+  }, [isCompact, setShowVoiceView, showVoiceView]);
+
   const [isDraggingResize, setIsDraggingResize] = useState(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(0);
