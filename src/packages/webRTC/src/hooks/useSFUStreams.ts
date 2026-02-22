@@ -28,9 +28,9 @@ export function useSFUStreams({
   setStreamSources,
   setVideoStreams,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setScreenShareStreams,
+  setScreenShareStreams: _setScreenShareStreams,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setScreenShareAudioSources,
+  setScreenShareAudioSources: _setScreenShareAudioSources,
   audioContext,
   outputVolume,
   isDeafened,
