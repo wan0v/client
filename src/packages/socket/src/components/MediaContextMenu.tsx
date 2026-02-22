@@ -1,5 +1,5 @@
 import { ContextMenu } from "@radix-ui/themes";
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { FaCloudDownloadAlt, FaCopy, FaExternalLinkAlt } from "react-icons/fa";
 
 interface MediaContextMenuProps {
@@ -36,7 +36,9 @@ async function copyToClipboard(text: string) {
 export function MediaContextMenu({ children, src, fileName }: MediaContextMenuProps) {
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
+      <ContextMenu.Trigger onContextMenu={(e: React.MouseEvent) => e.stopPropagation()}>
+        {children}
+      </ContextMenu.Trigger>
       <ContextMenu.Content style={{ minWidth: 180 }}>
         <ContextMenu.Item onClick={() => triggerDownload(src, fileName)}>
           <FaCloudDownloadAlt style={{ marginRight: 8, flexShrink: 0 }} />

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import toast from "react-hot-toast";
 import { FaFile,FaFileAlt, FaFileArchive, FaFileAudio, FaFileCode, FaFileImage, FaFilePdf, FaFileVideo } from "react-icons/fa";
 import { IoMdAttach } from "react-icons/io";
 
@@ -29,6 +30,7 @@ interface PendingFile {
 interface ChatEditorProps {
   placeholder?: string;
   disabled?: boolean;
+  maxFileSize?: number | null;
   onSend: (markdown: string, files: File[]) => void;
 }
 
@@ -147,7 +149,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, onSend }, ref) => {
+  ({ placeholder, disabled, maxFileSize, onSend }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -186,11 +188,16 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const addFiles = useCallback((files: FileList | File[]) => {
       for (const file of files) {
+        if (maxFileSize && file.size > maxFileSize) {
+          const limitMb = (maxFileSize / (1024 * 1024)).toFixed(0);
+          toast.error(`File "${file.name}" is too large. Max file size is ${limitMb} MB.`);
+          continue;
+        }
         const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
         const id = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         setPendingFiles((prev) => [...prev, { id, file, previewUrl }]);
       }
-    }, []);
+    }, [maxFileSize]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLDivElement>) => {

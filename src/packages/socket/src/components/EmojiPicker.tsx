@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   type EmojiEntry,
@@ -118,9 +118,49 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [fixedPos, setFixedPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
+
+  const PICKER_WIDTH = 340;
+  const PICKER_MAX_HEIGHT = 400;
+  const VIEWPORT_PAD = 8;
+
+  useLayoutEffect(() => {
+    const anchor = containerRef.current?.parentElement;
+    if (!anchor) return;
+
+    const compute = () => {
+      const rect = anchor.getBoundingClientRect();
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+
+      let top: number | undefined;
+      let bottom: number | undefined;
+      if (spaceAbove >= PICKER_MAX_HEIGHT || spaceAbove >= spaceBelow) {
+        bottom = window.innerHeight - rect.top + 6;
+      } else {
+        top = rect.bottom + 6;
+      }
+
+      let left = rect.right - PICKER_WIDTH;
+      if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+      if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) {
+        left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
+      }
+
+      setFixedPos({ top, bottom, left });
+    };
+
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("scroll", compute, true);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("scroll", compute, true);
+    };
+  }, []);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   useEffect(() => {
@@ -195,11 +235,12 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
     <div
       ref={containerRef}
       style={{
-        position: "absolute",
-        bottom: "calc(100% + 6px)",
-        right: 0,
-        width: 340,
-        maxHeight: 400,
+        position: "fixed",
+        top: fixedPos.top,
+        bottom: fixedPos.bottom,
+        left: fixedPos.left,
+        width: PICKER_WIDTH,
+        maxHeight: PICKER_MAX_HEIGHT,
         background: "var(--color-panel-solid)",
         border: "1px solid var(--gray-7)",
         borderRadius: 12,

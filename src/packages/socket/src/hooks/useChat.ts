@@ -505,8 +505,9 @@ export function useChat({
       if (files.length > 0) {
         try {
           fileIds = await Promise.all(files.map(uploadFile));
-        } catch {
-          toast.error("Failed to upload file(s)");
+        } catch (err) {
+          const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
+          toast.error(msg);
           return;
         }
       }

@@ -13,7 +13,7 @@ export const ChatMediaPlayer = ({
     return (
       <div className="chat-audio-player">
         {fileName && <span className="chat-media-filename">{fileName}</span>}
-        <audio controls preload="auto" src={src} />
+        <audio controls preload="auto" src={src} onContextMenu={(e) => e.preventDefault()} />
       </div>
     );
   }
@@ -21,7 +21,7 @@ export const ChatMediaPlayer = ({
   return (
     <div className="chat-video-player">
       {fileName && <span className="chat-media-filename">{fileName}</span>}
-      <video controls preload="metadata" playsInline poster={poster} src={src} />
+      <video controls preload="metadata" playsInline poster={poster} src={src} onContextMenu={(e) => e.preventDefault()} />
     </div>
   );
 };

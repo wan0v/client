@@ -48,21 +48,6 @@ interface MemberSidebarProps {
   adminActions?: AdminActions;
 }
 
-const getStatusColor = (member: MemberInfo) => {
-  switch (member.status) {
-    case 'in_voice':
-      return "var(--green-9)";
-    case 'online':
-      return "var(--blue-9)";
-    case 'afk':
-      return "var(--orange-9)";
-    case 'offline':
-      return "var(--gray-9)";
-    default:
-      return "var(--gray-9)";
-  }
-};
-
 const CategoryHeader = ({ label, count }: { label: string; count: number }) => (
   <Box pt="2" pb="1" px="1">
     <Text size="1" weight="bold" color="gray" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -86,7 +71,6 @@ const MemberItem = ({
   serverHost: string;
   adminActions?: AdminActions;
 }) => {
-  const statusColor = getStatusColor(member);
   const isSelf = member.serverUserId === currentServerUserId;
 
   return (
@@ -110,38 +94,24 @@ const MemberItem = ({
       <div
         style={{
           background: "var(--gray-4)",
-          borderRadius: "16px",
+          borderRadius: "var(--radius-6)",
           padding: "8px 12px",
           cursor: 'default',
           opacity: member.status === 'offline' ? 0.5 : 1,
         }}
       >
         <Flex align="center" gap="2" width="100%">
-          <Flex position="relative">
-            <Avatar
-              size="2"
-              fallback={member.nickname[0]}
-              src={member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined}
-              style={{
-                outline: "2px solid",
-                outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
-                transition: "outline-color 0.1s ease",
-                backgroundColor: member.color,
-              }}
-            />
-            <Box
-              style={{
-                position: "absolute",
-                bottom: "-2px",
-                right: "-2px",
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: statusColor,
-                border: "2px solid var(--gray-3)",
-              }}
-            />
-          </Flex>
+          <Avatar
+            size="2"
+            fallback={member.nickname[0]}
+            src={member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined}
+            style={{
+              outline: "2px solid",
+              outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
+              transition: "outline-color 0.1s ease",
+              backgroundColor: member.color,
+            }}
+          />
 
           <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
             <Flex align="center" gap="1">
@@ -213,7 +183,7 @@ export const MemberSidebar = ({
       width="240px"
       style={{
         background: "var(--gray-3)",
-        borderRadius: "12px",
+        borderRadius: "var(--radius-5)",
         height: "100%",
         overflow: "hidden",
       }}
