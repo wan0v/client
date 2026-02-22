@@ -19,8 +19,8 @@ import {
 } from "../utils/emojiData";
 
 const EMOJI_NAME_RE = /^[a-z0-9_]{2,32}$/;
-const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif)$/i;
-const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif)$/i;
+const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|svg\+xml)$/i;
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|svg)$/i;
 const ZIP_TYPES = new Set(["application/zip", "application/x-zip-compressed", "application/x-zip"]);
 
 type EmojiItem = { name: string; file_id: string };
@@ -48,6 +48,7 @@ function extToMime(ext: string): string {
   if (lower === "png") return "image/png";
   if (lower === "webp") return "image/webp";
   if (lower === "gif") return "image/gif";
+  if (lower === "svg") return "image/svg+xml";
   return "application/octet-stream";
 }
 
@@ -185,10 +186,13 @@ export function ServerEmojisTab({
   }, [existingNames]);
 
   const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    console.log("[EmojiUpload] handleFileSelect fired — files:", files?.length ?? 0);
-    if (!files || files.length === 0) { console.log("[EmojiUpload] handleFileSelect: no files selected, bailing"); return; }
+    const liveFiles = e.target.files;
+    console.log("[EmojiUpload] handleFileSelect fired — files:", liveFiles?.length ?? 0);
+    if (!liveFiles || liveFiles.length === 0) { console.log("[EmojiUpload] handleFileSelect: no files selected, bailing"); return; }
+    const files = Array.from(liveFiles);
     e.currentTarget.value = "";
+
+    console.log("[EmojiUpload] handleFileSelect: snapshot", files.map(f => ({ name: f.name, type: f.type, size: f.size })));
 
     const imageFiles: File[] = [];
     const zipFiles: File[] = [];
@@ -207,7 +211,7 @@ export function ServerEmojisTab({
         imageFiles.push(f);
       } else {
         console.warn("[EmojiUpload] handleFileSelect: rejected file:", f.name, "type:", f.type);
-        toast.error(`"${f.name}": unsupported format. Use PNG, JPEG, WebP, GIF, or ZIP.`);
+        toast.error(`"${f.name}": unsupported format. Use PNG, JPEG, WebP, GIF, SVG, or ZIP.`);
       }
     }
 
@@ -503,7 +507,7 @@ export function ServerEmojisTab({
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/png,image/jpeg,image/webp,image/gif,.zip,application/zip"
+            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg,.zip,application/zip"
             style={{ display: "none" }}
             onChange={handleFileSelect}
           />
