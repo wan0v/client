@@ -1,3 +1,4 @@
+import { File as FaFile, FileArchive as FaFileArchive, FileAudio as FaFileAudio, FileCode as FaFileCode, FileImage as FaFileImage, FileText as FaFileAlt, FileVideo as FaFileVideo, Paperclip as IoMdAttach } from "lucide-react";
 import {
   forwardRef,
   useCallback,
@@ -7,7 +8,6 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { File as FaFile, FileText as FaFileAlt, FileArchive as FaFileArchive, FileAudio as FaFileAudio, FileCode as FaFileCode, FileImage as FaFileImage, FileVideo as FaFileVideo, Paperclip as IoMdAttach } from "lucide-react";
 const FaFilePdf = FaFileAlt;
 
 import type { EmojiEntry } from "../utils/emojiData";

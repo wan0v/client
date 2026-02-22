@@ -1,5 +1,5 @@
 import { Avatar, Box,Flex, Text } from "@radix-ui/themes";
-import { VolumeX as BsVolumeOffFill, Volume2 as HiSpeakerWave } from "lucide-react";
+import { Volume2 as HiSpeakerWave,VolumeX as BsVolumeOffFill } from "lucide-react";
 import { MicOff as MdMicOff } from "lucide-react";
 
 import { getUploadsFileUrl } from "@/common";

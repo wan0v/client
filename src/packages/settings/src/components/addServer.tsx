@@ -1,4 +1,3 @@
-import { TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
 import {
   Avatar,
   Box,
@@ -11,9 +10,10 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
+import { TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
+import { Wifi as FiWifi, X as FiX } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { Wifi as FiWifi, X as FiX } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 
 import { getServerHttpBase, getServerWsBase } from "@/common";

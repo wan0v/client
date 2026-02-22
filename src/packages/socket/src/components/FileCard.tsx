@@ -1,5 +1,5 @@
 import { Flex, Text } from "@radix-ui/themes";
-import { Download as FaDownload, File as FaFile, FileText as FaFileAlt, FileArchive as FaFileArchive, FileAudio as FaFileAudio, FileCode as FaFileCode, FileImage as FaFileImage, FileVideo as FaFileVideo } from "lucide-react";
+import { Download as FaDownload, File as FaFile, FileArchive as FaFileArchive, FileAudio as FaFileAudio, FileCode as FaFileCode, FileImage as FaFileImage, FileText as FaFileAlt, FileVideo as FaFileVideo } from "lucide-react";
 const FaFilePdf = FaFileAlt;
 
 import { getUploadsFileUrl } from "@/common";

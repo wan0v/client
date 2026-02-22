@@ -1,5 +1,5 @@
-import { X as Cross2Icon, TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
 import { Button, Dialog, Flex, IconButton,Text } from "@radix-ui/themes";
+import { TriangleAlert as ExclamationTriangleIcon,X as Cross2Icon } from "lucide-react";
 import { useEffect,useState } from "react";
 
 interface DeviceSwitchData {

@@ -1,6 +1,6 @@
 import { Dialog, Flex, IconButton, TextField } from "@radix-ui/themes";
-import { useState } from "react";
 import { X as FiX } from "lucide-react";
+import { useState } from "react";
 
 import { useSettings } from "../hooks/useSettings";
 

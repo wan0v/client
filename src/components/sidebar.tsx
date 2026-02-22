@@ -1,4 +1,3 @@
-import { Pin as PinTopIcon } from "lucide-react";
 import {
   Avatar,
   Box,
@@ -11,8 +10,9 @@ import {
   IconButton,
   Tooltip,
 } from "@radix-ui/themes";
+import { Pin as PinTopIcon } from "lucide-react";
 import { Settings as FiSettings } from "lucide-react";
-import { Plus as MdAdd, Mic as MdMic } from "lucide-react";
+import { Mic as MdMic,Plus as MdAdd } from "lucide-react";
 
 import { useAccount } from "@/common";
 import { useSettings } from "@/settings";

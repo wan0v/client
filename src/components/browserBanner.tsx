@@ -1,6 +1,6 @@
 import { Flex, IconButton, Link, Text } from "@radix-ui/themes";
-import { useState } from "react";
 import { Download as FiDownload, X as FiX } from "lucide-react";
+import { useState } from "react";
 
 import { isElectron } from "../lib/electron";
 
@@ -20,8 +20,8 @@ export function BrowserBanner() {
       gap="2"
       px="3"
       py="1"
-      shrink="0"
       style={{
+        flexShrink: 0,
         background: "var(--accent-a3)",
         borderBottom: "1px solid var(--accent-a5)",
       }}

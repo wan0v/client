@@ -1,4 +1,3 @@
-import { X as Cross2Icon } from "lucide-react";
 import {
   Avatar,
   Button,
@@ -8,10 +7,11 @@ import {
   TextArea,
   TextField,
 } from "@radix-ui/themes";
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import toast from "react-hot-toast";
+import { X as Cross2Icon } from "lucide-react";
 import { Eye as FiEye, EyeOff as FiEyeOff } from "lucide-react";
 import { Camera as MdCameraAlt } from "lucide-react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";

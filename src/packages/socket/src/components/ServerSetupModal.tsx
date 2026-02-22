@@ -1,4 +1,3 @@
-import { X as Cross2Icon, Settings as GearIcon } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -8,9 +7,10 @@ import {
   TextArea,
   TextField,
 } from "@radix-ui/themes";
+import { Settings as GearIcon,X as Cross2Icon } from "lucide-react";
+import { Eye as FiEye, EyeOff as FiEyeOff } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Eye as FiEye, EyeOff as FiEyeOff } from "lucide-react";
 
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";

@@ -1,7 +1,7 @@
 import { Flex, IconButton } from "@radix-ui/themes";
-import { useState } from "react";
-import { VolumeX as BsVolumeOffFill, Volume2 as BsVolumeUpFill, PhoneOff as ImPhoneHangUp } from "lucide-react";
+import { PhoneOff as ImPhoneHangUp,Volume2 as BsVolumeUpFill, VolumeX as BsVolumeOffFill } from "lucide-react";
 import { Mic as MdMic, MicOff as MdMicOff } from "lucide-react";
+import { useState } from "react";
 
 import { getIsBrowserSupported } from "@/audio";
 import { useSettings } from "@/settings";

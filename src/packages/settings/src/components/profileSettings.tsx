@@ -1,7 +1,7 @@
 import { AlertDialog, Avatar, Button, Flex, Heading, IconButton, SegmentedControl, Text, TextField, Tooltip } from "@radix-ui/themes";
+import { Camera as MdCameraAlt, Check as MdCheck, Copy as MdContentCopy, RefreshCw as MdSync } from "lucide-react";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Camera as MdCameraAlt, Check as MdCheck, Copy as MdContentCopy, RefreshCw as MdSync } from "lucide-react";
 
 import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, useUserId } from "@/common";
 import { useSettings } from "@/settings";

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { CloudDownload as FaCloudDownloadAlt } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ZoomLevel = "fit" | "2x" | "full";
 

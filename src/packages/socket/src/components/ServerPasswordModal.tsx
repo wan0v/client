@@ -1,5 +1,5 @@
-import { X as Cross2Icon, Lock as LockClosedIcon } from "lucide-react";
 import { Button, Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
+import { Lock as LockClosedIcon,X as Cross2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 

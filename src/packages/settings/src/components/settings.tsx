@@ -1,6 +1,6 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
 import { X as FiX } from "lucide-react";
-import { Keyboard as MdKeyboard, Mic as MdMic, Bell as MdNotifications, Palette as MdPalette, User as MdPerson, RefreshCw as MdSystemUpdate, SlidersHorizontal as MdTune, Volume2 as MdVolumeUp } from "lucide-react";
+import { Bell as MdNotifications, Keyboard as MdKeyboard, Mic as MdMic, Palette as MdPalette, RefreshCw as MdSystemUpdate, SlidersHorizontal as MdTune, User as MdPerson, Volume2 as MdVolumeUp } from "lucide-react";
 
 import { useSettings } from "@/settings";
 

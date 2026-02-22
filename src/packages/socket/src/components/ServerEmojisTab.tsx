@@ -1,4 +1,3 @@
-import { X as Cross1Icon, Trash2 as TrashIcon, Upload as UploadIcon } from "lucide-react";
 import {
   Button,
   Flex,
@@ -7,6 +6,7 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { unzipSync } from "fflate";
+import { Trash2 as TrashIcon, Upload as UploadIcon,X as Cross1Icon } from "lucide-react";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -286,7 +286,7 @@ export function ServerEmojisTab({
 
       const rawText = await resp.text();
       console.log("[EmojiUpload] uploadOne response:", { status: resp.status, ok: resp.ok, body: rawText });
-      let data: any = {};
+      let data: Record<string, unknown> = {};
       try { data = JSON.parse(rawText); } catch { console.warn("[EmojiUpload] uploadOne: response not JSON:", rawText); }
 
       if (!resp.ok) {
@@ -350,12 +350,13 @@ export function ServerEmojisTab({
 
       const rawText = await resp.text();
       console.log("[EmojiUpload] handleUploadAll response:", { status: resp.status, ok: resp.ok, bodyLength: rawText.length, body: rawText.slice(0, 500) });
-      let data: any = {};
+      let data: Record<string, unknown> = {};
       try { data = JSON.parse(rawText); } catch { console.warn("[EmojiUpload] handleUploadAll: response not JSON:", rawText.slice(0, 200)); }
 
-      if (data.results) {
+      if (Array.isArray(data.results)) {
+        const results = data.results as Array<{ name: string; ok: boolean; file_id?: string; error?: string; message?: string }>;
         const resultByName = new Map<string, { ok: boolean; file_id?: string; error?: string; message?: string }>();
-        for (const r of data.results) resultByName.set(r.name, r);
+        for (const r of results) resultByName.set(r.name, r);
 
         console.log("[EmojiUpload] handleUploadAll: batch results:", JSON.stringify(data.results));
         let successCount = 0;
