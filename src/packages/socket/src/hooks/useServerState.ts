@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isSpeaking, useMicrophone, useSpeakers } from "@/audio";
 import { getServerAccessToken } from "@/common";
@@ -64,6 +64,13 @@ export function useServerState() {
     isConnected,
     isConnecting,
   } = useSFU();
+
+  // ── AFK tracking refs (persist across effect re-runs) ─────────────────
+  const lastActivityTimeRef = useRef(Date.now());
+  const isAFKRef = useRef(false);
+  useEffect(() => {
+    isAFKRef.current = isAFK;
+  }, [isAFK]);
 
   // ── State ──────────────────────────────────────────────────────────────
   const [clientsSpeaking, setClientsSpeaking] = useState<
@@ -278,52 +285,92 @@ export function useServerState() {
     isPttActive,
   ]);
 
-  // AFK detection
+  // AFK detection — combines audio, focus, visibility, and user interaction
   useEffect(() => {
-    let lastActivityTime = Date.now();
-
-    if (
-      !currentServerConnected ||
-      !currentlyViewingServer ||
-      !currentConnection ||
-      !microphoneBuffer.analyser
-    ) {
+    if (!currentServerConnected || !currentlyViewingServer || !currentConnection) {
       return;
     }
 
+    lastActivityTimeRef.current = Date.now();
+
+    const markActivity = () => {
+      lastActivityTimeRef.current = Date.now();
+      if (isAFKRef.current) setIsAFK(false);
+    };
+
+    // User interaction listeners
+    document.addEventListener("mousemove", markActivity);
+    document.addEventListener("mousedown", markActivity);
+    document.addEventListener("keydown", markActivity);
+    document.addEventListener("scroll", markActivity, true);
+    document.addEventListener("touchstart", markActivity);
+
+    // Window focus / visibility
+    const onVisibilityChange = () => {
+      if (!document.hidden) markActivity();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", markActivity);
+
+    // Electron window focus
+    const cleanupElectronFocus = window.electronAPI?.onWindowFocusChange(
+      (focused) => { if (focused) markActivity(); },
+    );
+
     const checkAFK = () => {
-      if (!microphoneBuffer.analyser) return;
-      const bufferLength = microphoneBuffer.analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      microphoneBuffer.analyser.getByteFrequencyData(dataArray);
+      // Audio activity: voice above the noise gate resets the timer
+      if (microphoneBuffer.analyser) {
+        const bufferLength = microphoneBuffer.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        microphoneBuffer.analyser.getByteFrequencyData(dataArray);
 
-      let sum = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        sum += dataArray[i] * dataArray[i];
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i] * dataArray[i];
+        }
+        const rms = Math.sqrt(sum / bufferLength);
+        const rawVolume = (rms / 255) * 100;
+
+        if (rawVolume > noiseGate) {
+          markActivity();
+          return;
+        }
       }
-      const rms = Math.sqrt(sum / bufferLength);
-      const rawVolume = (rms / 255) * 100;
 
-      if (rawVolume > noiseGate) {
-        lastActivityTime = Date.now();
-        if (isAFK) setIsAFK(false);
+      // Window focused → user is present
+      if (document.hasFocus()) {
+        lastActivityTimeRef.current = Date.now();
+        if (isAFKRef.current) setIsAFK(false);
+        return;
       }
 
-      const timeSinceActivity = Date.now() - lastActivityTime;
+      // Timeout check
+      const timeSinceActivity = Date.now() - lastActivityTimeRef.current;
       const timeoutMs = afkTimeoutMinutes * 60 * 1000;
-      if (timeSinceActivity >= timeoutMs && !isAFK) setIsAFK(true);
+      if (timeSinceActivity >= timeoutMs && !isAFKRef.current) {
+        setIsAFK(true);
+      }
     };
 
     const afkCheckInterval = setInterval(checkAFK, 5000);
     checkAFK();
 
-    return () => clearInterval(afkCheckInterval);
+    return () => {
+      clearInterval(afkCheckInterval);
+      document.removeEventListener("mousemove", markActivity);
+      document.removeEventListener("mousedown", markActivity);
+      document.removeEventListener("keydown", markActivity);
+      document.removeEventListener("scroll", markActivity, true);
+      document.removeEventListener("touchstart", markActivity);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", markActivity);
+      cleanupElectronFocus?.();
+    };
   }, [
     currentServerConnected,
     currentlyViewingServer,
     currentConnection,
     microphoneBuffer.analyser,
-    isAFK,
     setIsAFK,
     afkTimeoutMinutes,
     noiseGate,

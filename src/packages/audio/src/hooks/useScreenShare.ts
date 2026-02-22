@@ -3,6 +3,8 @@ import { singletonHook } from "react-singleton-hook";
 
 import { useSettings } from "@/settings";
 
+import { isElectron } from "../../../../lib/electron";
+
 export type ScreenShareQuality = "native" | "1080p" | "720p" | "480p";
 
 const QUALITY_CONSTRAINTS: Record<ScreenShareQuality, { width?: number; height?: number; frameRate: number }> = {
@@ -23,7 +25,7 @@ export interface ScreenShareInterface {
   screenVideoStream: MediaStream | null;
   screenAudioStream: MediaStream | null;
   screenShareActive: boolean;
-  startScreenShare: (withAudio: boolean) => Promise<void>;
+  startScreenShare: (withAudio: boolean, sourceId?: string) => Promise<void>;
   stopScreenShare: () => void;
 }
 
@@ -44,22 +46,52 @@ function useScreenShareHook(): ScreenShareInterface {
     setScreenShareActive(false);
   }, []);
 
-  const startScreenShare = useCallback(async (withAudio: boolean) => {
+  const startScreenShare = useCallback(async (withAudio: boolean, sourceId?: string) => {
     const q = QUALITY_CONSTRAINTS[screenShareQuality as ScreenShareQuality] ?? QUALITY_CONSTRAINTS.native;
 
-    const videoConstraints: MediaTrackConstraints = {
-      frameRate: { ideal: q.frameRate },
-    };
-    if (q.width) {
-      videoConstraints.width = { ideal: q.width };
-      videoConstraints.height = { ideal: q.height };
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: videoConstraints,
-        audio: withAudio,
-      });
+      let stream: MediaStream;
+
+      if (isElectron() && sourceId) {
+        // In Electron, use getUserMedia with chromeMediaSourceId
+        const videoConstraints: MediaTrackConstraints = {
+          mandatory: {
+            chromeMediaSource: "desktop",
+            chromeMediaSourceId: sourceId,
+          },
+        } as MediaTrackConstraints;
+
+        if (q.width) {
+          (videoConstraints.mandatory as Record<string, unknown>).maxWidth = q.width;
+          (videoConstraints.mandatory as Record<string, unknown>).maxHeight = q.height;
+        }
+        (videoConstraints.mandatory as Record<string, unknown>).maxFrameRate = q.frameRate;
+
+        const constraints: MediaStreamConstraints = {
+          video: videoConstraints,
+          audio: withAudio ? {
+            mandatory: {
+              chromeMediaSource: "desktop",
+              chromeMediaSourceId: sourceId,
+            },
+          } as MediaTrackConstraints : false,
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } else {
+        const videoConstraints: MediaTrackConstraints = {
+          frameRate: { ideal: q.frameRate },
+        };
+        if (q.width) {
+          videoConstraints.width = { ideal: q.width };
+          videoConstraints.height = { ideal: q.height };
+        }
+
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: videoConstraints,
+          audio: withAudio,
+        });
+      }
 
       if (rawStreamRef.current) {
         rawStreamRef.current.getTracks().forEach((t) => t.stop());

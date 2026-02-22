@@ -23,55 +23,71 @@ import { UserContextMenu } from "./UserContextMenu";
 
 type Role = "owner" | "admin" | "mod" | "member";
 
-function RemoteVideo({ stream, rounded }: { stream: MediaStream; rounded?: boolean }) {
+function VideoCard({
+  stream,
+  nickname,
+  mirrored,
+  isSpeaking,
+  compact,
+  statusIcons,
+}: {
+  stream: MediaStream;
+  nickname: string;
+  mirrored?: boolean;
+  isSpeaking?: boolean;
+  compact?: boolean;
+  statusIcons?: ReactNode;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
-  return (
-    <video
-      ref={ref}
-      autoPlay
-      playsInline
-      muted
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        objectFit: rounded ? "cover" : "contain",
-        borderRadius: rounded ? "50%" : "var(--radius-3)",
-        background: rounded ? undefined : "#000",
-      }}
-    />
-  );
-}
 
-function LocalCameraOverlay({ mirrored }: { mirrored?: boolean }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  const { cameraStream } = useLocalCamera();
-  useEffect(() => {
-    if (ref.current) ref.current.srcObject = cameraStream;
-  }, [cameraStream]);
-  if (!cameraStream) return null;
   return (
-    <video
-      ref={ref}
-      autoPlay
-      playsInline
-      muted
+    <div
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
+        position: "relative",
         width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        borderRadius: "50%",
-        transform: mirrored ? "scaleX(-1)" : undefined,
+        aspectRatio: compact ? undefined : "16 / 9",
+        height: compact ? 60 : undefined,
+        borderRadius: "var(--radius-3)",
+        overflow: "hidden",
+        background: "#000",
+        outline: isSpeaking ? "2.5px solid var(--accent-9)" : "2.5px solid transparent",
+        transition: "outline-color 0.1s ease",
       }}
-    />
+    >
+      <video
+        ref={ref}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          transform: mirrored ? "scaleX(-1)" : undefined,
+        }}
+      />
+      <Flex
+        align="center"
+        gap="1"
+        px="2"
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "linear-gradient(transparent, rgba(0,0,0,0.7))",
+          padding: "12px 8px 4px",
+        }}
+      >
+        <Text size="1" weight="medium" style={{ color: "#fff" }} truncate>
+          {nickname}
+        </Text>
+        {statusIcons}
+      </Flex>
+    </div>
   );
 }
 
@@ -447,10 +463,13 @@ export const VoiceView = ({
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       setGridHeight(entry.contentRect.height);
+      setGridWidth(entry.contentRect.width);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  const [gridWidth, setGridWidth] = useState(0);
 
   const columns = useMemo(() => {
     if (isPresentationMode) return visibleCount;
@@ -462,6 +481,8 @@ export const VoiceView = ({
     const maxRows = Math.max(1, Math.floor(usable / ITEM_HEIGHT));
     return Math.max(1, Math.ceil(visibleCount / maxRows));
   }, [visibleCount, gridHeight, isPresentationMode]);
+
+  const useAutoLayout = gridWidth > 0 && gridWidth < 300;
 
   return (
     <motion.div
@@ -514,6 +535,7 @@ export const VoiceView = ({
             flexGrow: isPresentationMode ? 0 : 1,
             flexShrink: 0,
             position: "relative",
+            overflow: "hidden",
           }}
         >
           <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -521,13 +543,19 @@ export const VoiceView = ({
               <div
                 style={{
                   display: isPresentationMode ? "flex" : "grid",
-                  gridTemplateColumns: isPresentationMode ? undefined : `repeat(${columns}, 1fr)`,
+                  gridTemplateColumns: isPresentationMode
+                    ? undefined
+                    : useAutoLayout
+                      ? "1fr"
+                      : `repeat(${columns}, 1fr)`,
                   gap: "var(--space-2)",
                   justifyItems: "center",
                   alignContent: isPresentationMode ? "flex-start" : "center",
                   alignItems: isPresentationMode ? "center" : undefined,
                   overflowX: isPresentationMode ? "auto" : undefined,
+                  overflowY: isPresentationMode ? undefined : "auto",
                   paddingTop: isPresentationMode ? "var(--space-2)" : undefined,
+                  paddingBottom: isPresentationMode ? undefined : "60px",
                   height: isPresentationMode ? undefined : "100%",
                 }}
               >
@@ -575,125 +603,175 @@ export const VoiceView = ({
                           return undefined;
                         })()}
                       >
-                        <Flex
-                          align="center"
-                          justify="center"
-                          direction={isPresentationMode ? "row" : "column"}
-                          gap="1"
-                          px={isPresentationMode ? "2" : "4"}
-                          py={isPresentationMode ? "1" : "3"}
-                        >
-                          <Flex align="center" justify="center" position="relative">
-                            <Avatar
-                              size={isPresentationMode ? "2" : "3"}
-                              fallback={client.nickname[0]}
-                              src={avatarFileId ? getUploadsFileUrl(serverHost, avatarFileId) : undefined}
-                              style={{
-                                outline: "2.5px solid",
-                                outlineColor: clientsSpeaking[id] ? "var(--accent-9)" : "transparent",
-                                transition: "outline-color 0.1s ease",
-                              }}
-                            />
-                            {client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID] && !isSelf && (
-                              <RemoteVideo stream={videoStreams[client.cameraStreamID]} rounded />
-                            )}
-                            {client.cameraEnabled && isSelf && (
-                              <LocalCameraOverlay mirrored={cameraMirrored} />
-                            )}
-                            {client.cameraEnabled && (
-                              <Flex
-                                position="absolute"
-                                top="-4px"
-                                right="-4px"
-                                style={{
-                                  background: "var(--green-9)",
-                                  borderRadius: "50%",
-                                  padding: "2px",
-                                }}
-                              >
-                                <MdVideocam size={10} color="white" />
+                        {(() => {
+                          const hasCameraStream =
+                            (isSelf && localCameraStream) ||
+                            (!isSelf && client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID]);
+
+                          const statusBadges = (
+                            <>
+                              {(client.isMuted || client.isDeafened) && (
+                                client.isDeafened
+                                  ? <MdVolumeOff size={12} color="var(--red-9)" />
+                                  : <MdMicOff size={12} color="var(--red-9)" />
+                              )}
+                              {client.isAFK && (
+                                <Text size="1" weight="bold" color="orange" style={{ color: "#fff" }}>AFK</Text>
+                              )}
+                              {client.screenShareEnabled && <MdScreenShare size={10} color="var(--blue-9)" />}
+                            </>
+                          );
+
+                          if (hasCameraStream && !isPresentationMode) {
+                            const camStream = isSelf
+                              ? localCameraStream!
+                              : videoStreams![client.cameraStreamID!];
+                            return (
+                              <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
+                                <VideoCard
+                                  stream={camStream}
+                                  nickname={client.nickname}
+                                  mirrored={isSelf ? cameraMirrored : false}
+                                  isSpeaking={clientsSpeaking[id]}
+                                  statusIcons={statusBadges}
+                                />
+                                {showPeerLatency && (() => {
+                                  const stats = isSelf ? selfLatency : peerLatency?.[id];
+                                  const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
+                                  const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
+                                  const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
+                                  const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
+                                  if (oneWay == null) return null;
+                                  const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
+                                  if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
+                                  return (
+                                    <Tooltip content={tooltipParts.join(" · ")}>
+                                      <Text size="1" style={{ color: latencyColor(oneWay), fontVariantNumeric: "tabular-nums", cursor: "default" }}>
+                                        {Math.round(oneWay)}ms
+                                      </Text>
+                                    </Tooltip>
+                                  );
+                                })()}
                               </Flex>
-                            )}
-                            {client.screenShareEnabled && (
-                              <Flex
-                                position="absolute"
-                                top="-4px"
-                                left="-4px"
-                                style={{
-                                  background: "var(--blue-9)",
-                                  borderRadius: "50%",
-                                  padding: "2px",
-                                }}
-                              >
-                                <MdScreenShare size={10} color="white" />
-                              </Flex>
-                            )}
-                            {isUserConnecting && (
-                              <Flex
-                                position="absolute"
-                                align="center"
-                                justify="center"
-                                style={{
-                                  top: 0, left: 0, right: 0, bottom: 0,
-                                  background: "var(--color-panel-translucent)",
-                                  borderRadius: "50%",
-                                }}
-                              >
-                                <SkeletonBase width="24px" height="24px" borderRadius="50%" />
-                              </Flex>
-                            )}
-                            {(client.isMuted || client.isDeafened || client.isAFK) && (
-                              <Flex
-                                position="absolute"
-                                bottom="-4px"
-                                right="-4px"
-                                gap="1"
-                                style={{
-                                  background: "var(--gray-3)",
-                                  borderRadius: "var(--radius-4)",
-                                  padding: "2px 4px",
-                                  border: "1px solid var(--gray-6)",
-                                }}
-                              >
-                                {client.isDeafened ? (
-                                  <MdVolumeOff size={12} color="var(--red-9)" />
-                                ) : client.isMuted ? (
-                                  <MdMicOff size={12} color="var(--red-9)" />
-                                ) : null}
-                                {client.isAFK && (
-                                  <Text size="1" weight="bold" color="orange">AFK</Text>
-                                )}
-                              </Flex>
-                            )}
-                          </Flex>
-                          <Flex direction="column" align="center" gap="1">
-                            <Text size={isPresentationMode ? "1" : undefined}>{client.nickname}</Text>
-                            {!isPresentationMode && showPeerLatency && (() => {
-                              const stats = isSelf ? selfLatency : peerLatency?.[id];
-                              const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
-                              const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
-                              const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
-                              const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
-                              if (oneWay == null) return null;
-                              const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
-                              if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
-                              return (
-                                <Tooltip content={tooltipParts.join(" · ")}>
-                                  <Text
-                                    size="1"
+                            );
+                          }
+
+                          return (
+                            <Flex
+                              align="center"
+                              justify="center"
+                              direction={isPresentationMode ? "row" : "column"}
+                              gap="1"
+                              px={isPresentationMode ? "2" : "4"}
+                              py={isPresentationMode ? "1" : "3"}
+                            >
+                              <Flex align="center" justify="center" position="relative">
+                                <Avatar
+                                  size={isPresentationMode ? "2" : "3"}
+                                  fallback={client.nickname[0]}
+                                  src={avatarFileId ? getUploadsFileUrl(serverHost, avatarFileId) : undefined}
+                                  style={{
+                                    outline: "2.5px solid",
+                                    outlineColor: clientsSpeaking[id] ? "var(--accent-9)" : "transparent",
+                                    transition: "outline-color 0.1s ease",
+                                  }}
+                                />
+                                {client.cameraEnabled && (
+                                  <Flex
+                                    position="absolute"
+                                    top="-4px"
+                                    right="-4px"
                                     style={{
-                                      color: latencyColor(oneWay),
-                                      fontVariantNumeric: "tabular-nums",
-                                      cursor: "default",
+                                      background: "var(--green-9)",
+                                      borderRadius: "50%",
+                                      padding: "2px",
                                     }}
                                   >
-                                    {Math.round(oneWay)}ms
-                                  </Text>
-                                </Tooltip>
-                              );
-                            })()}
-                          </Flex>
-                        </Flex>
+                                    <MdVideocam size={10} color="white" />
+                                  </Flex>
+                                )}
+                                {client.screenShareEnabled && (
+                                  <Flex
+                                    position="absolute"
+                                    top="-4px"
+                                    left="-4px"
+                                    style={{
+                                      background: "var(--blue-9)",
+                                      borderRadius: "50%",
+                                      padding: "2px",
+                                    }}
+                                  >
+                                    <MdScreenShare size={10} color="white" />
+                                  </Flex>
+                                )}
+                                {isUserConnecting && (
+                                  <Flex
+                                    position="absolute"
+                                    align="center"
+                                    justify="center"
+                                    style={{
+                                      top: 0, left: 0, right: 0, bottom: 0,
+                                      background: "var(--color-panel-translucent)",
+                                      borderRadius: "50%",
+                                    }}
+                                  >
+                                    <SkeletonBase width="24px" height="24px" borderRadius="50%" />
+                                  </Flex>
+                                )}
+                                {(client.isMuted || client.isDeafened || client.isAFK) && (
+                                  <Flex
+                                    position="absolute"
+                                    bottom="-4px"
+                                    right="-4px"
+                                    gap="1"
+                                    style={{
+                                      background: "var(--gray-3)",
+                                      borderRadius: "var(--radius-4)",
+                                      padding: "2px 4px",
+                                      border: "1px solid var(--gray-6)",
+                                    }}
+                                  >
+                                    {client.isDeafened ? (
+                                      <MdVolumeOff size={12} color="var(--red-9)" />
+                                    ) : client.isMuted ? (
+                                      <MdMicOff size={12} color="var(--red-9)" />
+                                    ) : null}
+                                    {client.isAFK && (
+                                      <Text size="1" weight="bold" color="orange">AFK</Text>
+                                    )}
+                                  </Flex>
+                                )}
+                              </Flex>
+                              <Flex direction="column" align="center" gap="1">
+                                <Text size={isPresentationMode ? "1" : undefined}>{client.nickname}</Text>
+                                {!isPresentationMode && showPeerLatency && (() => {
+                                  const stats = isSelf ? selfLatency : peerLatency?.[id];
+                                  const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
+                                  const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
+                                  const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
+                                  const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
+                                  if (oneWay == null) return null;
+                                  const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
+                                  if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
+                                  return (
+                                    <Tooltip content={tooltipParts.join(" · ")}>
+                                      <Text
+                                        size="1"
+                                        style={{
+                                          color: latencyColor(oneWay),
+                                          fontVariantNumeric: "tabular-nums",
+                                          cursor: "default",
+                                        }}
+                                      >
+                                        {Math.round(oneWay)}ms
+                                      </Text>
+                                    </Tooltip>
+                                  );
+                                })()}
+                              </Flex>
+                            </Flex>
+                          );
+                        })()}
                             </UserContextMenu>
                           </SortableParticipant>
                         </motion.div>
@@ -710,18 +788,22 @@ export const VoiceView = ({
               {currentServerConnected && (
                 <motion.div
                   style={{
-                    width: "100%",
                     position: "absolute",
-                    bottom: "0",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
                     display: "flex",
                     justifyContent: "center",
-                    padding: "24px",
+                    padding: "12px",
+                    pointerEvents: "none",
                   }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <Controls onDisconnect={onDisconnect} />
+                  <div style={{ pointerEvents: "auto" }}>
+                    <Controls onDisconnect={onDisconnect} />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

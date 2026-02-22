@@ -53,6 +53,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("toggle-always-on-top", pinned);
   },
 
+  getDesktopSources(): Promise<Array<{ id: string; name: string; thumbnail: string; appIcon: string; sourceType: "screen" | "window" }>> {
+    return ipcRenderer.invoke("get-desktop-sources");
+  },
+
   onWindowFocusChange(callback: (focused: boolean) => void) {
     const handler = (_event: Electron.IpcRendererEvent, focused: boolean) => callback(focused);
     ipcRenderer.on("window-focus-change", handler);

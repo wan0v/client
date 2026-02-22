@@ -7,11 +7,12 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { MdAttachFile, MdAudioFile, MdCode, MdDescription, MdFolderZip, MdImage, MdInsertDriveFile, MdVideoFile } from "react-icons/md";
+import { MdAttachFile, MdAudioFile, MdCode, MdDescription, MdFolderZip, MdImage, MdInsertDriveFile, MdInsertEmoticon, MdSend, MdVideoFile } from "react-icons/md";
 const FaFilePdf = MdDescription;
 
-import { type EmojiEntry, recordRecentEmoji } from "../utils/emojiData";
+import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
+import { EmojiPicker } from "./EmojiPicker";
 
 export interface ChatEditorHandle {
   clear: () => void;
@@ -161,6 +162,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
     const [showAutocomplete, setShowAutocomplete] = useState(false);
+    const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
     const updateEmojiQuery = useCallback(() => {
       const q = getEmojiQueryAtCursor();
@@ -265,6 +267,46 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       setEmojiQuery(null);
     }, []);
 
+    const handlePickerEmojiSelect = useCallback((src: string) => {
+      const el = editorRef.current;
+      if (!el) return;
+
+      el.focus();
+      const sel = window.getSelection();
+
+      if (src.startsWith(":") && src.endsWith(":")) {
+        const name = src.slice(1, -1);
+        const custom = getCustomEmojis().find((e) => e.name === name);
+        if (custom?.url) {
+          const img = document.createElement("img");
+          img.src = custom.url;
+          img.alt = src;
+          img.dataset.emojiName = name;
+          img.className = "inline-emoji";
+          img.draggable = false;
+          img.contentEditable = "false";
+          el.appendChild(img);
+          recordRecentEmoji(name, true);
+        }
+      } else {
+        el.appendChild(document.createTextNode(src));
+      }
+
+      const trailing = document.createTextNode(" ");
+      el.appendChild(trailing);
+
+      if (sel) {
+        sel.removeAllRanges();
+        const range = document.createRange();
+        range.setStartAfter(trailing);
+        range.collapse(true);
+        sel.addRange(range);
+      }
+
+      autoResize(el);
+      setEmojiPickerOpen(false);
+    }, []);
+
     useImperativeHandle(ref, () => ({
       clear: () => {
         if (editorRef.current) {
@@ -349,6 +391,23 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               e.target.value = "";
             }}
           />
+          <div style={{ position: "relative" }}>
+            <button
+              className="chat-editor-emoji-btn"
+              type="button"
+              aria-label="Insert emoji"
+              disabled={disabled}
+              onClick={() => setEmojiPickerOpen((v) => !v)}
+            >
+              <MdInsertEmoticon size={20} />
+            </button>
+            {emojiPickerOpen && (
+              <EmojiPicker
+                onSelect={handlePickerEmojiSelect}
+                onClose={() => setEmojiPickerOpen(false)}
+              />
+            )}
+          </div>
           <div
             ref={editorRef}
             className="chat-editor-textarea"
@@ -362,6 +421,15 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             onInput={handleInput}
             onClick={updateEmojiQuery}
           />
+          <button
+            className="chat-editor-send-btn"
+            type="button"
+            aria-label="Send message"
+            disabled={disabled}
+            onClick={handleSend}
+          >
+            <MdSend size={20} />
+          </button>
         </div>
       </div>
     );

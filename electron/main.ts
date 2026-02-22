@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
@@ -415,6 +415,29 @@ if (!gotSingleInstanceLock) {
 
     closeSplashAndShowMain();
     initBackgroundUpdater();
+
+    // ── Screen capture ────────────────────────────────────────────────
+    // Allow getDisplayMedia by providing a default handler.
+    // Our renderer uses a custom picker via get-desktop-sources instead.
+    session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+      desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+        callback({ video: sources[0], audio: "loopback" });
+      });
+    });
+
+    ipcMain.handle("get-desktop-sources", async () => {
+      const sources = await desktopCapturer.getSources({
+        types: ["screen", "window"],
+        thumbnailSize: { width: 320, height: 180 },
+      });
+      return sources.map((s) => ({
+        id: s.id,
+        name: s.name,
+        thumbnail: s.thumbnail.toDataURL(),
+        appIcon: s.appIcon ? s.appIcon.toDataURL() : "",
+        sourceType: s.id.startsWith("screen:") ? "screen" as const : "window" as const,
+      }));
+    });
 
     // ── IPC handlers ──────────────────────────────────────────────────
 

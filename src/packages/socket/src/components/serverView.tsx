@@ -450,7 +450,7 @@ export const ServerView = () => {
                 }
               />
 
-              <Box style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}>
+              <Box style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
                 <ChannelList
                   channels={serverDetailsList[currentlyViewingServer.host]?.channels || []}
                   items={effectiveSidebarItems}

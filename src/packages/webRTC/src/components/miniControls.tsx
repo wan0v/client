@@ -1,13 +1,16 @@
 import { Box, Button, Heading, HoverCard, IconButton } from "@radix-ui/themes";
 import { AnimatePresence, motion, Variants } from "motion/react";
+import { useCallback, useState } from "react";
 import { MdArrowForward, MdCallEnd, MdMic, MdMicOff, MdScreenShare, MdStopScreenShare, MdVideocam, MdVideocamOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
-import { useCamera, useScreenShare } from "@/audio";
+import { type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
 
 import { useSFU } from "../hooks/useSFU";
+import { CameraPreviewModal } from "./CameraPreviewModal";
+import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 
 const buttonAnimations: Variants = {
   hidden: { opacity: 0, x: -15, transition: { duration: 0.1 } },
@@ -51,10 +54,29 @@ export function MiniControls({
 
   const { cameraEnabled, setCameraEnabled } = useCamera();
   const { screenShareActive, startScreenShare, stopScreenShare } = useScreenShare();
+  const {
+    screenShareQuality, setScreenShareQuality,
+    cameraID, setCameraID, cameraQuality, setCameraQuality,
+    cameraMirrored, setCameraMirrored,
+  } = useSettings();
+
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showScreenShareModal, setShowScreenShareModal] = useState(false);
+
+  const handleCameraClick = useCallback(() => {
+    if (cameraEnabled) setCameraEnabled(false);
+    else setShowCameraModal(true);
+  }, [cameraEnabled, setCameraEnabled]);
+
+  const handleScreenShareClick = useCallback(() => {
+    if (screenShareActive) stopScreenShare();
+    else setShowScreenShareModal(true);
+  }, [screenShareActive, stopScreenShare]);
 
   const { getChannelDetails, serverDetailsList } = useSockets();
 
   return (
+    <>
     <AnimatePresence>
       {isConnected &&
         (currentlyViewingServer?.host !== currentServerConnected ||
@@ -102,7 +124,7 @@ export function MiniControls({
                 size="1"
                 color={cameraEnabled ? "green" : "gray"}
                 variant="soft"
-                onClick={() => setCameraEnabled(!cameraEnabled)}
+                onClick={handleCameraClick}
               >
                 {cameraEnabled ? <MdVideocam size={12} /> : <MdVideocamOff size={12} />}
               </IconButton>
@@ -113,10 +135,7 @@ export function MiniControls({
                 size="1"
                 color={screenShareActive ? "green" : "gray"}
                 variant="soft"
-                onClick={() => {
-                  if (screenShareActive) stopScreenShare();
-                  else startScreenShare(true);
-                }}
+                onClick={handleScreenShareClick}
               >
                 {screenShareActive ? <MdStopScreenShare size={12} /> : <MdScreenShare size={12} />}
               </IconButton>
@@ -197,5 +216,26 @@ export function MiniControls({
           </motion.div>
         )}
     </AnimatePresence>
+
+      <CameraPreviewModal
+        open={showCameraModal}
+        onOpenChange={setShowCameraModal}
+        cameraID={cameraID}
+        onCameraIDChange={setCameraID}
+        quality={cameraQuality}
+        onQualityChange={setCameraQuality}
+        mirrored={cameraMirrored}
+        onMirroredChange={setCameraMirrored}
+        onStart={() => setCameraEnabled(true)}
+      />
+
+      <ScreenSharePickerModal
+        open={showScreenShareModal}
+        onOpenChange={setShowScreenShareModal}
+        quality={screenShareQuality as ScreenShareQuality}
+        onQualityChange={setScreenShareQuality}
+        onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
+      />
+    </>
   );
 }

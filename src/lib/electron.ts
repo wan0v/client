@@ -5,6 +5,14 @@ export interface UpdateStatus {
   message?: string;
 }
 
+export interface DesktopSource {
+  id: string;
+  name: string;
+  thumbnail: string;
+  appIcon: string;
+  sourceType: "screen" | "window";
+}
+
 export interface ElectronAPI {
   isElectron: true;
   getAppVersion(): Promise<string>;
@@ -17,6 +25,7 @@ export interface ElectronAPI {
   setBetaChannel(enabled: boolean): void;
   setBadgeCount(count: number): void;
   toggleAlwaysOnTop(pinned: boolean): void;
+  getDesktopSources(): Promise<DesktopSource[]>;
   onWindowFocusChange(callback: (focused: boolean) => void): () => void;
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;

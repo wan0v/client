@@ -1,4 +1,4 @@
-import { Checkbox, DropdownMenu, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Flex, IconButton } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MdCallEnd,
@@ -13,21 +13,18 @@ import {
 } from "react-icons/md";
 
 import { getIsBrowserSupported, useCamera, useScreenShare } from "@/audio";
-import { QUALITY_BITRATES, ScreenShareQuality } from "@/audio/src/hooks/useScreenShare";
+import { QUALITY_BITRATES, type ScreenShareQuality } from "@/audio/src/hooks/useScreenShare";
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 
+import { isElectron } from "../../../../lib/electron";
+import { CameraPreviewModal } from "./CameraPreviewModal";
+import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
+
 interface ControlsProps {
   onDisconnect?: () => void;
 }
-
-const QUALITY_LABELS: Record<ScreenShareQuality, string> = {
-  native: "Native",
-  "1080p": "1080p",
-  "720p": "720p",
-  "480p": "480p",
-};
 
 export function Controls({ onDisconnect }: ControlsProps) {
   const [isBrowserSupported] = useState(getIsBrowserSupported());
@@ -46,12 +43,18 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
   const { screenVideoStream, screenAudioStream, screenShareActive, startScreenShare, stopScreenShare } = useScreenShare();
   const { sockets } = useSockets();
-  const { setIsMuted, isMuted, isDeafened, setIsDeafened, screenShareQuality, setScreenShareQuality } = useSettings();
+  const {
+    setIsMuted, isMuted, isDeafened, setIsDeafened,
+    screenShareQuality, setScreenShareQuality,
+    cameraID, setCameraID, cameraQuality, setCameraQuality,
+    cameraMirrored, setCameraMirrored,
+  } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
   const prevScreenVideoRef = useRef<MediaStream | null>(null);
   const prevScreenAudioRef = useRef<MediaStream | null>(null);
-  const [includeAudio, setIncludeAudio] = useState(true);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showScreenShareModal, setShowScreenShareModal] = useState(false);
 
   // Sync camera stream to WebRTC peer connection
   useEffect(() => {
@@ -148,13 +151,23 @@ export function Controls({ onDisconnect }: ControlsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 
-  const handleToggleCamera = useCallback(() => {
-    setCameraEnabled(!cameraEnabled);
+  const handleCameraClick = useCallback(() => {
+    if (cameraEnabled) {
+      setCameraEnabled(false);
+    } else {
+      setShowCameraModal(true);
+    }
   }, [cameraEnabled, setCameraEnabled]);
 
-  const handleStartScreenShare = useCallback(() => {
-    startScreenShare(includeAudio);
-  }, [startScreenShare, includeAudio]);
+  const handleScreenShareClick = useCallback(() => {
+    if (screenShareActive) {
+      stopScreenShare();
+    } else if (isElectron()) {
+      setShowScreenShareModal(true);
+    } else {
+      setShowScreenShareModal(true);
+    }
+  }, [screenShareActive, stopScreenShare]);
 
   function handleMute() {
     setIsMuted(!isMuted);
@@ -193,65 +206,44 @@ export function Controls({ onDisconnect }: ControlsProps) {
           <IconButton
             color={cameraEnabled ? "green" : "gray"}
             variant="soft"
-            onClick={handleToggleCamera}
+            onClick={handleCameraClick}
           >
             {cameraEnabled ? <MdVideocam size={16} /> : <MdVideocamOff size={16} />}
           </IconButton>
 
-          {screenShareActive ? (
-            <IconButton
-              color="red"
-              variant="soft"
-              onClick={stopScreenShare}
-            >
-              <MdStopScreenShare size={16} />
-            </IconButton>
-          ) : (
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger>
-                <IconButton color="gray" variant="soft">
-                  <MdScreenShare size={16} />
-                </IconButton>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Content side="top" align="center">
-                <DropdownMenu.Label>Screen Share</DropdownMenu.Label>
-
-                <DropdownMenu.Item onClick={handleStartScreenShare}>
-                  Share Screen
-                </DropdownMenu.Item>
-
-                <DropdownMenu.Separator />
-
-                <Text as="label" size="1" style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", cursor: "pointer" }}>
-                  <Checkbox
-                    size="1"
-                    checked={includeAudio}
-                    onCheckedChange={(v) => setIncludeAudio(v === true)}
-                  />
-                  Include audio
-                </Text>
-
-                <DropdownMenu.Separator />
-
-                <DropdownMenu.Label>Quality</DropdownMenu.Label>
-                {(Object.keys(QUALITY_LABELS) as ScreenShareQuality[]).map((q) => (
-                  <DropdownMenu.CheckboxItem
-                    key={q}
-                    checked={screenShareQuality === q}
-                    onCheckedChange={() => setScreenShareQuality(q)}
-                  >
-                    {QUALITY_LABELS[q]}
-                  </DropdownMenu.CheckboxItem>
-                ))}
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
-          )}
+          <IconButton
+            color={screenShareActive ? "red" : "gray"}
+            variant="soft"
+            onClick={handleScreenShareClick}
+          >
+            {screenShareActive ? <MdStopScreenShare size={16} /> : <MdScreenShare size={16} />}
+          </IconButton>
 
           <IconButton variant="soft" color="red" onClick={handleDisconnect}>
             <MdCallEnd size={16} />
           </IconButton>
         </Flex>
       )}
+
+      <CameraPreviewModal
+        open={showCameraModal}
+        onOpenChange={setShowCameraModal}
+        cameraID={cameraID}
+        onCameraIDChange={setCameraID}
+        quality={cameraQuality}
+        onQualityChange={setCameraQuality}
+        mirrored={cameraMirrored}
+        onMirroredChange={setCameraMirrored}
+        onStart={() => setCameraEnabled(true)}
+      />
+
+      <ScreenSharePickerModal
+        open={showScreenShareModal}
+        onOpenChange={setShowScreenShareModal}
+        quality={screenShareQuality as ScreenShareQuality}
+        onQualityChange={setScreenShareQuality}
+        onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
+      />
     </>
   );
 }
