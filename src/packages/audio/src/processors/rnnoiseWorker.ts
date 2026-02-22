@@ -10,6 +10,19 @@ async function init() {
   self.postMessage({ type: 'ready' });
 }
 
+function processFrame(frame: Float32Array, replyPort: MessagePort) {
+  if (frame.length !== FRAME_SIZE || !denoiseState) return;
+
+  for (let i = 0; i < FRAME_SIZE; i++) frame[i] *= PCM_SCALE;
+  denoiseState.processFrame(frame);
+  for (let i = 0; i < FRAME_SIZE; i++) frame[i] /= PCM_SCALE;
+
+  replyPort.postMessage(
+    { type: 'processed', frame: frame.buffer },
+    [frame.buffer as ArrayBuffer],
+  );
+}
+
 self.onmessage = (event: MessageEvent) => {
   const { type } = event.data;
 
@@ -20,25 +33,13 @@ self.onmessage = (event: MessageEvent) => {
     return;
   }
 
-  if (type === 'process' && denoiseState) {
-    const frame = new Float32Array(event.data.frame);
-    if (frame.length !== FRAME_SIZE) return;
-
-    // Web Audio uses float32 in [-1, 1]; RNNoise expects 16-bit PCM range [-32768, 32767]
-    for (let i = 0; i < FRAME_SIZE; i++) {
-      frame[i] *= PCM_SCALE;
-    }
-
-    denoiseState.processFrame(frame);
-
-    for (let i = 0; i < FRAME_SIZE; i++) {
-      frame[i] /= PCM_SCALE;
-    }
-
-    self.postMessage(
-      { type: 'processed', frame: frame.buffer },
-      { transfer: [frame.buffer as ArrayBuffer] },
-    );
+  if (type === 'worker-port') {
+    const port: MessagePort = event.ports[0];
+    port.onmessage = (e) => {
+      if (e.data.type === 'frame') {
+        processFrame(new Float32Array(e.data.frame), port);
+      }
+    };
     return;
   }
 
