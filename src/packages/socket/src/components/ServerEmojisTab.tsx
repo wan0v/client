@@ -157,7 +157,8 @@ export function ServerEmojisTab({
   }, []);
 
   const addImageFiles = useCallback((validFiles: File[]) => {
-    if (validFiles.length === 0) return;
+    console.log("[EmojiUpload] addImageFiles:", validFiles.length, "file(s)", validFiles.map(f => ({ name: f.name, type: f.type, size: f.size })));
+    if (validFiles.length === 0) { console.log("[EmojiUpload] addImageFiles: empty array, bailing"); return; }
 
     const rawNames = validFiles.map((f) => deriveEmojiName(f.name));
 
@@ -185,22 +186,27 @@ export function ServerEmojisTab({
 
   const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    console.log("[EmojiUpload] handleFileSelect fired — files:", files?.length ?? 0);
+    if (!files || files.length === 0) { console.log("[EmojiUpload] handleFileSelect: no files selected, bailing"); return; }
     e.currentTarget.value = "";
 
     const imageFiles: File[] = [];
     const zipFiles: File[] = [];
 
     for (const f of files) {
-      if (isZipFile(f)) {
+      const isImage = IMAGE_MIME_RE.test(f.type) || IMAGE_EXT_RE.test(f.name);
+      const isZip = isZipFile(f);
+      console.log("[EmojiUpload] handleFileSelect: file:", f.name, "type:", f.type, "size:", f.size, "isImage:", isImage, "isZip:", isZip);
+      if (isZip) {
         zipFiles.push(f);
-      } else if (IMAGE_MIME_RE.test(f.type)) {
+      } else if (isImage) {
         if (f.size > 5 * 1024 * 1024) {
           toast.error(`"${f.name}": too large (max 5 MB).`);
           continue;
         }
         imageFiles.push(f);
       } else {
+        console.warn("[EmojiUpload] handleFileSelect: rejected file:", f.name, "type:", f.type);
         toast.error(`"${f.name}": unsupported format. Use PNG, JPEG, WebP, GIF, or ZIP.`);
       }
     }
@@ -214,11 +220,13 @@ export function ServerEmojisTab({
           toast.success(`Extracted ${extracted.length} image(s) from "${zip.name}".`);
           imageFiles.push(...extracted);
         }
-      } catch {
+      } catch (err) {
+        console.error("[EmojiUpload] handleFileSelect: zip extraction failed:", zip.name, err);
         toast.error(`"${zip.name}": failed to read archive.`);
       }
     }
 
+    console.log("[EmojiUpload] handleFileSelect: passing", imageFiles.length, "image(s) to addImageFiles");
     addImageFiles(imageFiles);
   };
 
@@ -482,7 +490,10 @@ export function ServerEmojisTab({
           <Button
             variant="soft"
             size="1"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              console.log("[EmojiUpload] 'Choose files' clicked — fileInputRef.current:", !!fileInputRef.current, "uploading:", uploading);
+              fileInputRef.current?.click();
+            }}
             disabled={uploading}
           >
             Choose files
