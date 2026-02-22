@@ -49,7 +49,7 @@ const components: Components = {
         style={{
           background: "var(--gray-4)",
           padding: "1px 5px",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-2)",
           fontSize: "0.85em",
           fontFamily: "var(--code-font-family)",
         }}
@@ -63,7 +63,7 @@ const components: Components = {
       style={{
         background: "var(--gray-2)",
         border: "1px solid var(--gray-5)",
-        borderRadius: "8px",
+        borderRadius: "var(--radius-4)",
         padding: "10px 12px",
         margin: "4px 0",
         overflowX: "auto",
@@ -121,7 +121,7 @@ const components: Components = {
         style={{
           maxWidth: "100%",
           maxHeight: "300px",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-4)",
           margin: "4px 0",
           display: "block",
           cursor: "pointer",

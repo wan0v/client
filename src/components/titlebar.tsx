@@ -107,7 +107,7 @@ function NavButton({
         width: 28,
         height: 24,
         border: "none",
-        borderRadius: 4,
+        borderRadius: "var(--radius-2)",
         background: "transparent",
         color: disabled ? "var(--gray-a5)" : "var(--gray-a11)",
         cursor: disabled ? "default" : "pointer",

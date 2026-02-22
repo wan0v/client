@@ -12,7 +12,7 @@ interface SkeletonBaseProps {
 export const SkeletonBase = ({ 
   width = "100%", 
   height = "1rem", 
-  borderRadius = "4px",
+  borderRadius = "var(--radius-2)",
   className,
   style 
 }: SkeletonBaseProps) => {

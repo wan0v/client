@@ -116,7 +116,7 @@ export const VoiceView = ({
       <Flex
         style={{
           background: "var(--gray-3)",
-          borderRadius: "12px",
+          borderRadius: "var(--radius-5)",
         }}
         height="100%"
         width="100%"
@@ -176,7 +176,7 @@ export const VoiceView = ({
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       style={{
-                        borderRadius: "12px",
+                        borderRadius: "var(--radius-5)",
                       }}
                     >
                       <Flex align="center" justify="center" direction="column" gap="1" px="4" py="3">
@@ -219,7 +219,7 @@ export const VoiceView = ({
                               gap="1"
                               style={{
                                 background: "var(--gray-3)",
-                                borderRadius: "8px",
+                                borderRadius: "var(--radius-4)",
                                 padding: "2px 4px",
                                 border: "1px solid var(--gray-6)",
                               }}

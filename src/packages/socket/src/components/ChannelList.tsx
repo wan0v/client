@@ -140,7 +140,7 @@ export const ChannelList = ({
               )}
               {channel!.disableRnnoise && (
                 <Tooltip content="Noise suppression disabled">
-                  <Text size="1" weight="bold" style={{ color: "var(--gray-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gray-7)", borderRadius: 3 }}>
+                  <Text size="1" weight="bold" style={{ color: "var(--gray-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gray-7)", borderRadius: "var(--radius-1)" }}>
                     RAW
                   </Text>
                 </Tooltip>
@@ -183,7 +183,7 @@ export const ChannelList = ({
                   direction="column"
                   style={{
                     background: "var(--gray-3)",
-                    borderRadius: "0 0 12px 12px",
+                    borderRadius: "0 0 var(--radius-5) var(--radius-5)",
                   }}
                 >
                   {Object.keys(clients)?.map(
@@ -354,7 +354,7 @@ export const ChannelList = ({
               boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
               cursor: "grabbing",
               zIndex: 50,
-              borderRadius: 8,
+              borderRadius: "var(--radius-4)",
             }}
             onDragStart={() => { isDragging.current = true; }}
             onDragEnd={handleDragEnd}

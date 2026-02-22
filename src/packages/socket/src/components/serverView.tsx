@@ -365,7 +365,7 @@ export const ServerView = () => {
             py="2"
             style={{
               flexShrink: 0,
-              borderRadius: 10,
+              borderRadius: "var(--radius-5)",
               background: currentConnectionStatus === 'reconnecting'
                 ? "var(--orange-a3)"
                 : "var(--red-a3)",
@@ -547,6 +547,7 @@ export const ServerView = () => {
                 restoreText={restoreText}
                 clearRestoreText={clearRestoreText}
                 canDeleteAny={serverDetails?.server_info?.role === "owner"}
+                maxFileSize={serverDetails?.server_info?.upload_max_bytes}
                 {...(isLoadingMessages !== undefined && { isLoadingMessages })}
               />
             </div>

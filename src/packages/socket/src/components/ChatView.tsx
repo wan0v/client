@@ -50,6 +50,7 @@ export const ChatView = ({
   restoreText,
   clearRestoreText,
   canDeleteAny,
+  maxFileSize,
 }: {
   chatMessages: ChatMessage[];
   canSend: boolean;
@@ -68,6 +69,7 @@ export const ChatView = ({
   restoreText?: string | null;
   clearRestoreText?: () => void;
   canDeleteAny?: boolean;
+  maxFileSize?: number | null;
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ChatEditorHandle>(null);
@@ -304,7 +306,7 @@ export const ChatView = ({
         minWidth="0"
         style={{
           background: "var(--gray-3)",
-          borderRadius: "12px",
+          borderRadius: "var(--radius-5)",
           position: "relative",
         }}
         onDragEnter={handleViewDragEnter}
@@ -387,7 +389,7 @@ export const ChatView = ({
                           direction="column"
                           onContextMenu={(e) => handleMessageRightClick(e, m)}
                           style={{
-                            borderRadius: "6px",
+                            borderRadius: "var(--radius-3)",
                             padding: "2px 6px",
                             margin: "0 -6px",
                             transition: "background 0.3s ease",
@@ -517,7 +519,7 @@ export const ChatView = ({
                                       lineHeight: 1,
                                       height: "auto",
                                       background: "var(--gray-3)",
-                                      borderRadius: "12px",
+                                      borderRadius: "var(--radius-5)",
                                       transition: "all 0.2s ease",
                                       whiteSpace: "nowrap",
                                     }}
@@ -552,7 +554,7 @@ export const ChatView = ({
               marginBottom: "4px",
               borderLeft: "3px solid var(--accent-9)",
               background: "var(--gray-4)",
-              borderRadius: "0 6px 6px 0",
+              borderRadius: "0 var(--radius-3) var(--radius-3) 0",
               fontSize: "13px",
             }}
           >
@@ -578,6 +580,7 @@ export const ChatView = ({
           ref={editorRef}
           placeholder={editorPlaceholder}
           disabled={editorDisabled}
+          maxFileSize={maxFileSize}
           onSend={handleEditorSend}
         />
       </Flex>

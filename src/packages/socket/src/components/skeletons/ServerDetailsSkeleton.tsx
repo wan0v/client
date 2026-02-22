@@ -9,8 +9,8 @@ export const ServerDetailsSkeleton = () => {
       <Flex direction="column" gap="4" align="center" width="100%">
         {/* Server header skeleton */}
         <Flex direction="column" gap="2" align="center" width="100%">
-          <SkeletonBase width="120px" height="24px" borderRadius="8px" />
-          <SkeletonBase width="80px" height="16px" borderRadius="4px" />
+          <SkeletonBase width="120px" height="24px" borderRadius="var(--radius-4)" />
+          <SkeletonBase width="80px" height="16px" borderRadius="var(--radius-2)" />
         </Flex>
 
         {/* Channel list skeleton */}

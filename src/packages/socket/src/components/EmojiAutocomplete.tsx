@@ -72,7 +72,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAu
         marginBottom: "4px",
         background: "var(--color-panel-solid)",
         border: "1px solid var(--gray-6)",
-        borderRadius: "10px",
+        borderRadius: "var(--radius-5)",
         boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
         maxHeight: "280px",
         overflowY: "auto",
@@ -93,7 +93,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAu
             alignItems: "center",
             gap: "10px",
             padding: "6px 10px",
-            borderRadius: "6px",
+            borderRadius: "var(--radius-3)",
             cursor: "pointer",
             background: idx === selectedIndex ? "var(--gray-4)" : "transparent",
             transition: "background 0.1s ease",
@@ -131,7 +131,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAu
                 color: "var(--gray-9)",
                 background: "var(--gray-3)",
                 padding: "1px 5px",
-                borderRadius: "4px",
+                borderRadius: "var(--radius-2)",
                 flexShrink: 0,
               }}
             >

@@ -51,7 +51,7 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
       <Flex
         style={{
           height: "20px",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-2)",
           overflow: "hidden",
           background: "var(--gray-4)",
         }}
@@ -75,7 +75,7 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
               style={{
                 width: "8px",
                 height: "8px",
-                borderRadius: "2px",
+                borderRadius: "var(--radius-1)",
                 background: seg.color,
                 flexShrink: 0,
               }}
@@ -125,7 +125,7 @@ export function LatencyPanel() {
         gap="2"
         style={{
           background: "var(--gray-3)",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-4)",
           border: "1px solid var(--gray-5)",
         }}
       >

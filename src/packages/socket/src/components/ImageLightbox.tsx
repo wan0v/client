@@ -150,7 +150,7 @@ export const ImageLightbox = ({
           right: 16,
           width: 40,
           height: 40,
-          borderRadius: 10,
+          borderRadius: "var(--radius-5)",
           border: "1px solid rgba(255, 255, 255, 0.15)",
           background: "rgba(0, 0, 0, 0.55)",
           backdropFilter: "blur(8px)",

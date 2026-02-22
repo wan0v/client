@@ -15,7 +15,7 @@ const cardStyle: React.CSSProperties = {
   textAlign: "center",
   maxWidth: 380,
   padding: "40px 32px",
-  borderRadius: 16,
+  borderRadius: "var(--radius-6)",
   background: "var(--color-panel-solid)",
   border: "1px solid var(--gray-5)",
   boxShadow: "0 1px 4px var(--gray-a3)",
@@ -24,7 +24,7 @@ const cardStyle: React.CSSProperties = {
 const iconWrapStyle = (bg: string): React.CSSProperties => ({
   width: 56,
   height: 56,
-  borderRadius: 14,
+  borderRadius: "var(--radius-5)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

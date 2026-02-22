@@ -269,7 +269,7 @@ function ReportCard({
     <Box
       style={{
         border: "1px solid var(--gray-6)",
-        borderRadius: "10px",
+        borderRadius: "var(--radius-5)",
         padding: "14px",
         background: "var(--gray-2)",
       }}
@@ -289,7 +289,7 @@ function ReportCard({
           <Box
             style={{
               background: "var(--gray-3)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-4)",
               padding: "10px 12px",
               borderLeft: "3px solid var(--red-8)",
             }}

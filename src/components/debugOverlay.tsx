@@ -76,7 +76,7 @@ export function DebugOverlay({
           fontFamily: "var(--code-font-family)",
           fontSize: "12px",
           padding: "12px",
-          borderRadius: "6px",
+          borderRadius: "var(--radius-3)",
           border: "1px solid var(--gray-7)",
           zIndex: 9999,
           backdropFilter: "blur(12px)",

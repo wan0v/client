@@ -22,7 +22,7 @@ export const ChannelSkeleton = () => {
             style={{
               width: "100%",
               background: "var(--gray-3)",
-              borderRadius: "12px",
+              borderRadius: "var(--radius-5)",
               border: "1px solid var(--gray-4)",
             }}
           >

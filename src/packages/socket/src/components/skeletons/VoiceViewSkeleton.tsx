@@ -7,7 +7,7 @@ export const VoiceViewSkeleton = () => {
     <Flex
       style={{
         background: "var(--gray-3)",
-        borderRadius: "12px",
+        borderRadius: "var(--radius-5)",
       }}
       height="100%"
       width="100%"
@@ -34,7 +34,7 @@ export const VoiceViewSkeleton = () => {
             py="4"
             style={{
               background: "var(--gray-3)",
-              borderRadius: "12px",
+              borderRadius: "var(--radius-5)",
               border: "1px solid var(--gray-4)",
             }}
           >
@@ -63,7 +63,7 @@ export const VoiceViewSkeleton = () => {
             padding: "24px",
           }}
         >
-          <SkeletonBase width="120px" height="40px" borderRadius="8px" />
+          <SkeletonBase width="120px" height="40px" borderRadius="var(--radius-4)" />
         </Flex>
       </Flex>
     </Flex>
