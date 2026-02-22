@@ -1,6 +1,5 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
-import { X as FiX } from "lucide-react";
-import { Bell as MdNotifications, Keyboard as MdKeyboard, Mic as MdMic, Palette as MdPalette, RefreshCw as MdSystemUpdate, SlidersHorizontal as MdTune, User as MdPerson, Volume2 as MdVolumeUp } from "lucide-react";
+import { MdClose, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdRefresh, MdTune, MdVolumeUp } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
@@ -60,7 +59,7 @@ const TAB_CONFIG = [
   {
     value: "updates",
     label: "Updates",
-    icon: MdSystemUpdate,
+    icon: MdRefresh,
     content: <UpdateSettings />,
   },
 ];
@@ -95,7 +94,7 @@ export function Settings() {
           }}
         >
           <IconButton variant="soft" color="gray">
-            <FiX size={16} />
+            <MdClose size={16} />
           </IconButton>
         </Dialog.Close>
 
@@ -123,19 +122,11 @@ export function Settings() {
                     }}
                   >
                     {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
-                      <Tabs.Trigger
-                        key={value}
-                        value={value}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-start",
-                          padding: "12px 16px",
-                          gap: "8px",
-                        }}
-                      >
-                        <Icon size={16} style={{ flexShrink: 0 }} />
-                        {label}
+                      <Tabs.Trigger key={value} value={value}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Icon size={16} />
+                          {label}
+                        </span>
                       </Tabs.Trigger>
                     ))}
                   </Tabs.List>

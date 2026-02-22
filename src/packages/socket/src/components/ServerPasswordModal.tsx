@@ -1,5 +1,5 @@
 import { Button, Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
-import { Lock as LockClosedIcon,X as Cross2Icon } from "lucide-react";
+import { MdClose, MdLock } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -98,12 +98,12 @@ export function ServerPasswordModal() {
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
-              <LockClosedIcon />
+              <MdLock size={16} />
               <Dialog.Title>Join server</Dialog.Title>
             </Flex>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
-                <Cross2Icon />
+                <MdClose size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>

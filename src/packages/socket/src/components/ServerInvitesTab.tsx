@@ -1,5 +1,5 @@
 import { Button, Card, Flex, Text, TextField } from "@radix-ui/themes";
-import { Copy as CopyIcon, Plus as PlusIcon } from "lucide-react";
+import { MdAdd, MdContentCopy } from "react-icons/md";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -174,7 +174,7 @@ export function ServerInvitesTab({
               Refresh
             </Button>
             <Button onClick={create} disabled={creating}>
-              <PlusIcon />
+              <MdAdd size={16} />
               Create invite
             </Button>
           </Flex>
@@ -214,7 +214,7 @@ export function ServerInvitesTab({
                     </Flex>
                     <Flex gap="2">
                       <Button variant="soft" onClick={() => copy(i.code)}>
-                        <CopyIcon />
+                        <MdContentCopy size={16} />
                         Copy
                       </Button>
                       <Button

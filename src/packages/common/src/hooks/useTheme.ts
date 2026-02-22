@@ -39,12 +39,6 @@ export interface ThemeSettings {
   grayColor: GrayColor;
   setGrayColor: (value: GrayColor) => void;
 
-  hasBackground: boolean;
-  setHasBackground: (value: boolean) => void;
-
-  panelBackground: "solid" | "translucent";
-  setPanelBackground: (value: "solid" | "translucent") => void;
-
   radius: "none" | "small" | "medium" | "large" | "full";
   setRadius: (value: "none" | "small" | "medium" | "large" | "full") => void;
 
@@ -61,12 +55,6 @@ function useThemeHook(): ThemeSettings {
   );
   const [grayColor, setGrayColorState] = useState<GrayColor>(
     ((localStorage.getItem("theme.grayColor") as GrayColor) || "slate")
-  );
-  const [hasBackground, setHasBackgroundState] = useState<boolean>(
-    localStorage.getItem("theme.hasBackground") !== "false"
-  );
-  const [panelBackground, setPanelBackgroundState] = useState<"solid" | "translucent">(
-    ((localStorage.getItem("theme.panelBackground") as "solid" | "translucent") || "translucent")
   );
   const [radius, setRadiusState] = useState<"none" | "small" | "medium" | "large" | "full">(
     ((localStorage.getItem("theme.radius") as "none" | "small" | "medium" | "large" | "full") || "full")
@@ -101,16 +89,6 @@ function useThemeHook(): ThemeSettings {
     localStorage.setItem("theme.grayColor", value);
   }
 
-  function setHasBackground(value: boolean) {
-    setHasBackgroundState(value);
-    localStorage.setItem("theme.hasBackground", value.toString());
-  }
-
-  function setPanelBackground(value: "solid" | "translucent") {
-    setPanelBackgroundState(value);
-    localStorage.setItem("theme.panelBackground", value);
-  }
-
   function setRadius(value: "none" | "small" | "medium" | "large" | "full") {
     setRadiusState(value);
     localStorage.setItem("theme.radius", value);
@@ -128,10 +106,6 @@ function useThemeHook(): ThemeSettings {
     setAccentColor,
     grayColor,
     setGrayColor,
-    hasBackground,
-    setHasBackground,
-    panelBackground,
-    setPanelBackground,
     radius,
     setRadius,
     resolvedAppearance,
@@ -145,10 +119,6 @@ const init: ThemeSettings = {
   setAccentColor: () => {},
   grayColor: ((localStorage.getItem("theme.grayColor") as GrayColor) || "slate"),
   setGrayColor: () => {},
-  hasBackground: localStorage.getItem("theme.hasBackground") !== "false",
-  setHasBackground: () => {},
-  panelBackground: ((localStorage.getItem("theme.panelBackground") as "solid" | "translucent") || "translucent"),
-  setPanelBackground: () => {},
   radius: ((localStorage.getItem("theme.radius") as "none" | "small" | "medium" | "large" | "full") || "full"),
   setRadius: () => {},
   // Resolve initial appearance from system preference to avoid initial flash

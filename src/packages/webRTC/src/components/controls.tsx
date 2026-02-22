@@ -1,6 +1,5 @@
 import { Flex, IconButton } from "@radix-ui/themes";
-import { PhoneOff as ImPhoneHangUp,Volume2 as BsVolumeUpFill, VolumeX as BsVolumeOffFill } from "lucide-react";
-import { Mic as MdMic, MicOff as MdMicOff } from "lucide-react";
+import { MdCallEnd, MdMic, MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 import { useState } from "react";
 
 import { getIsBrowserSupported } from "@/audio";
@@ -48,14 +47,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
             onClick={handleDeafen}
           >
             {isDeafened ? (
-              <BsVolumeOffFill size={16} />
+              <MdVolumeOff size={16} />
             ) : (
-              <BsVolumeUpFill size={16} />
+              <MdVolumeUp size={16} />
             )}
           </IconButton>
 
           <IconButton variant="soft" color="red" onClick={handleDisconnect}>
-            <ImPhoneHangUp />
+            <MdCallEnd size={16} />
           </IconButton>
         </Flex>
       )}

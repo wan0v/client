@@ -6,7 +6,7 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { unzipSync } from "fflate";
-import { Trash2 as TrashIcon, Upload as UploadIcon,X as Cross1Icon } from "lucide-react";
+import { MdClose, MdDelete, MdFileUpload } from "react-icons/md";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -567,7 +567,7 @@ export function ServerEmojisTab({
                   onClick={() => handleUploadSingle(p.id)}
                   style={{ cursor: "pointer", flexShrink: 0 }}
                 >
-                  <UploadIcon width={14} height={14} />
+                  <MdFileUpload size={14} />
                 </IconButton>
                 <IconButton
                   variant="ghost"
@@ -578,7 +578,7 @@ export function ServerEmojisTab({
                   onClick={() => removePending(p.id)}
                   style={{ cursor: "pointer", flexShrink: 0 }}
                 >
-                  <Cross1Icon width={14} height={14} />
+                  <MdClose size={14} />
                 </IconButton>
               </Flex>
             ))}
@@ -660,7 +660,7 @@ export function ServerEmojisTab({
                   title={`Delete :${e.name}:`}
                   style={{ cursor: "pointer" }}
                 >
-                  <TrashIcon width={14} height={14} />
+                  <MdDelete size={14} />
                 </IconButton>
               </Flex>
             ))}

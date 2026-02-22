@@ -1,5 +1,5 @@
 import { Button, Dialog, Flex, IconButton,Text } from "@radix-ui/themes";
-import { TriangleAlert as ExclamationTriangleIcon,X as Cross2Icon } from "lucide-react";
+import { MdClose, MdWarning } from "react-icons/md";
 import { useEffect,useState } from "react";
 
 interface DeviceSwitchData {
@@ -37,9 +37,8 @@ export function DeviceSwitchModal() {
       <Dialog.Content style={{ maxWidth: 450 }}>
         <Flex direction="column" gap="4" align="center" p="4">
           <Flex align="center" gap="3" mb="2">
-            <ExclamationTriangleIcon 
-              width="24" 
-              height="24" 
+            <MdWarning 
+              size={24} 
               color="orange" 
             />
             <Text size="4" weight="bold" color="orange">
@@ -91,7 +90,7 @@ export function DeviceSwitchModal() {
             style={{ position: "absolute", top: "12px", right: "12px" }}
             onClick={handleClose}
           >
-            <Cross2Icon />
+            <MdClose size={16} />
           </IconButton>
         </Dialog.Close>
       </Dialog.Content>

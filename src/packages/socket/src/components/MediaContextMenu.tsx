@@ -1,5 +1,5 @@
 import { ContextMenu } from "@radix-ui/themes";
-import { CloudDownload as FaCloudDownloadAlt, Copy as FaCopy, ExternalLink as FaExternalLinkAlt } from "lucide-react";
+import { MdCloudDownload, MdContentCopy, MdOpenInNew } from "react-icons/md";
 import React, { type ReactNode } from "react";
 
 interface MediaContextMenuProps {
@@ -41,16 +41,16 @@ export function MediaContextMenu({ children, src, fileName }: MediaContextMenuPr
       </ContextMenu.Trigger>
       <ContextMenu.Content style={{ minWidth: 180 }}>
         <ContextMenu.Item onClick={() => triggerDownload(src, fileName)}>
-          <FaCloudDownloadAlt style={{ marginRight: 8, flexShrink: 0 }} />
+          <MdCloudDownload size={14} style={{ marginRight: 8, flexShrink: 0 }} />
           Save As
         </ContextMenu.Item>
         <ContextMenu.Item onClick={() => copyToClipboard(src)}>
-          <FaCopy style={{ marginRight: 8, flexShrink: 0 }} />
+          <MdContentCopy size={14} style={{ marginRight: 8, flexShrink: 0 }} />
           Copy Link
         </ContextMenu.Item>
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => window.open(src, "_blank", "noopener,noreferrer")}>
-          <FaExternalLinkAlt style={{ marginRight: 8, flexShrink: 0 }} />
+          <MdOpenInNew size={14} style={{ marginRight: 8, flexShrink: 0 }} />
           Open in Browser
         </ContextMenu.Item>
       </ContextMenu.Content>

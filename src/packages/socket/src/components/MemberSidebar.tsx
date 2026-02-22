@@ -1,6 +1,5 @@
 import { Avatar, Box,Flex, Text } from "@radix-ui/themes";
-import { Volume2 as HiSpeakerWave,VolumeX as BsVolumeOffFill } from "lucide-react";
-import { MicOff as MdMicOff } from "lucide-react";
+import { MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
 import { getUploadsFileUrl } from "@/common";
 
@@ -47,13 +46,19 @@ interface MemberSidebarProps {
   adminActions?: AdminActions;
 }
 
-const CategoryHeader = ({ label, count }: { label: string; count: number }) => (
-  <Box pt="2" pb="1" px="1">
-    <Text size="1" weight="bold" color="gray" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>
-      {label} — {count}
-    </Text>
-  </Box>
-);
+const statusConfig: Record<UserStatus, { label: string; color: string }> = {
+  in_voice: { label: "In Voice", color: "var(--accent-9)" },
+  online: { label: "Online", color: "var(--green-9)" },
+  afk: { label: "AFK", color: "var(--amber-9)" },
+  offline: { label: "Offline", color: "var(--gray-9)" },
+};
+
+const statusPriority: Record<UserStatus, number> = {
+  in_voice: 0,
+  online: 1,
+  afk: 2,
+  offline: 3,
+};
 
 const MemberItem = ({
   member,
@@ -71,6 +76,7 @@ const MemberItem = ({
   adminActions?: AdminActions;
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
+  const { label: statusLabel, color: statusColor } = statusConfig[member.status];
 
   return (
     <UserContextMenu
@@ -112,7 +118,7 @@ const MemberItem = ({
             }}
           />
 
-          <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
+          <Flex direction="column" style={{ flex: 1, minWidth: 0, gap: "1px" }}>
             <Flex align="center" gap="1">
               <Text
                 size="2"
@@ -125,24 +131,26 @@ const MemberItem = ({
                 {member.nickname}
               </Text>
               {isSpeaking && (
-                <HiSpeakerWave
+                <MdVolumeUp
                   size={12}
                   color="var(--accent-9)"
                   style={{ flexShrink: 0 }}
                 />
               )}
+              {member.isDeafened && (
+                <MdVolumeOff size={10} color="var(--red-9)" style={{ flexShrink: 0 }} />
+              )}
+              {member.isMuted && !member.isDeafened && (
+                <MdMicOff size={10} color="var(--red-9)" style={{ flexShrink: 0 }} />
+              )}
             </Flex>
 
-            <Flex align="center" gap="1">
-              <Flex gap="1" align="center">
-                {member.isDeafened && (
-                  <BsVolumeOffFill size={10} color="var(--red-9)" />
-                )}
-                {member.isMuted && !member.isDeafened && (
-                  <MdMicOff size={10} color="var(--red-9)" />
-                )}
-              </Flex>
-            </Flex>
+            <Text
+              size="1"
+              style={{ color: statusColor, lineHeight: 1.2 }}
+            >
+              {statusLabel}
+            </Text>
           </Flex>
         </Flex>
       </div>
@@ -158,24 +166,11 @@ export const MemberSidebar = ({
   serverHost,
   adminActions,
 }: MemberSidebarProps) => {
-  const sortAlpha = (a: MemberInfo, b: MemberInfo) => a.nickname.localeCompare(b.nickname);
-
-  const inVoice = members.filter((m) => m.status === 'in_voice').sort(sortAlpha);
-  const online = members.filter((m) => m.status === 'online' || m.status === 'afk').sort(sortAlpha);
-  const offline = members.filter((m) => m.status === 'offline').sort(sortAlpha);
-
-  const renderMembers = (list: MemberInfo[]) =>
-    list.map((member) => (
-      <MemberItem
-        key={member.serverUserId}
-        member={member}
-        isSpeaking={clientsSpeaking[member.serverUserId] || false}
-        currentServerUserId={currentServerUserId}
-        currentUserRole={currentUserRole}
-        serverHost={serverHost}
-        adminActions={adminActions}
-      />
-    ));
+  const sortedMembers = [...members].sort((a, b) => {
+    const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
+    if (priorityDiff !== 0) return priorityDiff;
+    return a.nickname.localeCompare(b.nickname);
+  });
 
   return (
     <Box
@@ -200,26 +195,17 @@ export const MemberSidebar = ({
         </Box>
 
         <Flex direction="column" gap="2" style={{ overflow: "auto", flex: 1 }}>
-          {inVoice.length > 0 && (
-            <>
-              <CategoryHeader label="In Voice" count={inVoice.length} />
-              {renderMembers(inVoice)}
-            </>
-          )}
-
-          {online.length > 0 && (
-            <>
-              <CategoryHeader label="Online" count={online.length} />
-              {renderMembers(online)}
-            </>
-          )}
-
-          {offline.length > 0 && (
-            <>
-              <CategoryHeader label="Offline" count={offline.length} />
-              {renderMembers(offline)}
-            </>
-          )}
+          {sortedMembers.map((member) => (
+            <MemberItem
+              key={member.serverUserId}
+              member={member}
+              isSpeaking={clientsSpeaking[member.serverUserId] || false}
+              currentServerUserId={currentServerUserId}
+              currentUserRole={currentUserRole}
+              serverHost={serverHost}
+              adminActions={adminActions}
+            />
+          ))}
         </Flex>
       </Flex>
     </Box>

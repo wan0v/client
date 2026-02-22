@@ -1,7 +1,5 @@
 import { Box, Button, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
-import { MessageSquare as ChatBubbleIcon, Volume2 as SpeakerLoudIcon } from "lucide-react";
-import { Radio as HiMiniSignal } from "lucide-react";
-import { Gamepad2 as MdSportsEsports,Keyboard as MdKeyboard } from "lucide-react";
+import { MdChat, MdKeyboard, MdRadio, MdSportsEsports, MdVolumeUp } from "react-icons/md";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -115,13 +113,18 @@ export const ChannelList = ({
           style={{
             width: "100%",
             justifyContent: "start",
+            overflow: "hidden",
           }}
           onClick={() => {
             if (channel) onChannelClick(channel);
           }}
         >
-          {channel?.type === "voice" ? <SpeakerLoudIcon /> : <ChatBubbleIcon />}
-          {channel?.name || "(missing channel)"}
+          <Flex align="center" shrink="0">
+            {channel?.type === "voice" ? <MdVolumeUp size={16} /> : <MdChat size={16} />}
+          </Flex>
+          <Text truncate style={{ flex: 1, minWidth: 0 }}>
+            {channel?.name || "(missing channel)"}
+          </Text>
           {hasIndicators && (
             <Flex gap="1" align="center" style={{ marginLeft: "auto", flexShrink: 0 }}>
               {channel!.eSportsMode && (
@@ -146,9 +149,9 @@ export const ChannelList = ({
                 </Tooltip>
               )}
               {channel!.maxBitrate && (
-                <Tooltip content={`Max bitrate: ${channel!.maxBitrate} bps`}>
+                <Tooltip content={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
                   <Flex align="center" style={{ color: "var(--gray-9)" }}>
-                    <HiMiniSignal size={14} />
+                    <MdRadio size={14} />
                   </Flex>
                 </Tooltip>
               )}

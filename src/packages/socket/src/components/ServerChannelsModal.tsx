@@ -1,5 +1,5 @@
 import { AlertDialog, Button, Card,Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
-import { Plus as PlusIcon, Trash2 as TrashIcon,X as Cross2Icon } from "lucide-react";
+import { MdAdd, MdClose, MdDelete } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -138,7 +138,7 @@ export function ServerChannelsModal() {
             <Dialog.Title>Channels</Dialog.Title>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
-                <Cross2Icon />
+                <MdClose size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
@@ -170,7 +170,7 @@ export function ServerChannelsModal() {
                   Reset
                 </Button>
                 <Button onClick={upsert} disabled={submitting}>
-                  <PlusIcon />
+                  <MdAdd size={16} />
                   {editingId ? "Save" : "Add"}
                 </Button>
               </Flex>
@@ -200,7 +200,7 @@ export function ServerChannelsModal() {
                           Edit
                         </Button>
                         <Button variant="soft" color="red" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
-                          <TrashIcon />
+                          <MdDelete size={16} />
                           Delete
                         </Button>
                       </Flex>

@@ -1,6 +1,5 @@
 import { Box, Button, Heading, HoverCard, IconButton } from "@radix-ui/themes";
-import { PhoneOff as ImPhoneHangUp,Volume2 as BsVolumeUpFill, VolumeX as BsVolumeOffFill } from "lucide-react";
-import { ArrowRight as MdArrowForward, Mic as MdMic, MicOff as MdMicOff } from "lucide-react";
+import { MdArrowForward, MdCallEnd, MdMic, MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 import { AnimatePresence, motion, Variants } from "motion/react";
 
 import { getServerHttpBase } from "@/common";
@@ -87,9 +86,9 @@ export function MiniControls({
                 onClick={() => setIsDeafened(!isDeafened)}
               >
                 {isDeafened ? (
-                  <BsVolumeOffFill size={12} />
+                  <MdVolumeOff size={12} />
                 ) : (
-                  <BsVolumeUpFill size={12} />
+                  <MdVolumeUp size={12} />
                 )}
               </IconButton>
             </motion.div>
@@ -103,7 +102,7 @@ export function MiniControls({
                   void disconnect();
                 }}
               >
-                <ImPhoneHangUp size={12} />
+                <MdCallEnd size={12} />
               </IconButton>
             </motion.div>
             <motion.div variants={buttonAnimations}>

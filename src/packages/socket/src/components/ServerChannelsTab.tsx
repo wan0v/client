@@ -1,5 +1,5 @@
 import { AlertDialog, Button, Card, Flex, Select, Switch, Text, TextField } from "@radix-ui/themes";
-import { Plus as PlusIcon, Trash2 as TrashIcon } from "lucide-react";
+import { MdAdd, MdDelete } from "react-icons/md";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -228,7 +228,7 @@ export function ServerChannelsTab({
               Reset
             </Button>
             <Button onClick={upsert} disabled={submitting}>
-              <PlusIcon />
+              <MdAdd size={16} />
               {editingId ? "Save" : "Add"}
             </Button>
           </Flex>
@@ -274,7 +274,7 @@ export function ServerChannelsTab({
                       Edit
                     </Button>
                     <Button variant="soft" color="red" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
-                      <TrashIcon />
+                      <MdDelete size={16} />
                       Delete
                     </Button>
                   </Flex>

@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Spinner, Text } from "@radix-ui/themes";
-import { CircleAlert as FiAlertCircle, Clock as FiClock, RefreshCw as IoMdRefresh, WifiOff as FiWifiOff } from "lucide-react";
+import { MdError, MdRefresh, MdSchedule, MdWifiOff } from "react-icons/md";
 
 import { ServerDetailsSkeleton } from "./skeletons";
 
@@ -43,7 +43,7 @@ export const ServerLoadingStates = ({
         <Box style={cardStyle}>
           <Flex direction="column" align="center" gap="4">
             <div style={iconWrapStyle("var(--red-a3)")}>
-              <FiAlertCircle size={28} color="var(--red-9)" />
+              <MdError size={28} color="var(--red-9)" />
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
@@ -62,7 +62,7 @@ export const ServerLoadingStates = ({
               size="2"
               style={{ marginTop: 4 }}
             >
-              <IoMdRefresh size={15} />
+              <MdRefresh size={16} />
               Retry
             </Button>
           </Flex>
@@ -102,7 +102,7 @@ export const ServerLoadingStates = ({
         <Box style={cardStyle}>
           <Flex direction="column" align="center" gap="4">
             <div style={iconWrapStyle("var(--red-a3)")}>
-              <FiWifiOff size={26} color="var(--red-9)" />
+              <MdWifiOff size={26} color="var(--red-9)" />
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
@@ -118,7 +118,7 @@ export const ServerLoadingStates = ({
               size="2"
               style={{ marginTop: 4 }}
             >
-              <IoMdRefresh size={15} />
+              <MdRefresh size={16} />
               Reconnect
             </Button>
           </Flex>
@@ -133,7 +133,7 @@ export const ServerLoadingStates = ({
         <Box style={cardStyle}>
           <Flex direction="column" align="center" gap="4">
             <div style={iconWrapStyle("var(--orange-a3)")}>
-              <FiClock size={26} color="var(--orange-9)" />
+              <MdSchedule size={26} color="var(--orange-9)" />
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
@@ -149,7 +149,7 @@ export const ServerLoadingStates = ({
               size="2"
               style={{ marginTop: 4 }}
             >
-              <IoMdRefresh size={15} />
+              <MdRefresh size={16} />
               Retry
             </Button>
           </Flex>

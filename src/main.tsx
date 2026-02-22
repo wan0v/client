@@ -18,8 +18,6 @@ function ThemedApp() {
     resolvedAppearance,
     accentColor,
     grayColor,
-    hasBackground,
-    panelBackground,
     radius,
   } = useTheme();
   return (
@@ -28,8 +26,8 @@ function ThemedApp() {
       accentColor={accentColor}
       grayColor={grayColor}
       radius={radius}
-      hasBackground={hasBackground}
-      panelBackground={panelBackground}
+      hasBackground
+      panelBackground="solid"
       style={{
         minHeight: 0,
         flex: 1,

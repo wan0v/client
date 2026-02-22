@@ -9,7 +9,7 @@ import {
   Text,
   Tooltip,
 } from "@radix-ui/themes";
-import { RefreshCw as ReloadIcon,TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
+import { MdRefresh, MdWarning } from "react-icons/md";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useMicrophone } from "@/audio";
@@ -159,7 +159,7 @@ export function AudioSettings() {
       {!audioContext && (
         <Callout.Root color="orange">
           <Callout.Icon>
-            <ExclamationTriangleIcon />
+            <MdWarning size={16} />
           </Callout.Icon>
           <Callout.Text>
             Microphone is initializing. Audio levels and noise gate will be visible once ready.
@@ -175,7 +175,7 @@ export function AudioSettings() {
           <Text weight="medium" size="2">Microphone Device</Text>
           <Tooltip content="Refresh device list">
             <IconButton variant="soft" size="1" onClick={getDevices}>
-              <ReloadIcon />
+              <MdRefresh size={12} />
             </IconButton>
           </Tooltip>
         </Flex>

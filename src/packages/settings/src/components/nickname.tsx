@@ -1,5 +1,5 @@
 import { Dialog, Flex, IconButton, TextField } from "@radix-ui/themes";
-import { X as FiX } from "lucide-react";
+import { MdClose } from "react-icons/md";
 import { useState } from "react";
 
 import { useSettings } from "../hooks/useSettings";
@@ -37,7 +37,7 @@ export function Nickname() {
           }}
         >
           <IconButton variant="soft" color="gray">
-            <FiX size={16} />
+            <MdClose size={16} />
           </IconButton>
         </Dialog.Close>
         <Flex direction="column" gap="2">

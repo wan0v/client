@@ -298,15 +298,12 @@ fi
 # ── Docker image (web client) ────────────────────────────────────────
 echo ""
 DOCKER_IMAGE="ghcr.io/gryt-chat/client"
-read -rp "$(echo -e "${CYAN}?${RESET}  Also publish Docker image (${DOCKER_IMAGE}:${NEW_VERSION})? ${YELLOW}[Y/n]${RESET}: ")" DOCKER_CONFIRM
-DOCKER_CONFIRM="${DOCKER_CONFIRM:-Y}"
-if [[ "$DOCKER_CONFIRM" =~ ^[Yy]$ ]]; then
-  if echo "$GH_TOKEN" | docker login ghcr.io -u "$(gh api user -q .login 2>/dev/null || echo gryt)" --password-stdin 2>/dev/null; then
-    ok "Logged in to ghcr.io"
-  else
-    warn "Docker login to ghcr.io failed — skipping Docker image push."
-    DOCKER_CONFIRM="n"
-  fi
+DOCKER_CONFIRM="Y"
+if ! echo "$GH_TOKEN" | docker login ghcr.io -u "$(gh api user -q .login 2>/dev/null || echo gryt)" --password-stdin 2>/dev/null; then
+  warn "Docker login to ghcr.io failed — skipping Docker image push."
+  DOCKER_CONFIRM="n"
+else
+  ok "Logged in to ghcr.io"
 fi
 
 if [[ "$DOCKER_CONFIRM" =~ ^[Yy]$ ]]; then

@@ -7,9 +7,7 @@ import {
   TextArea,
   TextField,
 } from "@radix-ui/themes";
-import { X as Cross2Icon } from "lucide-react";
-import { Eye as FiEye, EyeOff as FiEyeOff } from "lucide-react";
-import { Camera as MdCameraAlt } from "lucide-react";
+import { MdCameraAlt, MdClose, MdVisibility, MdVisibilityOff } from "react-icons/md";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -415,7 +413,7 @@ export function ServerOverviewTab({
                   title="Clear password"
                   style={{ cursor: "pointer" }}
                 >
-                  <Cross2Icon width={14} height={14} />
+                  <MdClose size={14} />
                 </IconButton>
               )}
               {clearPassword && (
@@ -440,7 +438,7 @@ export function ServerOverviewTab({
                 title={showPassword ? "Hide password" : "Show password"}
                 style={{ cursor: "pointer" }}
               >
-                {showPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                {showPassword ? <MdVisibilityOff size={14} /> : <MdVisibility size={14} />}
               </IconButton>
             </Flex>
           </TextField.Slot>

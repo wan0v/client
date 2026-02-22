@@ -1,5 +1,5 @@
 import { Button, Card,Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
-import { Copy as CopyIcon, Plus as PlusIcon,X as Cross2Icon } from "lucide-react";
+import { MdAdd, MdClose, MdContentCopy } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -157,7 +157,7 @@ export function ServerInvitesModal() {
             <Dialog.Title>Invites</Dialog.Title>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={close} disabled={creating}>
-                <Cross2Icon />
+                <MdClose size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
@@ -187,7 +187,7 @@ export function ServerInvitesModal() {
                   Refresh
                 </Button>
                 <Button onClick={create} disabled={creating}>
-                  <PlusIcon />
+                  <MdAdd size={16} />
                   Create invite
                 </Button>
               </Flex>
@@ -225,7 +225,7 @@ export function ServerInvitesModal() {
                         </Flex>
                         <Flex gap="2">
                           <Button variant="soft" onClick={() => copy(i.code)}>
-                            <CopyIcon />
+                            <MdContentCopy size={16} />
                             Copy
                           </Button>
                           <Button

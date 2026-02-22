@@ -7,8 +7,7 @@ import {
   TextArea,
   TextField,
 } from "@radix-ui/themes";
-import { Settings as GearIcon,X as Cross2Icon } from "lucide-react";
-import { Eye as FiEye, EyeOff as FiEyeOff } from "lucide-react";
+import { MdClose, MdSettings, MdVisibility, MdVisibilityOff } from "react-icons/md";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -230,12 +229,12 @@ export function ServerSetupModal() {
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
-              <GearIcon />
+              <MdSettings size={16} />
               <Dialog.Title>Server settings</Dialog.Title>
             </Flex>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
-                <Cross2Icon />
+                <MdClose size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
@@ -330,7 +329,7 @@ export function ServerSetupModal() {
                       title="Clear password"
                       style={{ cursor: "pointer" }}
                     >
-                      <Cross2Icon width={14} height={14} />
+                      <MdClose size={14} />
                     </IconButton>
                   )}
                   {clearPassword && (
@@ -355,7 +354,7 @@ export function ServerSetupModal() {
                     title={showPassword ? "Hide password" : "Show password"}
                     style={{ cursor: "pointer" }}
                   >
-                    {showPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                    {showPassword ? <MdVisibilityOff size={14} /> : <MdVisibility size={14} />}
                   </IconButton>
                 </Flex>
               </TextField.Slot>

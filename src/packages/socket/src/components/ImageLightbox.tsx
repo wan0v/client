@@ -1,4 +1,4 @@
-import { CloudDownload as FaCloudDownloadAlt } from "lucide-react";
+import { MdCloudDownload } from "react-icons/md";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type ZoomLevel = "fit" | "2x" | "full";
@@ -171,7 +171,7 @@ export const ImageLightbox = ({
           e.currentTarget.style.color = "rgba(255, 255, 255, 0.85)";
         }}
       >
-        <FaCloudDownloadAlt size={18} />
+        <MdCloudDownload size={18} />
       </button>
       <div className="lightbox-hint">
         {zoom === "fit" && "Click image to zoom 2x"}

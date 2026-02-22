@@ -1,5 +1,5 @@
 import { Badge, Box, Button, Flex, Heading, Progress, Switch, Text } from "@radix-ui/themes";
-import { CircleCheck as MdCheckCircle, CircleX as MdError, Download as MdDownload, RefreshCw as MdRefresh } from "lucide-react";
+import { MdCancel, MdCheckCircle, MdDownload, MdRefresh } from "react-icons/md";
 import { useCallback, useEffect, useState } from "react";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
@@ -114,7 +114,7 @@ export function UpdateSettings() {
         {statusText && (
           <Flex align="center" gap="2">
             {status?.status === "not-available" && <MdCheckCircle size={16} color="var(--green-9)" />}
-            {status?.status === "error" && <MdError size={16} color="var(--red-9)" />}
+            {status?.status === "error" && <MdCancel size={16} color="var(--red-9)" />}
             <Text size="2" color={statusColor}>{statusText}</Text>
           </Flex>
         )}

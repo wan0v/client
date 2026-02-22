@@ -1,5 +1,5 @@
 import { Button, Card,Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
-import { X as Cross2Icon } from "lucide-react";
+import { MdClose } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -99,7 +99,7 @@ export function ServerRolesModal() {
             <Dialog.Title>Roles</Dialog.Title>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
-                <Cross2Icon />
+                <MdClose size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>

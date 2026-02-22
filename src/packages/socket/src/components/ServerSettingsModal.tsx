@@ -1,6 +1,5 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
-import { X as FiX } from "lucide-react";
-import { ClipboardCheck as MdFactCheck, Link as MdLink, Settings as MdSettings,Smile as MdEmojiEmotions, Users as MdGroup } from "lucide-react";
+import { MdClose, MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 
 import { getServerAccessToken } from "@/common";
@@ -133,7 +132,7 @@ export function ServerSettingsModal() {
           }}
         >
           <IconButton variant="soft" color="gray">
-            <FiX size={16} />
+            <MdClose size={16} />
           </IconButton>
         </Dialog.Close>
 
@@ -161,19 +160,11 @@ export function ServerSettingsModal() {
                       }}
                     >
                       {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
-                        <Tabs.Trigger
-                          key={value}
-                          value={value}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "flex-start",
-                            padding: "12px 16px",
-                            gap: "8px",
-                          }}
-                        >
-                          <Icon size={16} style={{ flexShrink: 0 }} />
-                          {label}
+                        <Tabs.Trigger key={value} value={value}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <Icon size={16} />
+                            {label}
+                          </span>
                         </Tabs.Trigger>
                       ))}
                     </Tabs.List>

@@ -1,5 +1,5 @@
 import { AlertDialog, Avatar, Button, Flex, Heading, IconButton, SegmentedControl, Text, TextField, Tooltip } from "@radix-ui/themes";
-import { Camera as MdCameraAlt, Check as MdCheck, Copy as MdContentCopy, RefreshCw as MdSync } from "lucide-react";
+import { MdCameraAlt, MdCheck, MdContentCopy, MdRefresh } from "react-icons/md";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -549,7 +549,7 @@ export function ProfileSettings() {
                 disabled={syncing || uploading || removing}
                 onClick={handleSyncToAll}
               >
-                <MdSync size={16} style={syncing ? { animation: "spin 1s linear infinite" } : undefined} />
+                <MdRefresh size={16} style={syncing ? { animation: "spin 1s linear infinite" } : undefined} />
                 {syncing ? "Syncing..." : "Sync to all servers"}
               </Button>
             </Flex>

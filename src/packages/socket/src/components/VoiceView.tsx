@@ -1,6 +1,5 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
-import { VolumeX as BsVolumeOffFill } from "lucide-react";
-import { MicOff as MdMicOff } from "lucide-react";
+import { MdMicOff, MdVolumeOff } from "react-icons/md";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo,useRef, useState } from "react";
 
@@ -225,7 +224,7 @@ export const VoiceView = ({
                               }}
                             >
                               {client.isDeafened ? (
-                                <BsVolumeOffFill size={10} color="var(--red-9)" />
+                                <MdVolumeOff size={12} color="var(--red-9)" />
                               ) : client.isMuted ? (
                                 <MdMicOff size={12} color="var(--red-9)" />
                               ) : null}

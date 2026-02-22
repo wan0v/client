@@ -10,9 +10,7 @@ import {
   IconButton,
   Tooltip,
 } from "@radix-ui/themes";
-import { Pin as PinTopIcon } from "lucide-react";
-import { Settings as FiSettings } from "lucide-react";
-import { Mic as MdMic,Plus as MdAdd } from "lucide-react";
+import { MdAdd, MdMic, MdPushPin, MdSettings } from "react-icons/md";
 
 import { useAccount } from "@/common";
 import { useSettings } from "@/settings";
@@ -125,7 +123,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 </ContextMenu.Label>
                 {index !== 0 && (
                   <ContextMenu.Item>
-                    <PinTopIcon />
+                    <MdPushPin size={16} />
                     Pin to top
                   </ContextMenu.Item>
                 )}
@@ -184,7 +182,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             color="gray"
             onClick={() => setShowAddServer(true)}
           >
-            <MdAdd />
+            <MdAdd size={16} />
           </IconButton>
         </Tooltip>
       </Flex>
@@ -201,7 +199,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           <DropdownMenu.Content>
             <DropdownMenu.Item onClick={() => setShowSettings(true)}>
               <Flex gap="1" align="center">
-                <FiSettings size={14} />
+                <MdSettings size={14} />
                 Settings
               </Flex>
             </DropdownMenu.Item>

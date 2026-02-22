@@ -10,8 +10,7 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
-import { Wifi as FiWifi, X as FiX } from "lucide-react";
+import { MdClose, MdWarning, MdWifi } from "react-icons/md";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
@@ -111,7 +110,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
           }}
         >
           <IconButton variant="soft" color="gray">
-            <FiX size={16} />
+            <MdClose size={16} />
           </IconButton>
         </Dialog.Close>
         <Flex direction="column" gap="2">
@@ -148,7 +147,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                 {isSearching ? (
                   <SkeletonBase width="16px" height="16px" borderRadius="50%" />
                 ) : (
-                  <FiWifi />
+                  <MdWifi size={16} />
                 )}
                 {isSearching ? "Connecting" : "Connect"}
               </Button>
@@ -163,7 +162,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                 >
                   <Callout.Root color="red" role="alert">
                     <Callout.Icon>
-                      <ExclamationTriangleIcon />
+                      <MdWarning size={16} />
                     </Callout.Icon>
                     <Callout.Text>
                       Could not connect to the server. Please check the address

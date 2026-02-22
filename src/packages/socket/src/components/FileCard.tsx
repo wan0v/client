@@ -1,19 +1,19 @@
 import { Flex, Text } from "@radix-ui/themes";
-import { Download as FaDownload, File as FaFile, FileArchive as FaFileArchive, FileAudio as FaFileAudio, FileCode as FaFileCode, FileImage as FaFileImage, FileText as FaFileAlt, FileVideo as FaFileVideo } from "lucide-react";
-const FaFilePdf = FaFileAlt;
+import { MdAudioFile, MdCode, MdDescription, MdDownload, MdFolderZip, MdImage, MdInsertDriveFile, MdVideoFile } from "react-icons/md";
+const FaFilePdf = MdDescription;
 
 import { getUploadsFileUrl } from "@/common";
 
 function getFileIcon(mime: string | null) {
-  if (!mime) return <FaFile size={24} />;
-  if (mime.startsWith("image/")) return <FaFileImage size={24} />;
-  if (mime.startsWith("audio/")) return <FaFileAudio size={24} />;
-  if (mime.startsWith("video/")) return <FaFileVideo size={24} />;
+  if (!mime) return <MdInsertDriveFile size={24} />;
+  if (mime.startsWith("image/")) return <MdImage size={24} />;
+  if (mime.startsWith("audio/")) return <MdAudioFile size={24} />;
+  if (mime.startsWith("video/")) return <MdVideoFile size={24} />;
   if (mime === "application/pdf") return <FaFilePdf size={24} />;
-  if (mime.includes("zip") || mime.includes("tar") || mime.includes("rar") || mime.includes("gzip") || mime.includes("compress")) return <FaFileArchive size={24} />;
-  if (mime.includes("javascript") || mime.includes("json") || mime.includes("xml") || mime.includes("html") || mime.includes("css") || mime.includes("typescript")) return <FaFileCode size={24} />;
-  if (mime.startsWith("text/")) return <FaFileAlt size={24} />;
-  return <FaFile size={24} />;
+  if (mime.includes("zip") || mime.includes("tar") || mime.includes("rar") || mime.includes("gzip") || mime.includes("compress")) return <MdFolderZip size={24} />;
+  if (mime.includes("javascript") || mime.includes("json") || mime.includes("xml") || mime.includes("html") || mime.includes("css") || mime.includes("typescript")) return <MdCode size={24} />;
+  if (mime.startsWith("text/")) return <MdDescription size={24} />;
+  return <MdInsertDriveFile size={24} />;
 }
 
 function formatFileSize(bytes: number | null): string {
@@ -74,7 +74,7 @@ export const FileCard = ({
         title="Download"
         download
       >
-        <FaDownload size={14} />
+        <MdDownload size={14} />
       </a>
     </Flex>
   );

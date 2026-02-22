@@ -1,4 +1,4 @@
-import { Box, Flex, Heading, RadioGroup, Select, Switch, Text } from "@radix-ui/themes";
+import { Flex, Heading, RadioGroup, Select, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 
 import { accentColors, grayColors, useTheme } from "@/common";
@@ -13,10 +13,6 @@ export function AppearanceSettings() {
     setAccentColor,
     grayColor,
     setGrayColor,
-    hasBackground,
-    setHasBackground,
-    panelBackground,
-    setPanelBackground,
     radius,
     setRadius,
   } = useTheme();
@@ -88,25 +84,6 @@ export function AppearanceSettings() {
         </Select.Root>
       </Flex>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Background</Text>
-        <Flex align="center" gap="3">
-          <Flex align="center" gap="2">
-            <Switch checked={hasBackground} onCheckedChange={setHasBackground} />
-            <Text size="2">Enable background</Text>
-          </Flex>
-          <Box>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <Select.Root value={panelBackground} onValueChange={(v) => setPanelBackground(v as any)}>
-              <Select.Trigger />
-              <Select.Content>
-                <Select.Item value="solid">Solid</Select.Item>
-                <Select.Item value="translucent">Translucent</Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Box>
-        </Flex>
-      </Flex>
     </SettingsContainer>
   );
 }

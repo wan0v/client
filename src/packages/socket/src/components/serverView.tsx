@@ -1,6 +1,5 @@
 import { AlertDialog, Box, Button, Dialog, Flex, IconButton, Select, Spinner, Switch, Text, TextField } from "@radix-ui/themes";
-import { X as Cross2Icon } from "lucide-react";
-import { RefreshCw as IoMdRefresh, WifiOff as FiWifiOff } from "lucide-react";
+import { MdClose, MdRefresh, MdWifiOff } from "react-icons/md";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -384,7 +383,7 @@ export const ServerView = () => {
           >
             {currentConnectionStatus === 'reconnecting'
               ? <Spinner size="1" />
-              : <FiWifiOff size={14} color="var(--red-9)" style={{ flexShrink: 0 }} />}
+              : <MdWifiOff size={14} color="var(--red-9)" style={{ flexShrink: 0 }} />}
             <Text size="2" weight="medium" style={{ flex: 1 }}>
               {currentConnectionStatus === 'reconnecting'
                 ? 'Reconnecting to server...'
@@ -397,7 +396,7 @@ export const ServerView = () => {
                 style={{ flexShrink: 0 }}
                 onClick={() => currentlyViewingServer && reconnectServer(currentlyViewingServer.host)}
               >
-                <IoMdRefresh size={12} />
+                <MdRefresh size={12} />
                 Reconnect
               </Button>
             )}
@@ -598,7 +597,7 @@ export const ServerView = () => {
               </Dialog.Title>
               <Dialog.Close>
                 <IconButton variant="soft" color="gray">
-                  <Cross2Icon />
+                  <MdClose size={16} />
                 </IconButton>
               </Dialog.Close>
             </Flex>

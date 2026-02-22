@@ -7,8 +7,7 @@ import {
   Text,
   Tooltip,
 } from "@radix-ui/themes";
-import { RefreshCw as ReloadIcon } from "lucide-react";
-import { Play as FiPlay, Square as FiSquare } from "lucide-react";
+import { MdPlayArrow, MdRefresh, MdStop } from "react-icons/md";
 import { useEffect, useRef, useState } from "react";
 import useSound from "use-sound";
 
@@ -224,7 +223,7 @@ export function SoundSettings({
                     onClick={resetVolume}
                     disabled={volume === defaultVolume}
                   >
-                    <ReloadIcon />
+                    <MdRefresh size={12} />
                   </IconButton>
                 </Tooltip>
               </Flex>
@@ -260,7 +259,7 @@ export function SoundSettings({
                   onClick={resetSound}
                   disabled={!customSoundFile}
                 >
-                  <ReloadIcon />
+                  <MdRefresh size={12} />
                 </IconButton>
               </Tooltip>
             </Flex>
@@ -287,11 +286,11 @@ export function SoundSettings({
                     onClick={stopSoundTest}
                     color="red"
                   >
-                    <FiSquare />
+                    <MdStop size={16} />
                   </Button>
                 ) : (
                   <Button variant="ghost" size="2" onClick={testSound}>
-                    <FiPlay />
+                    <MdPlayArrow size={16} />
                   </Button>
                 )}
               </Tooltip>

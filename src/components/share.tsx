@@ -1,5 +1,5 @@
 import { Dialog, Flex, IconButton } from "@radix-ui/themes";
-import { X as FiX } from "lucide-react";
+import { MdClose } from "react-icons/md";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
 
 import { useSettings } from "@/settings";
@@ -22,7 +22,7 @@ export function ShareServer() {
             }}
           >
             <IconButton variant="soft" color="gray">
-              <FiX size={16} />
+              <MdClose size={16} />
             </IconButton>
           </Dialog.Close>
           <Flex direction="column" gap="2">

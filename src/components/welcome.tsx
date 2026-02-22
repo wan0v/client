@@ -1,6 +1,5 @@
 import { Button, Callout, Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
-import { TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
-import { Download as FiDownload, Server as FiServer, X as FiX } from "lucide-react";
+import { MdClose, MdDns, MdDownload, MdWarning } from "react-icons/md";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
 
 import { useSettings } from "@/settings";
@@ -26,7 +25,7 @@ export function Welcome() {
             }}
           >
             <IconButton variant="soft" color="gray">
-              <FiX size={16} />
+              <MdClose size={16} />
             </IconButton>
           </Dialog.Close>
           <Flex direction="column" gap="2">
@@ -44,7 +43,7 @@ export function Welcome() {
 
                 <Callout.Root color="orange" size="1" mb="2">
                   <Callout.Icon>
-                    <ExclamationTriangleIcon />
+                    <MdWarning size={16} />
                   </Callout.Icon>
                   <Callout.Text>
                     Some features are limited in the browser: global push-to-talk
@@ -65,7 +64,7 @@ export function Welcome() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <FiDownload size={14} />
+                      <MdDownload size={14} />
                       Download Desktop App
                     </a>
                   </Button>
@@ -75,7 +74,7 @@ export function Welcome() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <FiServer size={14} />
+                      <MdDns size={14} />
                       Self-Host a Server
                     </a>
                   </Button>

@@ -1,6 +1,5 @@
 import { Avatar, Flex, Text } from "@radix-ui/themes";
-import { VolumeX as BsVolumeOffFill } from "lucide-react";
-import { MicOff as MdMicOff } from "lucide-react";
+import { MdMicOff, MdVolumeOff } from "react-icons/md";
 import { motion } from "motion/react";
 
 import { SkeletonBase } from "./skeletons";
@@ -109,9 +108,9 @@ export function ConnectedUser({
             <SkeletonBase width="12px" height="12px" borderRadius="50%" />
           )}
           {isDeafened ? (
-            <BsVolumeOffFill color="var(--red-8)" />
+            <MdVolumeOff size={14} color="var(--red-8)" />
           ) : isMuted ? (
-            <MdMicOff color="var(--red-8)" />
+            <MdMicOff size={14} color="var(--red-8)" />
           ) : null}
           {isAFK && (
             <Text size="1" weight="bold" color="orange">
