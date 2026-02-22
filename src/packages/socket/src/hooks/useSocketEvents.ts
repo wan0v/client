@@ -230,8 +230,19 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (data.error === "join_required") {
           const existingAccessToken = getServerAccessToken(host);
           if (existingAccessToken) {
-            // Session restoration is likely still in progress on the server;
-            // the server will proactively send details once ready.
+            const refreshToken = getServerRefreshToken(host);
+            if (refreshToken) {
+              (async () => {
+                const identityToken = await getValidIdentityToken().catch(() => undefined);
+                if (identityToken) {
+                  socket.emit("token:refresh", { refreshToken, identityToken });
+                } else {
+                  socket.emit("token:refresh", { accessToken: existingAccessToken });
+                }
+              })();
+            } else {
+              socket.emit("token:refresh", { accessToken: existingAccessToken });
+            }
             return;
           }
           setTimeout(() => {
@@ -351,6 +362,14 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       socket.on("token:refreshed", (refreshInfo: { accessToken: string }) => {
         setServerAccessToken(host, refreshInfo.accessToken);
+
+        setServerDetailsList(prev => {
+          if (!prev[host]) {
+            socket.emit("server:details");
+            socket.emit("members:fetch");
+          }
+          return prev;
+        });
       });
 
       socket.on("token:revoked", (info: { reason?: string; message?: string; requiresPassword?: boolean }) => {
