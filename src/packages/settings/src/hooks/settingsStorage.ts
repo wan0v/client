@@ -103,6 +103,13 @@ export interface Settings {
   chatMediaVolume: number;
   setChatMediaVolume: (value: number) => void;
 
+  cameraID: string;
+  setCameraID: (id: string) => void;
+  cameraQuality: string;
+  setCameraQuality: (quality: string) => void;
+  cameraMirrored: boolean;
+  setCameraMirrored: (mirrored: boolean) => void;
+
   userVolumes: Record<string, number>;
   updateUserVolume: (serverUserId: string, volume: number) => void;
   resetUserVolume: (serverUserId: string) => void;
@@ -227,6 +234,13 @@ export const settingsInit: Settings = {
 
   chatMediaVolume: Number(localStorage.getItem("chatMediaVolume")) || 50,
   setChatMediaVolume: () => {},
+
+  cameraID: localStorage.getItem("cameraID") || "",
+  setCameraID: () => {},
+  cameraQuality: localStorage.getItem("cameraQuality") || "720p",
+  setCameraQuality: () => {},
+  cameraMirrored: localStorage.getItem("cameraMirrored") !== "false",
+  setCameraMirrored: () => {},
 
   userVolumes: JSON.parse(localStorage.getItem("userVolumes") || "{}"),
   updateUserVolume: () => {},

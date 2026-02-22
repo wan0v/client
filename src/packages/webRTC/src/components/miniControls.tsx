@@ -1,7 +1,8 @@
 import { Box, Button, Heading, HoverCard, IconButton } from "@radix-ui/themes";
 import { AnimatePresence, motion, Variants } from "motion/react";
-import { MdArrowForward, MdCallEnd, MdMic, MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
+import { MdArrowForward, MdCallEnd, MdMic, MdMicOff, MdVideocam, MdVideocamOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
+import { useCamera } from "@/audio";
 import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
@@ -47,6 +48,8 @@ export function MiniControls({
     currentChannelConnected,
     isConnected,
   } = useSFU();
+
+  const { cameraEnabled, setCameraEnabled } = useCamera();
 
   const { getChannelDetails, serverDetailsList } = useSockets();
 
@@ -96,9 +99,21 @@ export function MiniControls({
             <motion.div variants={buttonAnimations}>
               <IconButton
                 size="1"
+                color={cameraEnabled ? "green" : "gray"}
+                variant="soft"
+                onClick={() => setCameraEnabled(!cameraEnabled)}
+              >
+                {cameraEnabled ? <MdVideocam size={12} /> : <MdVideocamOff size={12} />}
+              </IconButton>
+            </motion.div>
+
+            <motion.div variants={buttonAnimations}>
+              <IconButton
+                size="1"
                 variant="soft"
                 color="red"
                 onClick={() => {
+                  if (cameraEnabled) setCameraEnabled(false);
                   void disconnect();
                 }}
               >

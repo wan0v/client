@@ -118,6 +118,16 @@ function useSettingsHook() {
     Number(localStorage.getItem("chatMediaVolume")) || 50
   );
 
+  const [cameraID, setCameraID] = useState(
+    localStorage.getItem("cameraID") || ""
+  );
+  const [cameraQuality, setCameraQuality] = useState(
+    localStorage.getItem("cameraQuality") || "720p"
+  );
+  const [cameraMirrored, setCameraMirrored] = useState(
+    localStorage.getItem("cameraMirrored") !== "false"
+  );
+
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>(
     () => JSON.parse(localStorage.getItem("userVolumes") || "{}")
   );
@@ -331,6 +341,21 @@ function useSettingsHook() {
     localStorage.setItem("chatMediaVolume", volume.toString());
   }
 
+  function updateCameraID(id: string) {
+    setCameraID(id);
+    localStorage.setItem("cameraID", id);
+  }
+
+  function updateCameraQuality(quality: string) {
+    setCameraQuality(quality);
+    localStorage.setItem("cameraQuality", quality);
+  }
+
+  function updateCameraMirrored(mirrored: boolean) {
+    setCameraMirrored(mirrored);
+    localStorage.setItem("cameraMirrored", mirrored.toString());
+  }
+
   function updateUserVolume(serverUserId: string, volume: number) {
     setUserVolumes((prev) => {
       const next = { ...prev, [serverUserId]: volume };
@@ -510,6 +535,12 @@ function useSettingsHook() {
     setCustomMessageSoundFile: updateCustomMessageSoundFile,
     chatMediaVolume,
     setChatMediaVolume: updateChatMediaVolume,
+    cameraID,
+    setCameraID: updateCameraID,
+    cameraQuality,
+    setCameraQuality: updateCameraQuality,
+    cameraMirrored,
+    setCameraMirrored: updateCameraMirrored,
     userVolumes,
     updateUserVolume,
     resetUserVolume,

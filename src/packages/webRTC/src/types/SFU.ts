@@ -4,8 +4,11 @@ export interface Streams {
 
 export interface StreamData {
   stream: MediaStream;
-  isLocal: boolean; // Flag indicating if it's a local stream
+  isLocal: boolean;
+  kind?: "audio" | "video";
 }
+
+export type VideoStreams = Record<string, MediaStream>;
 
 export type StreamSources = {
   [id: string]: {
@@ -29,14 +32,16 @@ export interface SFUInterface {
   streams: Streams;
   error: string | null;
   streamSources: StreamSources;
+  videoStreams: VideoStreams;
   connect: (channelID: string, channelEsportsMode?: boolean, channelMaxBitrate?: number | null) => Promise<void>;
   disconnect: (playSound?: boolean, onDisconnect?: () => void) => Promise<void>;
+  addVideoTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
+  removeVideoTrack: () => void;
   currentServerConnected: string;
   currentChannelConnected: string;
   isConnected: boolean;
   connectionState: SFUConnectionState;
   isConnecting: boolean;
-  // Debug-only accessors (optional)
   getPeerConnection?: () => RTCPeerConnection | null;
   activeSfuUrl?: string | null;
 }

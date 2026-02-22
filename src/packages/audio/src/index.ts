@@ -1,4 +1,6 @@
 // Hooks
+export { useCamera } from "./hooks/useCamera";
+export type { CameraQuality } from "./hooks/useCamera";
 export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useGlobalHotkeys } from "./hooks/useGlobalHotkeys";
 export { useHandles } from "./hooks/useHandles";

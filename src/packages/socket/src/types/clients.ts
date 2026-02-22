@@ -11,6 +11,8 @@ export type Client = {
   voiceChannelId?: string;
   isConnectedToVoice?: boolean;
   isAFK: boolean;
+  cameraEnabled?: boolean;
+  cameraStreamID?: string;
   status?: UserStatus;
   lastSeen?: Date;
 };

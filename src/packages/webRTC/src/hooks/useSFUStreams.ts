@@ -1,7 +1,7 @@
 import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
 
-import { Streams, StreamSources } from "../types/SFU";
+import { Streams, StreamSources, VideoStreams } from "../types/SFU";
 import { voiceLog } from "./voiceLogger";
 
 interface UseSFUStreamsParams {
@@ -9,6 +9,7 @@ interface UseSFUStreamsParams {
   setStreams: Dispatch<SetStateAction<Streams>>;
   streamSources: StreamSources;
   setStreamSources: Dispatch<SetStateAction<StreamSources>>;
+  setVideoStreams: Dispatch<SetStateAction<VideoStreams>>;
   audioContext: AudioContext | null | undefined;
   outputVolume: number;
   isDeafened: boolean;
@@ -23,6 +24,7 @@ export function useSFUStreams({
   setStreams,
   streamSources,
   setStreamSources,
+  setVideoStreams,
   audioContext,
   outputVolume,
   isDeafened,
@@ -214,4 +216,22 @@ export function useSFUStreams({
 
     return () => clearInterval(interval);
   }, [isConnected, setStreams]);
+
+  // Extract video MediaStreams from remote streams for rendering in VoiceView
+  useEffect(() => {
+    const nextVideo: VideoStreams = {};
+    Object.entries(streams).forEach(([streamId, data]) => {
+      if (data.isLocal) return;
+      const videoTracks = data.stream.getVideoTracks();
+      if (videoTracks.length > 0 && videoTracks.some(t => t.readyState === "live")) {
+        nextVideo[streamId] = data.stream;
+      }
+    });
+    setVideoStreams(prev => {
+      const prevKeys = Object.keys(prev).sort().join(",");
+      const nextKeys = Object.keys(nextVideo).sort().join(",");
+      if (prevKeys === nextKeys) return prev;
+      return nextVideo;
+    });
+  }, [streams, setVideoStreams]);
 }

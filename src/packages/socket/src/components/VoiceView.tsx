@@ -1,9 +1,9 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo,useRef, useState } from "react";
-import { MdMicOff, MdVolumeOff } from "react-icons/md";
+import { MdMicOff, MdVideocam, MdVolumeOff } from "react-icons/md";
 
-import { useVoiceLatency } from "@/audio";
+import { useCamera as useLocalCamera, useVoiceLatency } from "@/audio";
 import { getUploadsFileUrl } from "@/common";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
@@ -16,6 +16,57 @@ import { SkeletonBase } from "./skeletons";
 type Role = "owner" | "admin" | "mod" | "member";
 
 import { UserContextMenu } from "./UserContextMenu";
+
+function RemoteVideo({ stream }: { stream: MediaStream }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream;
+  }, [stream]);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        borderRadius: "50%",
+      }}
+    />
+  );
+}
+
+function LocalCameraOverlay({ mirrored }: { mirrored?: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const { cameraStream } = useLocalCamera();
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = cameraStream;
+  }, [cameraStream]);
+  if (!cameraStream) return null;
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        borderRadius: "50%",
+        transform: mirrored ? "scaleX(-1)" : undefined,
+      }}
+    />
+  );
+}
 
 function latencyColor(ms: number | null): string {
   if (ms === null) return "var(--gray-9)";
@@ -41,6 +92,7 @@ export const VoiceView = ({
   isDragging,
   currentUserRole,
   adminActions,
+  videoStreams,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -58,8 +110,9 @@ export const VoiceView = ({
   isDragging?: boolean;
   currentUserRole?: Role;
   adminActions?: AdminActions;
+  videoStreams?: Record<string, MediaStream>;
 }) => {
-  const { showPeerLatency } = useSettings();
+  const { showPeerLatency, cameraMirrored } = useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
@@ -191,6 +244,28 @@ export const VoiceView = ({
                               transition: "outline-color 0.1s ease",
                             }}
                           />
+                          {client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID] && !isSelf && (
+                            <RemoteVideo
+                              stream={videoStreams[client.cameraStreamID]}
+                            />
+                          )}
+                          {client.cameraEnabled && isSelf && (
+                            <LocalCameraOverlay mirrored={cameraMirrored} />
+                          )}
+                          {client.cameraEnabled && (
+                            <Flex
+                              position="absolute"
+                              top="-4px"
+                              right="-4px"
+                              style={{
+                                background: "var(--green-9)",
+                                borderRadius: "50%",
+                                padding: "2px",
+                              }}
+                            >
+                              <MdVideocam size={10} color="white" />
+                            </Flex>
+                          )}
                           {isUserConnecting && (
                             <Flex
                               position="absolute"

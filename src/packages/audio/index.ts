@@ -3,6 +3,7 @@ export * from "./src/utils/mediaDevices";
 export * from "./src/utils/speaking";
 
 // Hooks
+export * from "./src/hooks/useCamera";
 export * from "./src/hooks/useAudioContext";
 export * from "./src/hooks/useDeviceEnumeration";
 export * from "./src/hooks/useGlobalHotkeys";

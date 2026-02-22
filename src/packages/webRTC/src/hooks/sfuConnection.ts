@@ -152,7 +152,7 @@ export async function connectToSfuWebSocket(
           if (peerConnectionRef.current && peerConnectionRef.current.connectionState !== 'closed') {
             return peerConnectionRef.current.createAnswer({
               offerToReceiveAudio: true,
-              offerToReceiveVideo: false,
+              offerToReceiveVideo: true,
             });
           }
           throw new Error("Peer connection closed during offer processing");

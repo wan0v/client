@@ -7,7 +7,7 @@ import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
 
-import { SFUConnectionState, SFUInterface, Streams, StreamSources } from "../types/SFU";
+import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
 import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
 import { SFUConnectionStateInternal } from "./sfuTypes";
@@ -36,6 +36,8 @@ function useSfuHook(): SFUInterface {
 
   const [streams, setStreams] = useState<Streams>({});
   const [streamSources, setStreamSources] = useState<StreamSources>({});
+  const [videoStreams, setVideoStreams] = useState<VideoStreams>({});
+  const videoSenderRef = useRef<RTCRtpSender | null>(null);
 
   // Dependencies
   const {
@@ -107,6 +109,7 @@ function useSfuHook(): SFUInterface {
     setStreams,
     streamSources,
     setStreamSources,
+    setVideoStreams,
     audioContext,
     outputVolume,
     isDeafened,
@@ -223,6 +226,27 @@ function useSfuHook(): SFUInterface {
       setStreamSources({});
     });
   }, [disconnectSoundFile, disconnectSoundVolume, disconnectSoundEnabled, performCleanup]);
+
+  const addVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
+    const pc = peerConnectionRef.current;
+    if (!pc || pc.connectionState === "closed") return;
+    if (videoSenderRef.current) {
+      videoSenderRef.current.replaceTrack(track).catch(() => {});
+      return;
+    }
+    const sender = pc.addTrack(track, stream);
+    videoSenderRef.current = sender;
+  }, []);
+
+  const removeVideoTrack = useCallback(() => {
+    const pc = peerConnectionRef.current;
+    const sender = videoSenderRef.current;
+    if (!pc || !sender || pc.connectionState === "closed") return;
+    try {
+      pc.removeTrack(sender);
+    } catch { /* already removed */ }
+    videoSenderRef.current = null;
+  }, []);
 
   // Listen for server-initiated disconnects (device switching)
   useEffect(() => {
@@ -342,8 +366,11 @@ function useSfuHook(): SFUInterface {
     streams,
     error: connectionState.error,
     streamSources,
+    videoStreams,
     connect,
     disconnect,
+    addVideoTrack,
+    removeVideoTrack,
     currentServerConnected: connectionState.serverId || "",
     isConnected,
     currentChannelConnected: connectionState.roomId || "",
@@ -358,8 +385,11 @@ const init: SFUInterface = {
   error: null,
   streams: {},
   streamSources: {},
+  videoStreams: {},
   connect: () => Promise.resolve(),
   disconnect: () => Promise.resolve(),
+  addVideoTrack: () => {},
+  removeVideoTrack: () => {},
   currentChannelConnected: "",
   currentServerConnected: "",
   isConnected: false,

@@ -1,10 +1,11 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
-import { MdClose, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdRefresh, MdTune, MdVolumeUp } from "react-icons/md";
+import { MdClose, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdRefresh, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
 import { AdvancedSettings } from "./advancedSettings";
 import { AudioSettings } from "./audioSettings";
+import { CameraSettings } from "./cameraSettings";
 import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
 import { ProfileSettings } from "./profileSettings";
@@ -30,6 +31,13 @@ const TAB_CONFIG = [
     label: "Audio",
     icon: MdMic,
     content: <AudioSettings />,
+    conditional: true,
+  },
+  {
+    value: "camera",
+    label: "Camera",
+    icon: MdVideocam,
+    content: <CameraSettings />,
     conditional: true,
   },
   {
