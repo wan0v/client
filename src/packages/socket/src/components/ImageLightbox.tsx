@@ -1,5 +1,5 @@
-import { MdCloudDownload } from "react-icons/md";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MdCloudDownload } from "react-icons/md";
 
 type ZoomLevel = "fit" | "2x" | "full";
 

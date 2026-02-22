@@ -1,6 +1,6 @@
 import { Button, Dialog, Flex, IconButton,Text } from "@radix-ui/themes";
-import { MdClose, MdWarning } from "react-icons/md";
 import { useEffect,useState } from "react";
+import { MdClose, MdWarning } from "react-icons/md";
 
 interface DeviceSwitchData {
   message: string;

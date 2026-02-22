@@ -1,5 +1,5 @@
-import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import { useCallback, useEffect,useState } from "react";
+import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 
 import { isElectron } from "../lib/electron";
 

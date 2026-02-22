@@ -7,9 +7,9 @@ import {
   TextArea,
   TextField,
 } from "@radix-ui/themes";
-import { MdClose, MdSettings, MdVisibility, MdVisibilityOff } from "react-icons/md";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { MdClose, MdSettings, MdVisibility, MdVisibilityOff } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";

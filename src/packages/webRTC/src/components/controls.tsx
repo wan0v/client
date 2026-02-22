@@ -1,6 +1,6 @@
 import { Flex, IconButton } from "@radix-ui/themes";
-import { MdCallEnd, MdMic, MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 import { useState } from "react";
+import { MdCallEnd, MdMic, MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
 import { getIsBrowserSupported } from "@/audio";
 import { useSettings } from "@/settings";

@@ -1,7 +1,7 @@
 import { Button, Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
-import { MdClose, MdLock } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { MdClose, MdLock } from "react-icons/md";
 
 import { getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";

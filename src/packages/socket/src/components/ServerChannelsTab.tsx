@@ -1,7 +1,7 @@
 import { AlertDialog, Button, Card, Flex, Select, Switch, Text, TextField } from "@radix-ui/themes";
-import { MdAdd, MdDelete } from "react-icons/md";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { MdAdd, MdDelete } from "react-icons/md";
 
 const BITRATE_PRESETS = [
   { value: "none",    label: "Default (no cap)" },

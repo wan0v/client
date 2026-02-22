@@ -1,6 +1,6 @@
 import { Button, Callout, Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
-import { MdClose, MdDns, MdDownload, MdWarning } from "react-icons/md";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
+import { MdClose, MdDns, MdDownload, MdWarning } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 

@@ -1,6 +1,6 @@
 import { Badge, Box, Button, Flex, Heading, Progress, Switch, Text } from "@radix-ui/themes";
-import { MdCancel, MdCheckCircle, MdDownload, MdRefresh } from "react-icons/md";
 import { useCallback, useEffect, useState } from "react";
+import { MdCancel, MdCheckCircle, MdDownload, MdRefresh } from "react-icons/md";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";

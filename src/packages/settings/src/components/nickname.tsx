@@ -1,6 +1,6 @@
 import { Dialog, Flex, IconButton, TextField } from "@radix-ui/themes";
-import { MdClose } from "react-icons/md";
 import { useState } from "react";
+import { MdClose } from "react-icons/md";
 
 import { useSettings } from "../hooks/useSettings";
 

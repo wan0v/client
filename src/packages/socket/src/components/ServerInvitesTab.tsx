@@ -1,7 +1,7 @@
 import { Button, Card, Flex, Text, TextField } from "@radix-ui/themes";
-import { MdAdd, MdContentCopy } from "react-icons/md";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { MdAdd, MdContentCopy } from "react-icons/md";
 
 export type InviteItem = {
   code: string;

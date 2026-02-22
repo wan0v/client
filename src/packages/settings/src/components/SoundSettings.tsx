@@ -7,8 +7,8 @@ import {
   Text,
   Tooltip,
 } from "@radix-ui/themes";
-import { MdPlayArrow, MdRefresh, MdStop } from "react-icons/md";
 import { useEffect, useRef, useState } from "react";
+import { MdPlayArrow, MdRefresh, MdStop } from "react-icons/md";
 import useSound from "use-sound";
 
 interface SoundSettingsProps {

@@ -9,8 +9,8 @@ import {
   Text,
   Tooltip,
 } from "@radix-ui/themes";
-import { MdRefresh, MdWarning } from "react-icons/md";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MdRefresh, MdWarning } from "react-icons/md";
 
 import { useMicrophone } from "@/audio";
 import { useSettings } from "@/settings";

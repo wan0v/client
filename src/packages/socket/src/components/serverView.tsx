@@ -1,7 +1,7 @@
 import { AlertDialog, Box, Button, Dialog, Flex, IconButton, Select, Spinner, Switch, Text, TextField } from "@radix-ui/themes";
-import { MdClose, MdRefresh, MdWifiOff } from "react-icons/md";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { MdClose, MdRefresh, MdWifiOff } from "react-icons/md";
 
 import { useIsCompact,useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";

@@ -1,6 +1,6 @@
 import { Flex, IconButton, Link, Text } from "@radix-ui/themes";
-import { MdClose, MdDownload } from "react-icons/md";
 import { useState } from "react";
+import { MdClose, MdDownload } from "react-icons/md";
 
 import { isElectron } from "../lib/electron";
 

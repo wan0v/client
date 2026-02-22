@@ -1,7 +1,7 @@
 import { Box, Button, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
-import { MdChat, MdKeyboard, MdRadio, MdSportsEsports, MdVolumeUp } from "react-icons/md";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MdChat, MdKeyboard, MdRadio, MdSportsEsports, MdVolumeUp } from "react-icons/md";
 
 import { getUploadsFileUrl } from "@/common";
 import { Channel, SidebarItem } from "@/settings/src/types/server";
