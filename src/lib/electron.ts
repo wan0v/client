@@ -16,6 +16,7 @@ export interface ElectronAPI {
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
   setBadgeCount(count: number): void;
+  toggleAlwaysOnTop(pinned: boolean): void;
   onWindowFocusChange(callback: (focused: boolean) => void): () => void;
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;

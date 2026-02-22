@@ -22,6 +22,7 @@ interface UserContextMenuProps {
   onServerMute?: (muted: boolean) => void;
   onServerDeafen?: (deafened: boolean) => void;
   onChangeRole?: (role: Role) => void;
+  onPopoutVideo?: () => void;
 }
 
 const ROLE_RANK: Record<Role, number> = { owner: 4, admin: 3, mod: 2, member: 1 };
@@ -48,6 +49,7 @@ export function UserContextMenu({
   onServerMute,
   onServerDeafen,
   onChangeRole,
+  onPopoutVideo,
 }: UserContextMenuProps) {
   const { userVolumes, updateUserVolume, resetUserVolume, openSettings } = useSettings();
 
@@ -66,6 +68,14 @@ export function UserContextMenu({
           <ContextMenu.Item onClick={() => openSettings("profile")}>
             Edit Profile
           </ContextMenu.Item>
+          {onPopoutVideo && (
+            <>
+              <ContextMenu.Separator />
+              <ContextMenu.Item onClick={onPopoutVideo}>
+                Pop out video
+              </ContextMenu.Item>
+            </>
+          )}
         </ContextMenu.Content>
       </ContextMenu.Root>
     );
@@ -123,6 +133,14 @@ export function UserContextMenu({
             <ContextMenu.Separator />
             <ContextMenu.Item onClick={() => resetUserVolume(serverUserId)}>
               Reset volume
+            </ContextMenu.Item>
+          </>
+        )}
+        {onPopoutVideo && (
+          <>
+            <ContextMenu.Separator />
+            <ContextMenu.Item onClick={onPopoutVideo}>
+              Pop out video
             </ContextMenu.Item>
           </>
         )}

@@ -253,6 +253,9 @@ function createMainWindow(): void {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === "about:blank") {
+      return { action: "allow" };
+    }
     shell.openExternal(url);
     return { action: "deny" };
   });
@@ -441,6 +444,13 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on("set-badge-count", (_event, count: number) => {
       app.setBadgeCount(count);
+    });
+
+    ipcMain.on("toggle-always-on-top", (event, pinned: boolean) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) {
+        win.setAlwaysOnTop(pinned, "floating");
+      }
     });
 
     app.on("activate", () => {

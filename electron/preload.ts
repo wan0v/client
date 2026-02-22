@@ -49,6 +49,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-badge-count", count);
   },
 
+  toggleAlwaysOnTop(pinned: boolean) {
+    ipcRenderer.send("toggle-always-on-top", pinned);
+  },
+
   onWindowFocusChange(callback: (focused: boolean) => void) {
     const handler = (_event: Electron.IpcRendererEvent, focused: boolean) => callback(focused);
     ipcRenderer.on("window-focus-change", handler);
