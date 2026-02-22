@@ -145,7 +145,7 @@ export const MessageHoverToolbar = ({
   onPickerOpenChange?: (open: boolean) => void;
 }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const recentReactions = getRecentReactions(6);
+  const recentReactions = getRecentReactions(3);
 
   return (
     <div

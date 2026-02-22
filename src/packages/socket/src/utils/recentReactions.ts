@@ -20,8 +20,9 @@ function writeStorage(list: string[]): void {
 
 export function getRecentReactions(count = 6): string[] {
   const stored = readStorage();
-  if (stored.length === 0) return DEFAULT_REACTIONS.slice(0, count);
-  return stored.slice(0, count);
+  if (stored.length >= count) return stored.slice(0, count);
+  const filler = DEFAULT_REACTIONS.filter((d) => !stored.includes(d));
+  return [...stored, ...filler].slice(0, count);
 }
 
 export function recordReaction(src: string): void {
