@@ -1,7 +1,6 @@
 import { Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
-import { RotateCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MdClose, MdVideocam } from "react-icons/md";
+import { MdClose, MdRefresh, MdVideocam } from "react-icons/md";
 
 import type { CameraQuality } from "@/audio";
 
@@ -230,7 +229,7 @@ export function CameraPreviewModal({
                 </Text>
                 {previewError && (
                   <Button variant="soft" size="1" onClick={() => setRetryCount((c) => c + 1)}>
-                    <RotateCw size={14} />
+                    <MdRefresh size={14} />
                     Retry
                   </Button>
                 )}

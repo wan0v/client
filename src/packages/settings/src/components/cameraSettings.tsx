@@ -1,6 +1,6 @@
 import { Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
-import { RotateCw } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { MdRefresh } from "react-icons/md";
 
 import { useCamera } from "@/audio";
 import { useSettings } from "@/settings";
@@ -90,7 +90,7 @@ export function CameraSettings() {
               </Text>
               {cameraError && (
                 <Button variant="soft" size="1" onClick={retryCamera}>
-                  <RotateCw size={14} />
+                  <MdRefresh size={14} />
                   Retry
                 </Button>
               )}
