@@ -248,7 +248,7 @@ export const ServerView = () => {
     : undefined;
 
   const {
-    chatMessages, canSend, sendChat, isLoadingMessages,
+    chatMessages, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, restoreText, clearRestoreText,
   } = useChat({
@@ -393,6 +393,12 @@ export const ServerView = () => {
           return;
         }
 
+        if (isConnecting && currentChannelId === channel.id) {
+          setSelectedChannelId(channel.id);
+          setShowVoiceView(true);
+          return;
+        }
+
         setShowVoiceView(true);
         setPendingChannelId(null);
         applyChannelSettings(channel);
@@ -501,6 +507,7 @@ export const ServerView = () => {
             chatMessages={chatMessages}
             canSend={canSend}
             sendChat={sendChat}
+            editMessage={editMessage}
             currentUserId={currentServerUserId}
             channelName={activeChannelName}
             currentUserNickname={serverNickname}
@@ -721,6 +728,7 @@ export const ServerView = () => {
                   chatMessages={chatMessages}
                   canSend={canSend}
                   sendChat={sendChat}
+                  editMessage={editMessage}
                   currentUserId={currentServerUserId}
                   channelName={activeChannelName}
                   currentUserNickname={serverNickname}

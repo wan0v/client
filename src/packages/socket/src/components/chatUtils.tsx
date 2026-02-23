@@ -24,6 +24,7 @@ export type ChatMessage = {
   attachments: string[] | null;
   enriched_attachments?: AttachmentMeta[] | null;
   created_at: string | Date;
+  edited_at?: string | Date | null;
   reactions: Reaction[] | null;
   reply_to_message_id?: string | null;
   pending?: boolean;

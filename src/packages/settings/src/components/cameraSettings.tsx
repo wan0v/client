@@ -1,8 +1,8 @@
 import { Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MdRefresh } from "react-icons/md";
 
-import { useCamera } from "@/audio";
+import { type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@/audio";
 import { useSettings } from "@/settings";
 
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
@@ -23,35 +23,94 @@ export function CameraSettings() {
     setCameraMirrored,
   } = useSettings();
 
-  const { cameraStream, cameraEnabled, cameraError, setCameraEnabled, retryCamera, devices, getDevices } = useCamera();
+  const { cameraEnabled, cameraStream: globalStream, devices, getDevices } = useCamera();
+
   const videoRef = useRef<HTMLVideoElement>(null);
-  const wasEnabledRef = useRef(false);
+  const previewStreamRef = useRef<MediaStream | null>(null);
+  const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const activeStream = cameraEnabled ? globalStream : previewStream;
+  const activeError = cameraEnabled ? null : previewError;
 
   useEffect(() => {
     getDevices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Start camera for preview when settings tab is opened (only if not already on)
+  const startPreview = useCallback(async () => {
+    if (cameraEnabled) return;
+    const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS["720p"];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
+          width: { ideal: quality.width },
+          height: { ideal: quality.height },
+          frameRate: { ideal: quality.frameRate },
+        },
+        audio: false,
+      });
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      previewStreamRef.current = stream;
+      setPreviewStream(stream);
+      setPreviewError(null);
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      switch (name) {
+        case "NotAllowedError":
+          setPreviewError("Camera access was denied. Check your browser or system permissions.");
+          break;
+        case "NotFoundError":
+          setPreviewError("No camera detected. Make sure one is connected.");
+          break;
+        default:
+          setPreviewError("Failed to start camera preview. Please try again.");
+      }
+    }
+  }, [cameraEnabled, cameraID, cameraQuality]);
+
+  const stopPreview = useCallback(() => {
+    if (previewStreamRef.current) {
+      previewStreamRef.current.getTracks().forEach((t) => t.stop());
+      previewStreamRef.current = null;
+    }
+    setPreviewStream(null);
+  }, []);
+
+  // Start local preview when the settings tab opens (only if camera isn't already globally on)
   useEffect(() => {
-    wasEnabledRef.current = cameraEnabled;
-    if (!cameraEnabled) setCameraEnabled(true);
+    if (!cameraEnabled) {
+      startPreview();
+    }
     return () => {
-      if (!wasEnabledRef.current) setCameraEnabled(false);
+      stopPreview();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Attach stream to video element
+  // Restart preview when device or quality changes (only when previewing locally)
+  useEffect(() => {
+    if (!cameraEnabled && previewStreamRef.current) {
+      startPreview();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraID, cameraQuality]);
+
+  // If global camera turns on while previewing, stop the local preview
+  useEffect(() => {
+    if (cameraEnabled) {
+      stopPreview();
+    }
+  }, [cameraEnabled, stopPreview]);
+
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (cameraStream) {
-      el.srcObject = cameraStream;
-    } else {
-      el.srcObject = null;
-    }
-  }, [cameraStream]);
+    el.srcObject = activeStream ?? null;
+  }, [activeStream]);
 
   return (
     <SettingsContainer>
@@ -70,7 +129,7 @@ export function CameraSettings() {
             maxHeight: 280,
           }}
         >
-          {cameraStream ? (
+          {activeStream ? (
             <video
               ref={videoRef}
               autoPlay
@@ -85,11 +144,11 @@ export function CameraSettings() {
             />
           ) : (
             <Flex direction="column" align="center" gap="2" p="4">
-              <Text size="2" color={cameraError ? "red" : "gray"}>
-                {cameraError ?? "No camera detected"}
+              <Text size="2" color={activeError ? "red" : "gray"}>
+                {activeError ?? "No camera detected"}
               </Text>
-              {cameraError && (
-                <Button variant="soft" size="1" onClick={retryCamera}>
+              {activeError && (
+                <Button variant="soft" size="1" onClick={startPreview}>
                   <MdRefresh size={14} />
                   Retry
                 </Button>

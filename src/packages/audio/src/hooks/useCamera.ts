@@ -5,7 +5,7 @@ import { useSettings } from "@/settings";
 
 export type CameraQuality = "720p" | "480p" | "360p";
 
-const QUALITY_CONSTRAINTS: Record<CameraQuality, { width: number; height: number; frameRate: number }> = {
+export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width: number; height: number; frameRate: number }> = {
   "720p": { width: 1280, height: 720, frameRate: 30 },
   "480p": { width: 854, height: 480, frameRate: 30 },
   "360p": { width: 640, height: 360, frameRate: 30 },

@@ -25,6 +25,7 @@ export enum SFUConnectionState {
   REQUESTING_ACCESS = 'requesting_access',
   CONNECTING = 'connecting',
   CONNECTED = 'connected',
+  RECONNECTING = 'reconnecting',
   FAILED = 'failed',
 }
 

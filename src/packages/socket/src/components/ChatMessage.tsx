@@ -9,15 +9,19 @@ export const MessageContextMenu = ({
   position,
   onClose,
   onReply,
+  onEdit,
   onReport,
   onDelete,
+  canEdit,
   canDelete,
 }: {
   position: { x: number; y: number };
   onClose: () => void;
   onReply: () => void;
+  onEdit?: () => void;
   onReport: () => void;
   onDelete?: () => void;
+  canEdit?: boolean;
   canDelete?: boolean;
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -103,6 +107,19 @@ export const MessageContextMenu = ({
         >
           Reply
         </Button>
+        {canEdit && onEdit && (
+          <Button
+            variant="ghost"
+            size="1"
+            onClick={() => {
+              onEdit();
+              onClose();
+            }}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Edit Message
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="1"

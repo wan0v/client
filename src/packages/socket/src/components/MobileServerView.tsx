@@ -59,6 +59,7 @@ interface MobileServerViewProps {
   chatMessages: ChatMessage[];
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
+  editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   currentUserId?: string;
   channelName?: string;
   currentUserNickname?: string;
@@ -162,6 +163,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           chatMessages={props.chatMessages}
           canSend={props.canSend}
           sendChat={props.sendChat}
+          editMessage={props.editMessage}
           currentUserId={props.currentUserId}
           channelName={props.channelName}
           currentUserNickname={props.currentUserNickname}

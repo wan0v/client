@@ -390,6 +390,26 @@ body {
   transition: transform 0.05s linear;
 }
 
+.lightbox-toolbar-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.lightbox-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
 .lightbox-hint {
   position: fixed;
   bottom: 24px;

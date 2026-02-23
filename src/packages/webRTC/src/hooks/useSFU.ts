@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { singletonHook } from "react-singleton-hook";
 
 import { useMicrophone, useSpeakers } from "@/audio";
@@ -81,7 +82,8 @@ function useSfuHook(): SFUInterface {
 
   const isConnecting = useMemo(() => {
     return connectionState.state === SFUConnectionState.CONNECTING ||
-           connectionState.state === SFUConnectionState.REQUESTING_ACCESS;
+           connectionState.state === SFUConnectionState.REQUESTING_ACCESS ||
+           connectionState.state === SFUConnectionState.RECONNECTING;
   }, [connectionState.state]);
 
   // Access shared microphone buffer
@@ -156,6 +158,14 @@ function useSfuHook(): SFUInterface {
       throw new Error("SFU configuration not available");
     }
 
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (channelID !== lastChannelIdRef.current) {
+      reconnectAttemptsRef.current = 0;
+    }
+
     lastChannelIdRef.current = channelID;
     const seq = ++connectSeqRef.current;
 
@@ -201,6 +211,12 @@ function useSfuHook(): SFUInterface {
   // Enhanced disconnect — optimistic with background cleanup
   const disconnect = useCallback(async (playSound?: boolean, onDisconnect?: () => void): Promise<void> => {
     const shouldPlaySound = playSound !== false && disconnectSoundEnabled;
+
+    reconnectAttemptsRef.current = 0;
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
 
     setConnectionState({
       state: SFUConnectionState.DISCONNECTED,
@@ -354,6 +370,61 @@ function useSfuHook(): SFUInterface {
       window.removeEventListener("server_socket_reconnected", handleServerReconnected as EventListener);
     };
   }, [sockets]);
+
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (connectionState.state === SFUConnectionState.CONNECTED) {
+      reconnectAttemptsRef.current = 0;
+    }
+  }, [connectionState.state]);
+
+  useEffect(() => {
+    if (connectionState.state !== SFUConnectionState.FAILED) return;
+
+    const channelId = lastChannelIdRef.current;
+    if (!channelId) return;
+
+    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.warn("[Voice Recovery] Max reconnect attempts reached — giving up");
+      toast.error("Voice connection failed after multiple attempts. Please try again.", { id: "voice-reconnect" });
+      setConnectionState({
+        state: SFUConnectionState.DISCONNECTED,
+        roomId: null,
+        serverId: null,
+        error: null,
+      });
+      reconnectAttemptsRef.current = 0;
+      return;
+    }
+
+    reconnectAttemptsRef.current++;
+    const attempt = reconnectAttemptsRef.current;
+    const delayMs = Math.min(1500 * Math.pow(2, attempt - 1), 10_000);
+
+    console.info(`[Voice Recovery] Connection lost — auto-reconnecting (attempt ${attempt}/${MAX_RECONNECT_ATTEMPTS}) in ${delayMs}ms`);
+
+    setConnectionState(prev => ({
+      ...prev,
+      state: SFUConnectionState.RECONNECTING,
+    }));
+
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
+      connectRef.current(channelId).catch((error) => {
+        console.error(`[Voice Recovery] Reconnect attempt ${attempt} failed:`, error);
+      });
+    }, delayMs);
+
+    return () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+  }, [connectionState.state]);
 
   // Monitor processedStream changes and update WebRTC tracks
   useEffect(() => {

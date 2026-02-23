@@ -199,7 +199,7 @@ export function useSFUStreams({
       const deadIds: string[] = [];
       Object.entries(current).forEach(([id, data]) => {
         if (data.isLocal) return;
-        const tracks = data.stream.getAudioTracks();
+        const tracks = data.stream.getTracks();
         if (tracks.length === 0 || tracks.every(t => t.readyState === "ended")) {
           deadIds.push(id);
         }

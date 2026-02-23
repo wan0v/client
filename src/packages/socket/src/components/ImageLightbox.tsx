@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MdCloudDownload } from "react-icons/md";
+import { MdCheck, MdCloudDownload, MdImage } from "react-icons/md";
+
+import { copyImageToClipboard } from "./MediaContextMenu";
 
 type ZoomLevel = "fit" | "2x" | "full";
 
@@ -25,6 +27,8 @@ export const ImageLightbox = ({
   const [zoom, setZoom] = useState<ZoomLevel>("fit");
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
+  const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const isDragging = useRef(false);
@@ -137,42 +141,34 @@ export const ImageLightbox = ({
         onMouseDown={handleMouseDown}
         onLoad={handleImageLoad}
       />
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          triggerDownload(src, alt);
-        }}
-        title="Save image"
-        aria-label="Save image"
-        style={{
-          position: "fixed",
-          top: 16,
-          right: 16,
-          width: 40,
-          height: 40,
-          borderRadius: "var(--radius-5)",
-          border: "1px solid rgba(255, 255, 255, 0.15)",
-          background: "rgba(0, 0, 0, 0.55)",
-          backdropFilter: "blur(8px)",
-          color: "rgba(255, 255, 255, 0.85)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "background 0.15s, color 0.15s",
-          zIndex: 10000,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
-          e.currentTarget.style.color = "#fff";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "rgba(0, 0, 0, 0.55)";
-          e.currentTarget.style.color = "rgba(255, 255, 255, 0.85)";
-        }}
-      >
-        <MdCloudDownload size={18} />
-      </button>
+      <div style={{ position: "fixed", top: 16, right: 16, display: "flex", gap: 8, zIndex: 10000 }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            copyImageToClipboard(src).then(() => {
+              setCopied(true);
+              if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+              copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+            });
+          }}
+          title={copied ? "Copied!" : "Copy image"}
+          aria-label={copied ? "Copied" : "Copy image"}
+          className="lightbox-toolbar-btn"
+        >
+          {copied ? <MdCheck size={18} /> : <MdImage size={18} />}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            triggerDownload(src, alt);
+          }}
+          title="Save image"
+          aria-label="Save image"
+          className="lightbox-toolbar-btn"
+        >
+          <MdCloudDownload size={18} />
+        </button>
+      </div>
       <div className="lightbox-hint">
         {zoom === "fit" && "Click image to zoom 2x"}
         {zoom === "2x" && "Click to view full size \u00b7 Drag to pan"}

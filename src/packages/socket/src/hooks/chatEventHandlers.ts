@@ -128,6 +128,34 @@ export function handleReactionUpdate(
   }
 }
 
+// ── chat:edited ─────────────────────────────────────────────────────
+
+export function handleMessageEdited(
+  updatedMessage: ChatMessage,
+  activeConversationId: string,
+  getCacheKey: CacheKeyFn,
+  setMessageCache: Dispatch<SetStateAction<MessageCache>>,
+  setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>,
+): void {
+  if (!updatedMessage || !updatedMessage.conversation_id) return;
+  const key = getCacheKey(updatedMessage.conversation_id);
+  if (!key) return;
+
+  const applyEdit = (msg: ChatMessage) =>
+    msg.message_id === updatedMessage.message_id
+      ? { ...msg, text: updatedMessage.text, edited_at: updatedMessage.edited_at }
+      : msg;
+
+  setMessageCache((prev) => {
+    const existing = prev[key] || [];
+    return { ...prev, [key]: existing.map(applyEdit) };
+  });
+
+  if (updatedMessage.conversation_id === activeConversationId) {
+    setChatMessages((prev) => prev.map(applyEdit));
+  }
+}
+
 // ── chat:deleted ─────────────────────────────────────────────────────
 
 export function handleMessageDeleted(

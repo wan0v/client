@@ -16,6 +16,7 @@ import {
   handleChatErrorEvent,
   handleHistoryPayload,
   handleMessageDeleted,
+  handleMessageEdited,
   handleNewMessage,
   handleReactionUpdate,
   shouldFetchHistory,
@@ -36,6 +37,7 @@ interface UseChatReturn {
   chatMessages: ChatMessage[];
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
+  editMessage: (messageId: string, conversationId: string, newText: string) => void;
   isLoadingMessages: boolean;
   isRateLimited: boolean;
   rateLimitCountdown: number;
@@ -250,6 +252,9 @@ export function useChat({
     const onDeleted = (payload: { conversation_id: string; message_id: string }) =>
       handleMessageDeleted(payload, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
+    const onEdited = (updatedMessage: ChatMessage) =>
+      handleMessageEdited(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
+
     const onReportSubmitted = () => {
       toast.success("Report submitted");
     };
@@ -280,6 +285,7 @@ export function useChat({
     currentConnection.on("chat:history", onHistory);
     currentConnection.on("chat:reaction", onReaction);
     currentConnection.on("chat:deleted", onDeleted);
+    currentConnection.on("chat:edited", onEdited);
     currentConnection.on("report:submitted", onReportSubmitted);
     currentConnection.on("report:already_reported", onAlreadyReported);
     currentConnection.on("chat:purge_user", onPurgeUser);
@@ -288,6 +294,7 @@ export function useChat({
       currentConnection.off("chat:history", onHistory);
       currentConnection.off("chat:reaction", onReaction);
       currentConnection.off("chat:deleted", onDeleted);
+      currentConnection.off("chat:edited", onEdited);
       currentConnection.off("report:submitted", onReportSubmitted);
       currentConnection.off("report:already_reported", onAlreadyReported);
       currentConnection.off("chat:purge_user", onPurgeUser);
@@ -531,10 +538,19 @@ export function useChat({
     doSend();
   };
 
+  const editMessage = (messageId: string, conversationId: string, newText: string) => {
+    const text = newText.trim();
+    if (!text || !currentConnection) return;
+    const accessToken = getServerAccessToken(currentlyViewingServer?.host || "");
+    if (!accessToken) return;
+    currentConnection.emit("chat:edit", { conversationId, messageId, text, accessToken });
+  };
+
   return {
     chatMessages,
     canSend,
     sendChat,
+    editMessage,
     isLoadingMessages,
     isRateLimited,
     rateLimitCountdown,

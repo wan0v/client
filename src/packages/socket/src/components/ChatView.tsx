@@ -40,6 +40,7 @@ export const ChatView = ({
   chatMessages,
   canSend,
   sendChat,
+  editMessage,
   currentUserId,
   currentUserNickname,
   socketConnection,
@@ -59,6 +60,7 @@ export const ChatView = ({
   chatMessages: ChatMessage[];
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
+  editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   currentUserId?: string;
   currentUserNickname?: string;
   socketConnection?: unknown;
@@ -82,6 +84,7 @@ export const ChatView = ({
   const prevMessageCountRef = useRef(chatMessages.length);
   const prevLastMessageIdRef = useRef(chatMessages[chatMessages.length - 1]?.message_id);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
   const dragCounterRef = useRef(0);
@@ -278,11 +281,45 @@ export const ChatView = ({
     setPendingDeleteMessage(null);
   };
 
+  const startEditing = useCallback((message: ChatMessage) => {
+    if (!message.text) return;
+    setEditingMessage(message);
+    setReplyingTo(null);
+    requestAnimationFrame(() => {
+      editorRef.current?.setContent(message.text!);
+    });
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingMessage(null);
+    editorRef.current?.clear();
+  }, []);
+
+  const handleArrowUpEmpty = useCallback(() => {
+    if (!currentUserId) return;
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      const msg = chatMessages[i];
+      if (msg.sender_server_id === currentUserId && msg.text && !msg.pending && !msg.failed) {
+        startEditing(msg);
+        return;
+      }
+    }
+  }, [chatMessages, currentUserId, startEditing]);
+
   const handleEditorSend = useCallback((markdown: string, files: File[]) => {
+    if (editingMessage) {
+      const trimmed = markdown.trim();
+      if (trimmed && trimmed !== editingMessage.text?.trim() && editMessage) {
+        editMessage(editingMessage.message_id, editingMessage.conversation_id, trimmed);
+      }
+      setEditingMessage(null);
+      editorRef.current?.clear();
+      return;
+    }
     if (!canSend && !isRateLimited) return;
     sendChat(markdown, files, replyingTo?.message_id);
     setReplyingTo(null);
-  }, [canSend, isRateLimited, sendChat, replyingTo]);
+  }, [canSend, isRateLimited, sendChat, replyingTo, editingMessage, editMessage]);
 
   const groups = useMemo(() => {
     const result: Array<{ senderId: string; messages: ChatMessage[]; dayBreak?: Date }> = [];
@@ -326,8 +363,10 @@ export const ChatView = ({
           position={contextMenu.position}
           onClose={closeContextMenu}
           onReply={() => handleReply()}
+          onEdit={() => { if (contextMenu.message.text) startEditing(contextMenu.message); }}
           onReport={handleReport}
           onDelete={requestDelete}
+          canEdit={!!currentUserId && contextMenu.message.sender_server_id === currentUserId && !!contextMenu.message.text}
           canDelete={!!canDeleteAny || (!!currentUserId && contextMenu.message.sender_server_id === currentUserId)}
         />
       )}
@@ -403,6 +442,13 @@ export const ChatView = ({
                           {senderName}
                         </Text>
                         <MessageTimestamp date={toDate(group.messages[0].created_at)} />
+                        {group.messages[0].edited_at && (
+                          <Tooltip content={`Edited ${new Date(group.messages[0].edited_at).toLocaleString()}`} delayDuration={200}>
+                            <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
+                              (edited)
+                            </Text>
+                          </Tooltip>
+                        )}
                       </Flex>
                       {group.messages.map((m) => {
                         const replyOriginal = m.reply_to_message_id ? findMessage(m.reply_to_message_id) : null;
@@ -481,6 +527,13 @@ export const ChatView = ({
                           )}
                           <div style={{ opacity: m.pending ? 0.6 : m.failed ? 0.5 : 1, wordBreak: "break-word" }}>
                             <MarkdownRenderer content={m.text} customEmojis={customEmojiList} />
+                            {m.edited_at && m !== group.messages[0] && (
+                              <Tooltip content={`Edited ${new Date(m.edited_at).toLocaleString()}`} delayDuration={200}>
+                                <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
+                                  (edited)
+                                </Text>
+                              </Tooltip>
+                            )}
                             {serverHost && !m.pending && (
                               <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
                             )}
@@ -494,7 +547,7 @@ export const ChatView = ({
 
                                   if (mime.startsWith("image/")) {
                                     return (
-                                      <MediaContextMenu key={fileId} src={url} fileName={meta?.original_name}>
+                                      <MediaContextMenu key={fileId} src={url} fileName={meta?.original_name} isImage>
                                         <img
                                           src={url}
                                           alt={meta?.original_name || "Attachment"}
@@ -624,12 +677,45 @@ export const ChatView = ({
           </Flex>
         )}
 
+        {editingMessage && (
+          <Flex
+            align="center"
+            gap="2"
+            style={{
+              padding: "6px 12px",
+              marginBottom: "4px",
+              borderLeft: "3px solid var(--amber-9)",
+              background: "var(--gray-4)",
+              borderRadius: "0 var(--radius-3) var(--radius-3) 0",
+              fontSize: "13px",
+            }}
+          >
+            <Flex align="center" gap="1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+              <Text size="2" color="gray">Editing message</Text>
+              <Text size="1" color="gray" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 4 }}>
+                press Escape to cancel
+              </Text>
+            </Flex>
+            <Button
+              variant="ghost"
+              size="1"
+              onClick={cancelEditing}
+              style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
+            >
+              ✕
+            </Button>
+          </Flex>
+        )}
+
         <ChatEditor
           ref={editorRef}
           placeholder={editorPlaceholder}
           disabled={editorDisabled}
           maxFileSize={maxFileSize}
           onSend={handleEditorSend}
+          onArrowUpEmpty={handleArrowUpEmpty}
+          onCancel={editingMessage ? cancelEditing : undefined}
+          isEditing={!!editingMessage}
         />
       </Flex>
     </Box>

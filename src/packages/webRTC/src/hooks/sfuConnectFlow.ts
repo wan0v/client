@@ -1,5 +1,4 @@
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
-import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
 import { handleRateLimitError } from "@/socket/src/utils/rateLimitHandler";
@@ -185,6 +184,7 @@ export function setupPeerConnection(
 
   const pc = new RTCPeerConnection(config);
   let iceDebugDumped = false;
+  let wasConnected = false;
   const dumpIceOnce = (label: string) => {
     if (iceDebugDumped) return;
     iceDebugDumped = true;
@@ -256,6 +256,8 @@ export function setupPeerConnection(
       case 'connected':
         voiceLog.ok("CONNECT", 9, "WebRTC CONNECTED — voice chat is live!", detail);
         voiceLog.divider("VOICE CONNECTED");
+        wasConnected = true;
+        iceDebugDumped = false;
         dumpIceOnce("pc-connected");
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
@@ -268,6 +270,11 @@ export function setupPeerConnection(
           return prev;
         });
         break;
+      case 'disconnected':
+        voiceLog.warn("WEBRTC", `Connection state → disconnected — attempting ICE recovery`, detail);
+        dumpIceOnce("pc-disconnected");
+        try { pc.restartIce(); } catch { /* restartIce not supported */ }
+        break;
       case 'connecting':
         voiceLog.info("WEBRTC", `Connection state → ${state}`, detail);
         break;
@@ -276,14 +283,10 @@ export function setupPeerConnection(
         voiceLog.fail("WEBRTC", "PC", `Connection state → ${state}`, detail);
         dumpIceOnce(`pc-${state}`);
         if (!isDisconnectingRef.current) {
-          toast.error(
-            "Voice connection failed (ICE). Your network may block UDP/WebRTC. Try VPN or another network.",
-            { id: "voice-ice-failed" },
-          );
           setConnectionState(prev => ({
             ...prev,
             state: SFUConnectionState.FAILED,
-            error: "WebRTC connection failed",
+            error: wasConnected ? "Connection lost" : "WebRTC connection failed",
           }));
           performCleanup?.(false).catch(() => undefined);
         }
@@ -563,22 +566,18 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     });
 
     connectionTimeoutRef.current = setTimeout(() => {
-      if (peerConnectionRef.current && !isDisconnectingRef.current) {
+      const pc = peerConnectionRef.current;
+      if (pc && !isDisconnectingRef.current && pc.connectionState !== 'connected') {
         voiceLog.fail("CONNECT", "TIMEOUT", "Full connection timed out after 20s", {
-          pcState: peerConnectionRef.current.connectionState,
-          iceState: peerConnectionRef.current.iceConnectionState,
+          pcState: pc.connectionState,
+          iceState: pc.iceConnectionState,
         });
-        dumpIceSelectedPair(peerConnectionRef.current, "timeout").catch(() => undefined);
-        toast.error(
-          "Voice connection timed out (ICE). Your network may block UDP/WebRTC. Try VPN or another network.",
-          { id: "voice-ice-failed" },
-        );
-        setConnectionState({
-          state: SFUConnectionState.DISCONNECTED,
-          roomId: null,
-          serverId: null,
-          error: null,
-        });
+        dumpIceSelectedPair(pc, "timeout").catch(() => undefined);
+        setConnectionState(prev => ({
+          ...prev,
+          state: SFUConnectionState.FAILED,
+          error: "Connection timed out",
+        }));
         performCleanup(false).catch(console.error);
       }
     }, 20000);
@@ -707,16 +706,14 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     voiceLog.fail("CONNECT", "X", "CONNECTION FAILED", error);
 
     const errorMessage = error instanceof Error ? error.message : "Connection failed";
-    toast.error(errorMessage || "Failed to connect to voice server");
 
     performCleanup(false).catch(console.error);
 
-    setConnectionState({
+    setConnectionState(prev => ({
+      ...prev,
       state: SFUConnectionState.FAILED,
-      roomId: null,
-      serverId: null,
       error: errorMessage,
-    });
+    }));
 
     throw error;
   } finally {

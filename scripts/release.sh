@@ -47,6 +47,10 @@ if [ -z "${GH_TOKEN:-}" ]; then
   fi
 fi
 
+DOCKER_IMAGE="ghcr.io/gryt-chat/client"
+echo "$GH_TOKEN" | docker login ghcr.io -u "$(gh api user -q .login 2>/dev/null || echo gryt)" --password-stdin
+ok "Logged in to ghcr.io"
+
 echo ""
 echo -e "${BOLD}┌─────────────────────────────────────────┐${RESET}"
 echo -e "${BOLD}│         Gryt Desktop — Release           │${RESET}"
@@ -302,35 +306,24 @@ fi
 
 # ── Docker image (web client) ────────────────────────────────────────
 echo ""
-DOCKER_IMAGE="ghcr.io/gryt-chat/client"
-DOCKER_CONFIRM="Y"
-if ! echo "$GH_TOKEN" | docker login ghcr.io -u "$(gh api user -q .login 2>/dev/null || echo gryt)" --password-stdin 2>/dev/null; then
-  warn "Docker login to ghcr.io failed — skipping Docker image push."
-  DOCKER_CONFIRM="n"
-else
-  ok "Logged in to ghcr.io"
-fi
+IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${NEW_VERSION%%-*}"
+cd "$CLIENT_DIR"
 
-if [[ "$DOCKER_CONFIRM" =~ ^[Yy]$ ]]; then
-  IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${NEW_VERSION%%-*}"
-  cd "$CLIENT_DIR"
+info "Building Docker image…"
+docker build -t "${DOCKER_IMAGE}:${NEW_VERSION}" .
+ok "Built ${DOCKER_IMAGE}:${NEW_VERSION}"
 
-  info "Building Docker image…"
-  docker build -t "${DOCKER_IMAGE}:${NEW_VERSION}" .
-  ok "Built ${DOCKER_IMAGE}:${NEW_VERSION}"
+info "Tagging…"
+docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
+docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}"
+docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:latest"
 
-  info "Tagging…"
-  docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
-  docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}"
-  docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:latest"
-
-  info "Pushing to ghcr.io…"
-  docker push "${DOCKER_IMAGE}:${NEW_VERSION}"
-  docker push "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
-  docker push "${DOCKER_IMAGE}:${V_MAJOR}"
-  docker push "${DOCKER_IMAGE}:latest"
-  ok "Docker image pushed: ${BOLD}${DOCKER_IMAGE}:${NEW_VERSION}${RESET}"
-fi
+info "Pushing to ghcr.io…"
+docker push "${DOCKER_IMAGE}:${NEW_VERSION}"
+docker push "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
+docker push "${DOCKER_IMAGE}:${V_MAJOR}"
+docker push "${DOCKER_IMAGE}:latest"
+ok "Docker image pushed: ${BOLD}${DOCKER_IMAGE}:${NEW_VERSION}${RESET}"
 
 # ── Deploy to production ──────────────────────────────────────────
 echo ""

@@ -20,6 +20,7 @@ export interface ChatEditorHandle {
   getMarkdown: () => string;
   getFiles: () => File[];
   addFiles: (files: FileList | File[]) => void;
+  setContent: (text: string) => void;
 }
 
 interface PendingFile {
@@ -33,6 +34,9 @@ interface ChatEditorProps {
   disabled?: boolean;
   maxFileSize?: number | null;
   onSend: (markdown: string, files: File[]) => void;
+  onArrowUpEmpty?: () => void;
+  onCancel?: () => void;
+  isEditing?: boolean;
 }
 
 function getFileIcon(mime: string) {
@@ -150,7 +154,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, maxFileSize, onSend }, ref) => {
+  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, isEditing }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -207,9 +211,23 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
+          return;
+        }
+        if (e.key === "Escape" && isEditing && onCancel) {
+          e.preventDefault();
+          onCancel();
+          return;
+        }
+        if (e.key === "ArrowUp" && !isEditing && onArrowUpEmpty) {
+          const el = editorRef.current;
+          const text = el ? serializeContentEditable(el).trim() : "";
+          if (!text && pendingFilesRef.current.length === 0) {
+            e.preventDefault();
+            onArrowUpEmpty();
+          }
         }
       },
-      [handleSend, showAutocomplete]
+      [handleSend, showAutocomplete, isEditing, onCancel, onArrowUpEmpty]
     );
 
     const handlePaste = useCallback(
@@ -320,6 +338,20 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       getMarkdown: () => editorRef.current ? serializeContentEditable(editorRef.current) : "",
       getFiles: () => pendingFiles.map((p) => p.file),
       addFiles,
+      setContent: (text: string) => {
+        const el = editorRef.current;
+        if (!el) return;
+        el.textContent = text;
+        autoResize(el);
+        requestAnimationFrame(() => {
+          el.focus();
+          const sel = window.getSelection();
+          if (sel) {
+            sel.selectAllChildren(el);
+            sel.collapseToEnd();
+          }
+        });
+      },
     }));
 
     const removeFile = useCallback((id: string) => {

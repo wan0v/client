@@ -1,11 +1,13 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
+import { MdCheck, MdContentCopy } from "react-icons/md";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 import { useTheme } from "@/common";
 
+import { MediaContextMenu } from "./MediaContextMenu";
 import { type CustomEmojiEntry, preprocessCustomEmojis, remarkEmoji } from "../utils/remarkEmoji";
 
 const UNICODE_EMOJI_RE = /\p{Extended_Pictographic}/u;
@@ -17,6 +19,63 @@ function isEmojiOnly(text: string): boolean {
     .replace(/\u200D/g, "")
     .trim();
   return stripped.length === 0 && (UNICODE_EMOJI_RE.test(text) || /:([a-zA-Z0-9_+-]+):/.test(text));
+}
+
+function CodeBlockPre({ children }: { children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopy = useCallback(() => {
+    const text = preRef.current?.textContent ?? "";
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    });
+  }, []);
+
+  return (
+    <pre
+      ref={preRef}
+      style={{
+        position: "relative",
+        background: "var(--gray-2)",
+        border: "1px solid var(--gray-5)",
+        borderRadius: "var(--radius-4)",
+        padding: "10px 12px",
+        margin: "4px 0",
+        overflowX: "auto",
+        fontSize: "0.85em",
+        lineHeight: 1.5,
+      }}
+    >
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Copied" : "Copy code"}
+        style={{
+          position: "absolute",
+          top: 6,
+          right: 6,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 26,
+          height: 26,
+          border: "none",
+          borderRadius: "var(--radius-2)",
+          background: copied ? "var(--green-4)" : "var(--gray-4)",
+          color: copied ? "var(--green-11)" : "var(--gray-11)",
+          cursor: "pointer",
+          transition: "background 0.15s, color 0.15s",
+        }}
+      >
+        {copied ? <MdCheck size={14} /> : <MdContentCopy size={14} />}
+      </button>
+      {children}
+    </pre>
+  );
 }
 
 const components: Components = {
@@ -71,22 +130,7 @@ const components: Components = {
       </code>
     );
   },
-  pre: ({ children }) => (
-    <pre
-      style={{
-        background: "var(--gray-2)",
-        border: "1px solid var(--gray-5)",
-        borderRadius: "var(--radius-4)",
-        padding: "10px 12px",
-        margin: "4px 0",
-        overflowX: "auto",
-        fontSize: "0.85em",
-        lineHeight: 1.5,
-      }}
-    >
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => <CodeBlockPre>{children}</CodeBlockPre>,
   blockquote: ({ children }) => (
     <blockquote
       style={{
@@ -131,19 +175,21 @@ const components: Components = {
       );
     }
     return (
-      <img
-        src={src}
-        alt={alt || ""}
-        style={{
-          maxWidth: "100%",
-          maxHeight: "300px",
-          borderRadius: "var(--radius-4)",
-          margin: "4px 0",
-          display: "block",
-          cursor: "pointer",
-        }}
-        onClick={() => src && window.open(src, "_blank")}
-      />
+      <MediaContextMenu src={src || ""} isImage>
+        <img
+          src={src}
+          alt={alt || ""}
+          style={{
+            maxWidth: "100%",
+            maxHeight: "300px",
+            borderRadius: "var(--radius-4)",
+            margin: "4px 0",
+            display: "block",
+            cursor: "pointer",
+          }}
+          onClick={() => src && window.open(src, "_blank")}
+        />
+      </MediaContextMenu>
     );
   },
   hr: () => (
