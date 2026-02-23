@@ -66,7 +66,7 @@ export function ServerOverviewTab({
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [autosaving, setAutosaving] = useState(false);
-  const autosaveTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef(false);
   const lastSettingsRef = useRef<{
     displayName: string;
@@ -205,8 +205,8 @@ export function ServerOverviewTab({
       const changed = entries.some(([k, v]) => last[k] !== v);
       if (!changed) return;
     }
-    if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = window.setTimeout(() => {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
       autosaveTimerRef.current = null;
       emitSettingsUpdate(patch).catch(() => undefined);
     }, 800);

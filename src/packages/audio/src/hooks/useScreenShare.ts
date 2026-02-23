@@ -72,13 +72,14 @@ function useScreenShareHook(): ScreenShareInterface {
           mandatory.maxHeight = q.height;
         }
 
+        const video: ChromeDesktopConstraints = { mandatory };
+        const audio: ChromeDesktopConstraints = {
+          mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId },
+        };
+
         const constraints: MediaStreamConstraints = {
-          video: { mandatory } satisfies ChromeDesktopConstraints,
-          audio: withAudio
-            ? ({
-              mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId }
-            } satisfies ChromeDesktopConstraints)
-            : false,
+          video,
+          audio: withAudio ? audio : false,
         };
 
         stream = await navigator.mediaDevices.getUserMedia(constraints);

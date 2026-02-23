@@ -65,16 +65,16 @@ export const ServerView = () => {
 
   const saveSidebarRef = useRef(saveSelectedSidebarItem);
   saveSidebarRef.current = saveSelectedSidebarItem;
-  const saveSidebarTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const saveSidebarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedSaveSidebar = useCallback(() => {
-    if (saveSidebarTimerRef.current) window.clearTimeout(saveSidebarTimerRef.current);
-    saveSidebarTimerRef.current = window.setTimeout(() => {
+    if (saveSidebarTimerRef.current) clearTimeout(saveSidebarTimerRef.current);
+    saveSidebarTimerRef.current = setTimeout(() => {
       saveSidebarTimerRef.current = null;
       saveSidebarRef.current();
     }, 600);
   }, []);
   const flushSaveSidebar = useCallback(() => {
-    if (saveSidebarTimerRef.current) window.clearTimeout(saveSidebarTimerRef.current);
+    if (saveSidebarTimerRef.current) clearTimeout(saveSidebarTimerRef.current);
     saveSidebarTimerRef.current = null;
     saveSidebarRef.current();
   }, []);

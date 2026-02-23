@@ -20,6 +20,14 @@ type IceCandidateStat = {
 
 type IceCandidatePairStat = RTCIceCandidatePairStats & { selected?: boolean };
 type TransportStat = RTCTransportStats & { selectedCandidatePairId?: string };
+type IceCandidateStatsLike = RTCStats & {
+  address?: string;
+  ip?: string;
+  port?: number;
+  candidateType?: string;
+  protocol?: string;
+  networkType?: string;
+};
 
 async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
   try {
@@ -31,7 +39,7 @@ async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
 
     report.forEach((stat) => {
       if (stat.type === "local-candidate" || stat.type === "remote-candidate") {
-        const c = stat as RTCIceCandidateStats & { ip?: string; networkType?: string };
+        const c = stat as IceCandidateStatsLike;
         candidateMap.set(c.id, {
           address: c.address ?? c.ip ?? "?",
           port: c.port ?? 0,
