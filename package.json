@@ -83,5 +83,8 @@
     "vite-plugin-electron": "^0.29.0",
     "vite-plugin-electron-renderer": "^0.14.6",
     "vite-tsconfig-paths": "^4.3.2"
+  },
+  "optionalDependencies": {
+    "dmg-license": "1.0.11"
   }
 }

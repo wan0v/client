@@ -250,8 +250,13 @@ until [ $ATTEMPT -ge $MAX_ATTEMPTS ]; do
     warn "Attempt ${ATTEMPT}/${MAX_ATTEMPTS} — retrying in ${WAIT}s…"
     sleep "$WAIT"
   fi
+  TARGETS="--linux --win"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    TARGETS="--linux --mac --win"
+  fi
+
   npx electron-builder \
-    --linux --mac --win \
+    $TARGETS \
     --publish always \
     -c.publish.provider=github \
     -c.publish.owner="$OWNER" \
