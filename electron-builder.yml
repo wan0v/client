@@ -18,6 +18,8 @@ publish:
   repo: gryt
   releaseType: release
 
+afterSign: scripts/notarize.cjs
+
 protocols:
   - name: Gryt
     schemes:
@@ -35,11 +37,17 @@ linux:
 
 mac:
   target:
+    - dmg
     - zip
   hardenedRuntime: true
   category: public.app-category.social-networking
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: "Gryt Chat uses your microphone for voice chat."
+    NSCameraUsageDescription: "Gryt Chat uses your camera for video chat."
+    NSAudioCaptureUsageDescription: "Gryt Chat can capture audio when you choose to share your screen."
+    NSScreenCaptureUsageDescription: "Gryt Chat lets you share your screen."
 
 win:
   icon: build/icon.ico
