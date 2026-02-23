@@ -108,6 +108,7 @@ export const ChatView = memo(({
 
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
   const prevConversationForAnimRef = useRef<string | undefined>(undefined);
+  const initialLoadDoneRef = useRef(false);
 
   useMemo(() => {
     const conversationId = chatMessages[0]?.conversation_id;
@@ -115,6 +116,9 @@ export const ChatView = memo(({
       seenMessageIdsRef.current.clear();
       chatMessages.forEach((m) => seenMessageIdsRef.current.add(m.message_id));
       prevConversationForAnimRef.current = conversationId;
+      initialLoadDoneRef.current = false;
+    } else if (chatMessages.length > 0) {
+      initialLoadDoneRef.current = true;
     }
   }, [chatMessages]);
 
@@ -415,7 +419,8 @@ export const ChatView = memo(({
   }, [firstItemIndex, hasOlderMessages, isLoadingOlder, onLoadOlder]);
 
   const followOutput = useCallback((isAtBottom: boolean) => {
-    return isAtBottom ? "smooth" as const : false as const;
+    if (!isAtBottom) return false as const;
+    return initialLoadDoneRef.current ? "smooth" as const : "auto" as const;
   }, []);
 
   const itemContent = useCallback((index: number) => {
@@ -546,7 +551,7 @@ export const ChatView = memo(({
           ) : showMessages ? (
             <Virtuoso
               ref={virtuosoRef}
-              style={{ flex: 1, minWidth: 0, marginBottom: 4 }}
+              style={{ flex: 1, minWidth: 0, marginBottom: 12 }}
               data={chatMessages}
               firstItemIndex={firstItemIndex}
               initialTopMostItemIndex={chatMessages.length - 1}
