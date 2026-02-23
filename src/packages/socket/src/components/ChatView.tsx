@@ -406,9 +406,9 @@ export const ChatView = memo(({
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
 
-  const handleStartReached = useCallback(() => {
-    console.log("[startReached] fired", { hasOlderMessages, isLoadingOlder, hasCallback: !!onLoadOlder });
-    if (hasOlderMessages && !isLoadingOlder && onLoadOlder) onLoadOlder();
+  const handleAtTopStateChange = useCallback((atTop: boolean) => {
+    console.log("[atTopStateChange]", { atTop, hasOlderMessages, isLoadingOlder, hasCallback: !!onLoadOlder });
+    if (atTop && hasOlderMessages && !isLoadingOlder && onLoadOlder) onLoadOlder();
   }, [hasOlderMessages, isLoadingOlder, onLoadOlder]);
 
   const followOutput = useCallback((isAtBottom: boolean) => {
@@ -548,7 +548,7 @@ export const ChatView = memo(({
               firstItemIndex={firstItemIndex}
               initialTopMostItemIndex={chatMessages.length - 1}
               followOutput={followOutput}
-              startReached={handleStartReached}
+              atTopStateChange={handleAtTopStateChange}
               overscan={400}
               increaseViewportBy={{ top: 200, bottom: 200 }}
               itemContent={itemContent}
