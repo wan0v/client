@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MdCheck, MdCloudDownload, MdImage } from "react-icons/md";
 
-import { copyImageToClipboard } from "./MediaContextMenu";
+import { copyImageToClipboard } from "../utils/mediaClipboard";
 
 type ZoomLevel = "fit" | "2x" | "full";
 

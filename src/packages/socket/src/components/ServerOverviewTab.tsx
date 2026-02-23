@@ -187,6 +187,7 @@ export function ServerOverviewTab({
     description: string;
     avatarMaxBytes: number | null;
     uploadMaxBytes: number | null;
+    profanityMode: ProfanityMode;
   }>) => {
     if (!host) return;
     if (!socket || !socket.connected) return;

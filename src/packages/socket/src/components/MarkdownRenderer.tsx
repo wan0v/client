@@ -1,16 +1,16 @@
 import { cloneElement, isValidElement, memo, useCallback, useMemo, useRef, useState } from "react";
+import { MdCheck, MdContentCopy } from "react-icons/md";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
-import { MdCheck, MdContentCopy } from "react-icons/md";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 import { useTheme } from "@/common";
 
-import { MediaContextMenu } from "./MediaContextMenu";
 import { type CustomEmojiEntry, preprocessCustomEmojis, remarkEmoji } from "../utils/remarkEmoji";
 import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";
+import { MediaContextMenu } from "./MediaContextMenu";
 import { BlurredWord } from "./ProfanityBlur";
 
 const PROFANITY_START = "\uE000";

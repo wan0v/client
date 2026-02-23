@@ -1,5 +1,5 @@
-import { memo, useCallback, useState } from "react";
 import { Tooltip } from "@radix-ui/themes";
+import { memo, useCallback, useState } from "react";
 
 import type { ProfanityMatchRange } from "./chatUtils";
 
