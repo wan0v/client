@@ -57,6 +57,7 @@ export function createRemarkMention(nicknames: string[]): Plugin<[], Root> {
 
     visit(tree, "text", (node: Text, index, parent) => {
       if (!parent || index == null) return;
+      if (parent.type === "link") return;
       if (!node.value.includes("@")) return;
 
       const replacements = buildReplacements(node.value, sorted);
