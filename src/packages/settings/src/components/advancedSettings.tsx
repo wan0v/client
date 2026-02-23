@@ -1,9 +1,10 @@
 import { Box, Flex, Heading, Separator, Switch, Text } from "@radix-ui/themes";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getAccessTokenStorageMode, migrateAccessTokensToMode } from "@/common";
 import { useSettings } from "@/settings";
 
+import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { LatencyPanel } from "./latencyPanel";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
@@ -17,6 +18,8 @@ export function AdvancedSettings() {
     setShowPeerLatency,
   } = useSettings();
 
+  const inElectron = isElectron();
+  const [closeToTray, setCloseToTray] = useState(true);
   const [persistTokens, setPersistTokens] = useState(true);
 
   useEffect(() => {
@@ -24,9 +27,31 @@ export function AdvancedSettings() {
     setPersistTokens(mode === "local");
   }, []);
 
+  useEffect(() => {
+    if (!inElectron) return;
+    getElectronAPI()?.getCloseToTray().then(setCloseToTray);
+  }, [inElectron]);
+
+  const handleCloseToTrayToggle = useCallback((enabled: boolean) => {
+    setCloseToTray(enabled);
+    getElectronAPI()?.setCloseToTray(enabled);
+  }, []);
+
   return (
     <SettingsContainer>
       <Heading size="4">Advanced</Heading>
+
+      {inElectron && (
+        <>
+          <ToggleSetting
+            title="Minimize to Tray on Close"
+            description="When enabled, closing the window minimizes to the system tray instead of quitting the app."
+            checked={closeToTray}
+            onCheckedChange={handleCloseToTrayToggle}
+          />
+          <Separator size="4" />
+        </>
+      )}
 
       {/* ── eSports Mode ── */}
       <ToggleSetting

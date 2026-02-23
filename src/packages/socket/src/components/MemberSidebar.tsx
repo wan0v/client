@@ -203,7 +203,7 @@ export const MemberSidebar = ({
                 <IconButton
                   size="1"
                   variant={pinned ? "solid" : "soft"}
-                  color={pinned ? "amber" : "gray"}
+                  color="gray"
                   onClick={onTogglePinned}
                   aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
                 >

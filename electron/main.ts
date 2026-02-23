@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell } from "electron";
+import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, nativeImage, session, shell, Tray } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
@@ -14,6 +14,9 @@ const PROTOCOL = "gryt";
 let pendingDeepLinkUrl: string | null = null;
 let splashWindow: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
+let closeToTray = true;
 let pttDown = false;
 
 // ── Deep link protocol ───────────────────────────────────────────────────
@@ -59,6 +62,7 @@ function writeConfig(patch: Record<string, unknown>) {
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
+closeToTray = (readConfig().closeToTray ?? true) as boolean;
 
 function sendToSplash(status: string, info?: Record<string, unknown>) {
   splashWindow?.webContents.send("update-status", { status, ...info });
@@ -260,6 +264,13 @@ function createMainWindow(): void {
     return { action: "deny" };
   });
 
+  mainWindow.on("close", (event) => {
+    if (!isQuitting && closeToTray) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -374,6 +385,53 @@ function initUiohook(): void {
   uIOhook.start();
 }
 
+// ── System tray ─────────────────────────────────────────────────────────
+
+function buildTrayContextMenu(): Menu {
+  const isVisible = mainWindow?.isVisible() ?? false;
+  return Menu.buildFromTemplate([
+    {
+      label: isVisible ? "Hide" : "Show",
+      click: () => {
+        if (mainWindow?.isVisible()) {
+          mainWindow.hide();
+        } else {
+          mainWindow?.show();
+          mainWindow?.focus();
+        }
+      },
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+}
+
+function createTray(): void {
+  const icon = nativeImage.createFromPath(appIcon);
+  tray = new Tray(icon.resize({ width: 24, height: 24 }));
+  tray.setToolTip("Gryt.chat");
+
+  tray.on("click", () => {
+    if (mainWindow?.isVisible()) {
+      mainWindow.focus();
+    } else {
+      mainWindow?.show();
+      mainWindow?.focus();
+    }
+  });
+
+  tray.on("right-click", () => {
+    tray?.setContextMenu(buildTrayContextMenu());
+    tray?.popUpContextMenu();
+  });
+}
+
 // ── App lifecycle ───────────────────────────────────────────────────────
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
@@ -403,8 +461,15 @@ if (!gotSingleInstanceLock) {
       autoUpdater.allowPrerelease = enabled;
     });
 
+    ipcMain.handle("get-close-to-tray", () => closeToTray);
+    ipcMain.on("set-close-to-tray", (_event, enabled: boolean) => {
+      closeToTray = enabled;
+      writeConfig({ closeToTray: enabled });
+    });
+
     initUiohook();
     createMainWindow();
+    createTray();
 
     try {
       createSplashWindow();
@@ -482,6 +547,10 @@ if (!gotSingleInstanceLock) {
         mainWindow?.show();
       }
     });
+  });
+
+  app.on("before-quit", () => {
+    isQuitting = true;
   });
 
   app.on("window-all-closed", () => {

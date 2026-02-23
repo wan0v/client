@@ -39,6 +39,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-beta-channel", enabled);
   },
 
+  getCloseToTray(): Promise<boolean> {
+    return ipcRenderer.invoke("get-close-to-tray");
+  },
+
+  setCloseToTray(enabled: boolean) {
+    ipcRenderer.send("set-close-to-tray", enabled);
+  },
+
   onUpdateStatus(callback: (status: { status: string; version?: string; percent?: number; message?: string }) => void) {
     const handler = (_event: Electron.IpcRendererEvent, data: { status: string; version?: string; percent?: number; message?: string }) => callback(data);
     ipcRenderer.on("update-status", handler);

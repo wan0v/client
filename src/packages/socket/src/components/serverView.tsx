@@ -100,7 +100,7 @@ export const ServerView = () => {
   const [hoverRightSidebar, setHoverRightSidebar] = useState(false);
 
   const SIDEBAR_WIDTH_PX = 240;
-  const SIDEBAR_GUTTER_PX = 4;
+  const SIDEBAR_HOVER_PX = 16;
 
   const leftSidebarContentRef = useRef<HTMLDivElement | null>(null);
   const rightSidebarContentRef = useRef<HTMLDivElement | null>(null);
@@ -126,7 +126,6 @@ export const ServerView = () => {
   }, [rightSidebarOpen]);
 
   const VOICE_MIN_WIDTH = 200;
-  const VOICE_MAX_WIDTH = 800;
 
   // (rightSidebarAllowed is referenced later in render)
 
@@ -151,7 +150,7 @@ export const ServerView = () => {
         }
       } else {
         dragMinimizedRef.current = false;
-        setVoiceWidth(`${Math.min(VOICE_MAX_WIDTH, rawWidth)}px`);
+        setVoiceWidth(`${rawWidth}px`);
       }
     };
 
@@ -163,7 +162,7 @@ export const ServerView = () => {
         setShowVoiceView(false);
         setVoiceWidth(`${userVoiceWidth}px`);
       } else {
-        const clamped = Math.min(VOICE_MAX_WIDTH, Math.max(VOICE_MIN_WIDTH, rawWidth));
+        const clamped = Math.max(VOICE_MIN_WIDTH, rawWidth);
         setVoiceWidth(`${clamped}px`);
         setUserVoiceWidth(clamped);
       }
@@ -515,117 +514,107 @@ export const ServerView = () => {
               </Flex>
             </Box>
           ) : (
-            <motion.div
-              onMouseEnter={() => { if (!isDraggingResize) setHoverLeftSidebar(true); }}
+            <div
               onMouseLeave={() => setHoverLeftSidebar(false)}
-              animate={{ width: leftSidebarOpen ? SIDEBAR_WIDTH_PX : SIDEBAR_GUTTER_PX }}
-              initial={false}
-              transition={{ type: "spring", stiffness: 380, damping: 34 }}
-              style={{
-                flexShrink: 0,
-                overflow: "hidden",
-                display: "flex",
-                justifyContent: "flex-start",
-                position: "relative",
-                ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
-                  opacity: 0.5,
-                  pointerEvents: 'none' as const,
-                }),
-                transition: 'opacity 0.3s ease',
-                marginRight: leftSidebarOpen ? 0 : "calc(-1 * var(--space-4))",
-              }}
+              style={{ flexShrink: 0, display: "flex" }}
             >
-              <div
-                ref={leftSidebarContentRef}
-                aria-hidden={!leftSidebarOpen}
+              <motion.div
+                animate={{ width: leftSidebarOpen ? SIDEBAR_WIDTH_PX : 0 }}
+                initial={false}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }}
                 style={{
-                  width: SIDEBAR_WIDTH_PX,
-                  height: "100%",
+                  overflow: "hidden",
                   display: "flex",
-                  pointerEvents: leftSidebarOpen ? "auto" : "none",
+                  justifyContent: "flex-start",
+                  ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
+                    opacity: 0.5,
+                    pointerEvents: 'none' as const,
+                  }),
+                  transition: 'opacity 0.3s ease',
                 }}
               >
-                <Box
-                  width="240px"
+                <div
+                  ref={leftSidebarContentRef}
+                  aria-hidden={!leftSidebarOpen}
                   style={{
-                    position: "relative",
-                    width: "100%",
+                    width: SIDEBAR_WIDTH_PX,
                     height: "100%",
+                    display: "flex",
+                    pointerEvents: leftSidebarOpen ? "auto" : "none",
                   }}
                 >
-                  <Flex
-                    direction="column"
-                    height="100%"
-                    width="100%"
-                    align="center"
-                    gap="4"
+                  <Box
+                    width="240px"
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      height: "100%",
+                    }}
                   >
-                    <ServerHeader
-                      serverName={serverDetailsList[currentlyViewingServer.host]?.server_info?.name || currentlyViewingServer?.name}
-                      role={serverDetailsList[currentlyViewingServer.host]?.server_info?.role}
-                      pinned={pinChannelsSidebar}
-                      onTogglePinned={() => setPinChannelsSidebar(!pinChannelsSidebar)}
-                      onOpenSettings={() => {
-                        window.dispatchEvent(new CustomEvent("server_settings_open", {
-                          detail: { host: currentlyViewingServer.host }
-                        }));
-                      }}
-                      onOpenReports={() => setReportsOpen(true)}
-                      pendingReportCount={pendingReportCount}
-                      onLeave={() =>
-                        currentlyViewingServer &&
-                        setShowRemoveServer(currentlyViewingServer.host)
-                      }
-                    />
-
-                    <Box style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
-                      <ChannelList
-                        channels={serverDetailsList[currentlyViewingServer.host]?.channels || []}
-                        items={effectiveSidebarItems}
-                        serverHost={currentlyViewingServer.host}
-                        clients={clients[currentlyViewingServer.host] || {}}
-                        members={memberLists[currentlyViewingServer.host] || []}
-                        currentChannelId={currentChannelId}
-                        currentServerConnected={currentServerConnected}
-                        showVoiceView={showVoiceView}
-                        isConnecting={isConnecting}
-                        currentConnectionId={currentConnection?.id}
-                        selectedChannelId={selectedChannelId}
-                        onChannelClick={handleChannelClick}
-                        clientsSpeaking={clientsSpeaking}
-                        canManage={canManage}
-                        onEditItem={handleEditItem}
-                        onDeleteItem={requestDeleteSidebarItem}
-                        onMoveItem={handleMoveItem}
-                        onReorder={reorderSidebar}
-                        onAddItem={handleAddItem}
-                        onDisconnectUser={canManage ? requestDisconnectUser : undefined}
-                        currentUserRole={currentUserRole}
-                        adminActions={currentAdminActions}
+                    <Flex
+                      direction="column"
+                      height="100%"
+                      width="100%"
+                      align="center"
+                      gap="4"
+                    >
+                      <ServerHeader
+                        serverName={serverDetailsList[currentlyViewingServer.host]?.server_info?.name || currentlyViewingServer?.name}
+                        role={serverDetailsList[currentlyViewingServer.host]?.server_info?.role}
+                        pinned={pinChannelsSidebar}
+                        onTogglePinned={() => setPinChannelsSidebar(!pinChannelsSidebar)}
+                        onOpenSettings={() => {
+                          window.dispatchEvent(new CustomEvent("server_settings_open", {
+                            detail: { host: currentlyViewingServer.host }
+                          }));
+                        }}
+                        onOpenReports={() => setReportsOpen(true)}
+                        pendingReportCount={pendingReportCount}
+                        onLeave={() =>
+                          currentlyViewingServer &&
+                          setShowRemoveServer(currentlyViewingServer.host)
+                        }
                       />
-                    </Box>
-                  </Flex>
-                </Box>
-              </div>
 
-              {!leftSidebarOpen && (
-                <div
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: 0,
-                    transform: "translateY(-50%)",
-                    width: SIDEBAR_GUTTER_PX,
-                    height: 60,
-                    borderRadius: 99,
-                    background: "var(--gray-7)",
-                    opacity: 0.6,
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
-            </motion.div>
+                      <Box style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
+                        <ChannelList
+                          channels={serverDetailsList[currentlyViewingServer.host]?.channels || []}
+                          items={effectiveSidebarItems}
+                          serverHost={currentlyViewingServer.host}
+                          clients={clients[currentlyViewingServer.host] || {}}
+                          members={memberLists[currentlyViewingServer.host] || []}
+                          currentChannelId={currentChannelId}
+                          currentServerConnected={currentServerConnected}
+                          showVoiceView={showVoiceView}
+                          isConnecting={isConnecting}
+                          currentConnectionId={currentConnection?.id}
+                          selectedChannelId={selectedChannelId}
+                          onChannelClick={handleChannelClick}
+                          clientsSpeaking={clientsSpeaking}
+                          canManage={canManage}
+                          onEditItem={handleEditItem}
+                          onDeleteItem={requestDeleteSidebarItem}
+                          onMoveItem={handleMoveItem}
+                          onReorder={reorderSidebar}
+                          onAddItem={handleAddItem}
+                          onDisconnectUser={canManage ? requestDisconnectUser : undefined}
+                          currentUserRole={currentUserRole}
+                          adminActions={currentAdminActions}
+                        />
+                      </Box>
+                    </Flex>
+                  </Box>
+                </div>
+              </motion.div>
+
+              <motion.div
+                onMouseEnter={() => { if (!isDraggingResize) setHoverLeftSidebar(true); }}
+                animate={{ width: leftSidebarOpen ? 0 : SIDEBAR_HOVER_PX }}
+                initial={false}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                style={{ flexShrink: 0 }}
+              />
+            </div>
           )}
         {!isMobile && (
           <Flex flexGrow="1">
@@ -717,76 +706,66 @@ export const ServerView = () => {
         )}
 
           {rightSidebarAllowed && (
-            <motion.div
-              onMouseEnter={() => { if (!isDraggingResize) setHoverRightSidebar(true); }}
+            <div
               onMouseLeave={() => setHoverRightSidebar(false)}
-              animate={{ width: rightSidebarOpen ? SIDEBAR_WIDTH_PX : SIDEBAR_GUTTER_PX }}
-              initial={false}
-              transition={{ type: "spring", stiffness: 380, damping: 34 }}
-              style={{
-                flexShrink: 0,
-                overflow: "hidden",
-                display: "flex",
-                justifyContent: "flex-end",
-                position: "relative",
-                ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
-                  opacity: 0.5,
-                  pointerEvents: 'none' as const,
-                }),
-                transition: 'opacity 0.3s ease',
-                marginLeft: rightSidebarOpen ? 0 : "calc(-1 * var(--space-4))",
-              }}
+              style={{ flexShrink: 0, display: "flex" }}
             >
-              <div
+              <motion.div
+                onMouseEnter={() => { if (!isDraggingResize) setHoverRightSidebar(true); }}
+                animate={{ width: rightSidebarOpen ? 0 : SIDEBAR_HOVER_PX }}
+                initial={false}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                style={{ flexShrink: 0 }}
+              />
+
+              <motion.div
+                animate={{ width: rightSidebarOpen ? SIDEBAR_WIDTH_PX : 0 }}
+                initial={false}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }}
                 style={{
-                  width: SIDEBAR_WIDTH_PX,
-                  height: "100%",
+                  overflow: "hidden",
                   display: "flex",
                   justifyContent: "flex-end",
+                  ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
+                    opacity: 0.5,
+                    pointerEvents: 'none' as const,
+                  }),
+                  transition: 'opacity 0.3s ease',
                 }}
               >
                 <div
-                  ref={rightSidebarContentRef}
-                  aria-hidden={!rightSidebarOpen}
                   style={{
+                    width: SIDEBAR_WIDTH_PX,
                     height: "100%",
                     display: "flex",
-                    pointerEvents: rightSidebarOpen ? "auto" : "none",
+                    justifyContent: "flex-end",
                   }}
                 >
-                  <MemberSidebar
-                    members={memberLists[currentlyViewingServer.host] || []}
-                    currentConnectionId={currentConnection?.id}
-                    currentServerUserId={currentServerUserId}
-                    currentUserRole={currentUserRole}
-                    clientsSpeaking={clientsSpeaking}
-                    currentServerConnected={currentServerConnected}
-                    serverHost={currentlyViewingServer.host}
-                    adminActions={currentAdminActions}
-                    pinned={pinMembersSidebar}
-                    onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
-                  />
+                  <div
+                    ref={rightSidebarContentRef}
+                    aria-hidden={!rightSidebarOpen}
+                    style={{
+                      height: "100%",
+                      display: "flex",
+                      pointerEvents: rightSidebarOpen ? "auto" : "none",
+                    }}
+                  >
+                    <MemberSidebar
+                      members={memberLists[currentlyViewingServer.host] || []}
+                      currentConnectionId={currentConnection?.id}
+                      currentServerUserId={currentServerUserId}
+                      currentUserRole={currentUserRole}
+                      clientsSpeaking={clientsSpeaking}
+                      currentServerConnected={currentServerConnected}
+                      serverHost={currentlyViewingServer.host}
+                      adminActions={currentAdminActions}
+                      pinned={pinMembersSidebar}
+                      onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {!rightSidebarOpen && (
-                <div
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    top: "50%",
-                    right: 0,
-                    transform: "translateY(-50%)",
-                    width: SIDEBAR_GUTTER_PX,
-                    height: 60,
-                    borderRadius: 99,
-                    background: "var(--gray-7)",
-                    opacity: 0.6,
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
-            </motion.div>
+              </motion.div>
+            </div>
           )}
         </Flex>
       </Flex>

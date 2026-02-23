@@ -23,6 +23,8 @@ export interface ElectronAPI {
   installUpdate(): void;
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
+  getCloseToTray(): Promise<boolean>;
+  setCloseToTray(enabled: boolean): void;
   setBadgeCount(count: number): void;
   toggleAlwaysOnTop(pinned: boolean): void;
   getDesktopSources(): Promise<DesktopSource[]>;
