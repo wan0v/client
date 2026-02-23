@@ -39,7 +39,12 @@ export function ServerOverviewTab({
   initialSettings,
 }: {
   host: string;
-  socket?: { connected: boolean; emit: (event: string, data?: unknown) => void; on: (event: string, handler: (...args: unknown[]) => void) => void; off: (event: string, handler: (...args: unknown[]) => void) => void };
+  socket?: {
+    connected: boolean;
+    emit: (event: string, data?: unknown) => void;
+    on: (event: string, handler: (payload: unknown) => void) => void;
+    off: (event: string, handler: (payload: unknown) => void) => void;
+  };
   accessToken: string | null;
   initialSettings?: ServerOverviewInitialSettings;
 }) {
@@ -61,7 +66,7 @@ export function ServerOverviewTab({
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [autosaving, setAutosaving] = useState(false);
-  const autosaveTimerRef = useRef<number | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const pendingSaveRef = useRef(false);
   const lastSettingsRef = useRef<{
     displayName: string;
@@ -83,8 +88,18 @@ export function ServerOverviewTab({
     if (typeof initialSettings.displayName === "string") setDisplayName(initialSettings.displayName);
     if (typeof initialSettings.description === "string") setDescription(initialSettings.description);
     if (typeof initialSettings.hasPassword === "boolean") setHasPassword(initialSettings.hasPassword);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [host]);
+  }, [host, initialSettings]);
+
+  const isServerSettingsPayload = (x: unknown): x is ServerSettingsPayload => {
+    if (!x || typeof x !== "object") return false;
+    const p = x as Partial<ServerSettingsPayload>;
+    return typeof p.serverId === "string" &&
+      typeof p.isOwner === "boolean" &&
+      typeof p.isConfigured === "boolean" &&
+      typeof p.displayName === "string" &&
+      typeof p.description === "string" &&
+      typeof p.hasPassword === "boolean";
+  };
 
   // Fetch current settings when opened/host changes.
   useEffect(() => {
@@ -92,7 +107,8 @@ export function ServerOverviewTab({
     if (!socket) return;
     if (!socket.connected) return;
 
-    const onSettings = (payload: ServerSettingsPayload) => {
+    const onSettings = (payload: unknown) => {
+      if (!isServerSettingsPayload(payload)) return;
       const wasSaving = pendingSaveRef.current;
 
       setIsOwner(!!payload.isOwner);
@@ -126,13 +142,11 @@ export function ServerOverviewTab({
       };
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:settings", onSettings as any);
+    socket.on("server:settings", onSettings);
     socket.emit("server:settings:get");
 
     return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:settings", onSettings as any);
+      socket.off("server:settings", onSettings);
     };
   }, [host, socket]);
 
@@ -195,7 +209,7 @@ export function ServerOverviewTab({
     autosaveTimerRef.current = window.setTimeout(() => {
       autosaveTimerRef.current = null;
       emitSettingsUpdate(patch).catch(() => undefined);
-    }, 800) as unknown as number;
+    }, 800);
   };
 
   const submit = async () => {

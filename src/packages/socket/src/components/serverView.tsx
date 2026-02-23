@@ -65,13 +65,13 @@ export const ServerView = () => {
 
   const saveSidebarRef = useRef(saveSelectedSidebarItem);
   saveSidebarRef.current = saveSelectedSidebarItem;
-  const saveSidebarTimerRef = useRef<number | null>(null);
+  const saveSidebarTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const debouncedSaveSidebar = useCallback(() => {
     if (saveSidebarTimerRef.current) window.clearTimeout(saveSidebarTimerRef.current);
     saveSidebarTimerRef.current = window.setTimeout(() => {
       saveSidebarTimerRef.current = null;
       saveSidebarRef.current();
-    }, 600) as unknown as number;
+    }, 600);
   }, []);
   const flushSaveSidebar = useCallback(() => {
     if (saveSidebarTimerRef.current) window.clearTimeout(saveSidebarTimerRef.current);
@@ -538,7 +538,6 @@ export const ServerView = () => {
               <div
                 ref={leftSidebarContentRef}
                 aria-hidden={!leftSidebarOpen}
-                inert={!leftSidebarOpen}
                 style={{
                   width: SIDEBAR_WIDTH_PX,
                   height: "100%",
@@ -749,7 +748,6 @@ export const ServerView = () => {
                 <div
                   ref={rightSidebarContentRef}
                   aria-hidden={!rightSidebarOpen}
-                  inert={!rightSidebarOpen}
                   style={{
                     height: "100%",
                     display: "flex",

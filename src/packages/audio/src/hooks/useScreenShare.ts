@@ -53,7 +53,16 @@ function useScreenShareHook(): ScreenShareInterface {
       let stream: MediaStream;
 
       if (isElectron() && sourceId) {
-        const mandatory: Record<string, unknown> = {
+        type ChromeDesktopMandatory = {
+          chromeMediaSource: "desktop";
+          chromeMediaSourceId: string;
+          maxFrameRate?: number;
+          maxWidth?: number;
+          maxHeight?: number;
+        };
+        type ChromeDesktopConstraints = MediaTrackConstraints & { mandatory: ChromeDesktopMandatory };
+
+        const mandatory: ChromeDesktopMandatory = {
           chromeMediaSource: "desktop",
           chromeMediaSourceId: sourceId,
           maxFrameRate: q.frameRate,
@@ -64,9 +73,11 @@ function useScreenShareHook(): ScreenShareInterface {
         }
 
         const constraints: MediaStreamConstraints = {
-          video: { mandatory } as unknown as MediaTrackConstraints,
+          video: { mandatory } satisfies ChromeDesktopConstraints,
           audio: withAudio
-            ? { mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId } } as unknown as MediaTrackConstraints
+            ? ({
+              mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId }
+            } satisfies ChromeDesktopConstraints)
             : false,
         };
 
