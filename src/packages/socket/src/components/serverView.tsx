@@ -99,15 +99,42 @@ export const ServerView = () => {
 
   const [hoverLeftSidebar, setHoverLeftSidebar] = useState(false);
   const [hoverRightSidebar, setHoverRightSidebar] = useState(false);
+  const leftCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rightCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const SIDEBAR_WIDTH_PX = 240;
-  const SIDEBAR_HOVER_PX = 16;
+  const SIDEBAR_HOVER_PX = 8;
+  const SIDEBAR_CLOSE_DELAY = 1000;
+
+  const openLeftSidebar = useCallback(() => {
+    if (leftCloseTimer.current) { clearTimeout(leftCloseTimer.current); leftCloseTimer.current = null; }
+    if (!isDraggingResize) setHoverLeftSidebar(true);
+  }, [isDraggingResize]);
+
+  const closeLeftSidebar = useCallback(() => {
+    leftCloseTimer.current = setTimeout(() => setHoverLeftSidebar(false), SIDEBAR_CLOSE_DELAY);
+  }, []);
+
+  const openRightSidebar = useCallback(() => {
+    if (rightCloseTimer.current) { clearTimeout(rightCloseTimer.current); rightCloseTimer.current = null; }
+    if (!isDraggingResize) setHoverRightSidebar(true);
+  }, [isDraggingResize]);
+
+  const closeRightSidebar = useCallback(() => {
+    rightCloseTimer.current = setTimeout(() => setHoverRightSidebar(false), SIDEBAR_CLOSE_DELAY);
+  }, []);
 
   const leftSidebarContentRef = useRef<HTMLDivElement | null>(null);
   const rightSidebarContentRef = useRef<HTMLDivElement | null>(null);
 
   const leftSidebarOpen = pinChannelsSidebar || hoverLeftSidebar;
   const rightSidebarOpen = pinMembersSidebar || hoverRightSidebar;
+
+  useEffect(() => {
+    const lt = leftCloseTimer.current;
+    const rt = rightCloseTimer.current;
+    return () => { if (lt) clearTimeout(lt); if (rt) clearTimeout(rt); };
+  }, []);
 
   useEffect(() => {
     if (leftSidebarOpen) return;
@@ -513,7 +540,8 @@ export const ServerView = () => {
             gap="4"
           >
             <div
-              onMouseLeave={() => setHoverLeftSidebar(false)}
+              onMouseLeave={closeLeftSidebar}
+              onMouseEnter={openLeftSidebar}
               style={{ flexShrink: 0, display: "flex" }}
             >
               <motion.div
@@ -606,7 +634,6 @@ export const ServerView = () => {
               </motion.div>
 
               <motion.div
-                onMouseEnter={() => { if (!isDraggingResize) setHoverLeftSidebar(true); }}
                 animate={{ width: leftSidebarOpen ? 0 : SIDEBAR_HOVER_PX }}
                 initial={false}
                 transition={{ type: "spring", stiffness: 380, damping: 34 }}
@@ -620,10 +647,11 @@ export const ServerView = () => {
               >
                 <div
                   style={{
-                    width: "100%",
-                    height: 128,
+                    width: 4,
+                    height: "33%",
                     borderRadius: 9999,
                     background: "var(--gray-a4)",
+                    opacity: 0.5,
                     transition: "background 0.15s",
                   }}
                 />
@@ -718,11 +746,11 @@ export const ServerView = () => {
             </Flex>
 
             <div
-              onMouseLeave={() => setHoverRightSidebar(false)}
+              onMouseLeave={closeRightSidebar}
+              onMouseEnter={openRightSidebar}
               style={{ flexShrink: 0, display: "flex" }}
             >
               <motion.div
-                onMouseEnter={() => { if (!isDraggingResize) setHoverRightSidebar(true); }}
                 animate={{ width: rightSidebarOpen ? 0 : SIDEBAR_HOVER_PX }}
                 initial={false}
                 transition={{ type: "spring", stiffness: 380, damping: 34 }}
@@ -736,10 +764,11 @@ export const ServerView = () => {
               >
                 <div
                   style={{
-                    width: "100%",
-                    height: 128,
+                    width: 4,
+                    height: "33%",
                     borderRadius: 9999,
                     background: "var(--gray-a4)",
+                    opacity: 0.5,
                     transition: "background 0.15s",
                   }}
                 />

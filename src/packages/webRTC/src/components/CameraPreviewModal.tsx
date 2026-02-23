@@ -208,9 +208,9 @@ export function CameraPreviewModal({
                   {devices.length === 0 ? (
                     <Select.Item value="__none__" disabled>No cameras found</Select.Item>
                   ) : (
-                    devices.map((d) => (
-                      <Select.Item key={d.deviceId} value={d.deviceId}>
-                        {d.label || `Camera ${devices.indexOf(d) + 1}`}
+                    devices.map((d, i) => (
+                      <Select.Item key={d.deviceId || i} value={d.deviceId || `device-${i}`}>
+                        {d.label || `Camera ${i + 1}`}
                       </Select.Item>
                     ))
                   )}

@@ -184,7 +184,7 @@ export function AudioSettings() {
           <Select.Trigger placeholder="Select microphone device" />
           <Select.Content>
             {devices.map((device) => (
-              <Select.Item key={device.deviceId} value={device.deviceId}>
+              <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
                 {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
               </Select.Item>
             ))}

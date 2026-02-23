@@ -1,6 +1,6 @@
-import { Avatar, Flex, Text } from "@radix-ui/themes";
+import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { motion } from "motion/react";
-import { MdMicOff, MdVolumeOff } from "react-icons/md";
+import { MdMicOff, MdScreenShare, MdVideocam, MdVolumeOff } from "react-icons/md";
 
 import { SkeletonBase } from "./skeletons";
 import { UserContextMenu } from "./UserContextMenu";
@@ -17,6 +17,8 @@ export function ConnectedUser({
   serverUserId,
   isSelf,
   isConnectingToVoice = false,
+  screenShareEnabled,
+  cameraEnabled,
   canDisconnect,
   onDisconnectFromVoice,
   role,
@@ -39,6 +41,8 @@ export function ConnectedUser({
   isSelf?: boolean;
   isConnectedToVoice?: boolean;
   isConnectingToVoice?: boolean;
+  screenShareEnabled?: boolean;
+  cameraEnabled?: boolean;
   canDisconnect?: boolean;
   onDisconnectFromVoice?: () => void;
   role?: Role;
@@ -76,36 +80,50 @@ export function ConnectedUser({
       transition={{ duration: 0.25 }}
       style={{ width: "100%", overflow: "hidden" }}
     >
-      <Flex 
-        gap="2" 
-        align="center" 
-        px="3" 
-        py="2" 
-        width="100%" 
-        justify="between"
+      <Flex
+        gap="2"
+        align="center"
+        px="3"
+        py="2"
+        width="100%"
         style={{
           opacity: 1,
           transition: "opacity 0.3s ease",
         }}
       >
-        <Flex gap="2" align="center">
+        <Flex gap="2" align="center" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
           <Avatar
             radius="full"
             size="1"
             fallback={nickname[0]}
             src={avatarSrc}
             style={{
+              flexShrink: 0,
               outline: "2px solid",
               outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
               transition: "outline-color 0.1s ease",
             }}
           />
-          <Text size="2">{nickname}</Text>
+          <Text size="2" truncate style={{ whiteSpace: "nowrap" }}>{nickname}</Text>
         </Flex>
 
-        <Flex gap="1" align="center">
+        <Flex gap="1" align="center" style={{ flexShrink: 0 }}>
           {isConnectingToVoice && (
             <SkeletonBase width="12px" height="12px" borderRadius="50%" />
+          )}
+          {screenShareEnabled && (
+            <Tooltip content="Streaming">
+              <Flex align="center">
+                <MdScreenShare size={14} color="var(--accent-9)" />
+              </Flex>
+            </Tooltip>
+          )}
+          {cameraEnabled && (
+            <Tooltip content="Camera on">
+              <Flex align="center">
+                <MdVideocam size={14} color="var(--accent-9)" />
+              </Flex>
+            </Tooltip>
           )}
           {isDeafened ? (
             <MdVolumeOff size={14} color="var(--red-8)" />

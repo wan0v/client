@@ -1,9 +1,11 @@
-import { Badge, Box, Button, Flex, Heading, Progress, Switch, Text } from "@radix-ui/themes";
+import { Badge, Box, Button, Card, Flex, Heading, Progress, Separator, Switch, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
-import { MdCancel, MdCheckCircle, MdDownload, MdRefresh } from "react-icons/md";
+import { MdCancel, MdCheckCircle, MdDesktopWindows, MdDownload, MdOpenInNew, MdRefresh } from "react-icons/md";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";
+
+const RELEASES_URL = "https://github.com/Gryt-chat/gryt/releases/latest";
 
 export function UpdateSettings() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
@@ -41,10 +43,39 @@ export function UpdateSettings() {
     return (
       <SettingsContainer>
         <Heading size="4">Updates</Heading>
+
+        <Card size="2">
+          <Flex direction="column" gap="3">
+            <Flex align="center" gap="2">
+              <MdDesktopWindows size={18} />
+              <Text size="3" weight="medium">Get the desktop app</Text>
+            </Flex>
+            <Text size="2" color="gray">
+              The desktop app includes auto-updates, system tray integration,
+              push-to-talk hotkeys, and native notifications.
+            </Text>
+            <Separator size="4" />
+            <Text size="2" color="gray">
+              Available for Windows, macOS, and Linux.
+            </Text>
+            <Button variant="solid" size="3" asChild>
+              <a
+                href={RELEASES_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MdDownload size={18} />
+                Download Gryt Desktop
+                <MdOpenInNew size={14} />
+              </a>
+            </Button>
+          </Flex>
+        </Card>
+
         <Box>
           <Text size="2" color="gray">
-            Auto-updates are only available in the desktop app.
-            Download it from the GitHub releases page.
+            You&apos;re using the web version. The web client is always up to date
+            and doesn&apos;t require manual updates.
           </Text>
         </Box>
       </SettingsContainer>

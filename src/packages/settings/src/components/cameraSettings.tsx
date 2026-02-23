@@ -99,12 +99,12 @@ export function CameraSettings() {
           <Select.Trigger placeholder="Select a camera" />
           <Select.Content>
             {devices.map((device) => (
-              <Select.Item key={device.deviceId} value={device.deviceId}>
+              <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
                 {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
               </Select.Item>
             ))}
             {devices.length === 0 && (
-              <Select.Item value="" disabled>
+              <Select.Item value="__none__" disabled>
                 No cameras found
               </Select.Item>
             )}

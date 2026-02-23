@@ -11,6 +11,9 @@ files:
   - dist/**/*
   - dist-electron/**/*
   - electron/splash.html
+extraResources:
+  - from: build/icon.png
+    to: icon.png
 
 publish:
   provider: github

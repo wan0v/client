@@ -208,11 +208,14 @@ export const ChannelList = ({
                           isSelf={id === currentConnectionId}
                           isConnectedToVoice={clients[id].isConnectedToVoice ?? true}
                           isConnectingToVoice={
-                            id === currentConnectionId &&
-                            isConnecting &&
-                            serverHost === currentServerConnected &&
-                            channel.id === currentChannelId
+                            (id === currentConnectionId &&
+                              isConnecting &&
+                              serverHost === currentServerConnected &&
+                              channel.id === currentChannelId) ||
+                            (id !== currentConnectionId && !clients[id].isConnectedToVoice)
                           }
+                          screenShareEnabled={clients[id].screenShareEnabled}
+                          cameraEnabled={clients[id].cameraEnabled}
                           canDisconnect={!!onDisconnectUser}
                           onDisconnectFromVoice={onDisconnectUser && clients[id].serverUserId ? () => onDisconnectUser(clients[id].serverUserId!) : undefined}
                           role={currentUserRole}

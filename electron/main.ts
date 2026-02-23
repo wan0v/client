@@ -8,7 +8,9 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const appIcon = join(__dirname, "../build/icon.png");
+const appIcon = app.isPackaged
+  ? join(process.resourcesPath, "icon.png")
+  : join(__dirname, "../build/icon.png");
 
 const PROTOCOL = "gryt";
 let pendingDeepLinkUrl: string | null = null;
@@ -388,10 +390,9 @@ function initUiohook(): void {
 // ── System tray ─────────────────────────────────────────────────────────
 
 function buildTrayContextMenu(): Menu {
-  const isVisible = mainWindow?.isVisible() ?? false;
   return Menu.buildFromTemplate([
     {
-      label: isVisible ? "Hide" : "Show",
+      label: "Show/Hide",
       click: () => {
         if (mainWindow?.isVisible()) {
           mainWindow.hide();
@@ -443,6 +444,7 @@ if (!gotSingleInstanceLock) {
     if (deepLink) {
       handleDeepLink(deepLink);
     } else if (mainWindow) {
+      if (!mainWindow.isVisible()) mainWindow.show();
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
@@ -542,7 +544,10 @@ if (!gotSingleInstanceLock) {
     });
 
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
+      if (mainWindow) {
+        if (!mainWindow.isVisible()) mainWindow.show();
+        mainWindow.focus();
+      } else {
         createMainWindow();
         mainWindow?.show();
       }
