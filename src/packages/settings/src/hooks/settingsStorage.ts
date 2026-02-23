@@ -191,9 +191,9 @@ export const settingsInit: Settings = {
   showVoiceView: true,
   setShowVoiceView: () => {},
 
-  pinChannelsSidebar: localStorage.getItem("pinChannelsSidebar") === "true",
+  pinChannelsSidebar: localStorage.getItem("pinChannelsSidebar") !== "false",
   setPinChannelsSidebar: () => {},
-  pinMembersSidebar: localStorage.getItem("pinMembersSidebar") === "true",
+  pinMembersSidebar: localStorage.getItem("pinMembersSidebar") !== "false",
   setPinMembersSidebar: () => {},
 
   connectSoundEnabled: localStorage.getItem("connectSoundEnabled") !== "false",

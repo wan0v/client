@@ -139,10 +139,10 @@ function useSettingsHook() {
   const [showVoiceView, setShowVoiceView] = useState(true);
 
   const [pinChannelsSidebar, setPinChannelsSidebarState] = useState(
-    localStorage.getItem("pinChannelsSidebar") === "true"
+    localStorage.getItem("pinChannelsSidebar") !== "false"
   );
   const [pinMembersSidebar, setPinMembersSidebarState] = useState(
-    localStorage.getItem("pinMembersSidebar") === "true"
+    localStorage.getItem("pinMembersSidebar") !== "false"
   );
 
   const [isAFK, setIsAFK] = useState(false);
