@@ -17,6 +17,7 @@ import {
   getCustomEmojiUrl,
   setCustomEmojis,
 } from "../utils/emojiData";
+import { BttvImport } from "./BttvImport";
 
 const EMOJI_NAME_RE = /^[a-z0-9_]{2,32}$/;
 const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|svg\+xml)$/i;
@@ -621,6 +622,14 @@ export function ServerEmojisTab({
           </Flex>
         )}
       </Flex>
+
+      {/* BetterTTV import */}
+      <BttvImport
+        host={host}
+        accessToken={effectiveAccessToken}
+        existingNames={existingNames}
+        onImportComplete={refresh}
+      />
 
       {/* Emoji list */}
       <Flex direction="column" gap="2">

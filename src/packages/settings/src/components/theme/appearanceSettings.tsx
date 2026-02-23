@@ -17,6 +17,11 @@ export function AppearanceSettings() {
     setRadius,
     emojiSize,
     setEmojiSize,
+    chatFontSize,
+    setChatFontSize,
+    uiScale,
+    setUiScale,
+    resetZoom,
   } = useTheme();
 
   const appearanceOptions = useMemo(() => [
@@ -84,6 +89,49 @@ export function AppearanceSettings() {
             ))}
           </Select.Content>
         </Select.Root>
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Flex justify="between" align="center">
+          <Text weight="medium" size="2">UI scale</Text>
+          <Text size="1" color="gray">{Math.round(uiScale * 100)}%</Text>
+        </Flex>
+        <Slider
+          min={50}
+          max={200}
+          step={10}
+          value={[Math.round(uiScale * 100)]}
+          onValueChange={([v]) => setUiScale(v / 100)}
+        />
+        <Text size="1" color="gray">
+          Ctrl+Plus / Ctrl+Minus to zoom, Ctrl+0 to reset
+        </Text>
+        {uiScale !== 1 && (
+          <Text
+            size="1"
+            style={{ cursor: "pointer", width: "fit-content", color: "var(--accent-11)" }}
+            onClick={resetZoom}
+          >
+            Reset to 100%
+          </Text>
+        )}
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Flex justify="between" align="center">
+          <Text weight="medium" size="2">Chat font size</Text>
+          <Text size="1" color="gray">{chatFontSize}px</Text>
+        </Flex>
+        <Slider
+          min={10}
+          max={24}
+          step={1}
+          value={[chatFontSize]}
+          onValueChange={([v]) => setChatFontSize(v)}
+        />
+        <Text size="1" color="gray" style={{ fontSize: chatFontSize, lineHeight: 1.5 }}>
+          Preview text at {chatFontSize}px
+        </Text>
       </Flex>
 
       <Flex direction="column" gap="2">

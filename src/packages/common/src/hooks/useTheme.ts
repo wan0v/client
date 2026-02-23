@@ -45,6 +45,15 @@ export interface ThemeSettings {
   emojiSize: number;
   setEmojiSize: (value: number) => void;
 
+  chatFontSize: number;
+  setChatFontSize: (value: number) => void;
+
+  uiScale: number;
+  setUiScale: (value: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
+
   // Derived, read-only
   resolvedAppearance: AppearanceResolved;
 }
@@ -64,6 +73,12 @@ function useThemeHook(): ThemeSettings {
   );
   const [emojiSize, setEmojiSizeState] = useState<number>(
     Number(localStorage.getItem("theme.emojiSize")) || 64
+  );
+  const [chatFontSize, setChatFontSizeState] = useState<number>(
+    Number(localStorage.getItem("theme.chatFontSize")) || 16
+  );
+  const [uiScale, setUiScaleState] = useState<number>(
+    Number(localStorage.getItem("theme.uiScale")) || 1
   );
 
   // System color scheme listener when preference is 'system'
@@ -111,6 +126,38 @@ function useThemeHook(): ThemeSettings {
     localStorage.setItem("theme.emojiSize", clamped.toString());
   }
 
+  function setChatFontSize(value: number) {
+    const clamped = Math.max(10, Math.min(24, Math.round(value)));
+    setChatFontSizeState(clamped);
+    localStorage.setItem("theme.chatFontSize", clamped.toString());
+  }
+
+  const SCALE_STEP = 0.1;
+  const SCALE_MIN = 0.5;
+  const SCALE_MAX = 2.0;
+
+  function clampScale(v: number): number {
+    return Math.round(Math.max(SCALE_MIN, Math.min(SCALE_MAX, v)) * 100) / 100;
+  }
+
+  function setUiScale(value: number) {
+    const clamped = clampScale(value);
+    setUiScaleState(clamped);
+    localStorage.setItem("theme.uiScale", clamped.toString());
+  }
+
+  function zoomIn() {
+    setUiScale(uiScale + SCALE_STEP);
+  }
+
+  function zoomOut() {
+    setUiScale(uiScale - SCALE_STEP);
+  }
+
+  function resetZoom() {
+    setUiScale(1);
+  }
+
   return {
     appearancePreference,
     setAppearancePreference,
@@ -122,6 +169,13 @@ function useThemeHook(): ThemeSettings {
     setRadius,
     emojiSize,
     setEmojiSize,
+    chatFontSize,
+    setChatFontSize,
+    uiScale,
+    setUiScale,
+    zoomIn,
+    zoomOut,
+    resetZoom,
     resolvedAppearance,
   };
 }
@@ -137,6 +191,13 @@ const init: ThemeSettings = {
   setRadius: () => {},
   emojiSize: Number(localStorage.getItem("theme.emojiSize")) || 64,
   setEmojiSize: () => {},
+  chatFontSize: Number(localStorage.getItem("theme.chatFontSize")) || 16,
+  setChatFontSize: () => {},
+  uiScale: Number(localStorage.getItem("theme.uiScale")) || 1,
+  setUiScale: () => {},
+  zoomIn: () => {},
+  zoomOut: () => {},
+  resetZoom: () => {},
   // Resolve initial appearance from system preference to avoid initial flash
   resolvedAppearance: (typeof window !== "undefined" && (window.matchMedia?.("(prefers-color-scheme: dark)").matches)) ? "dark" : "light",
 };

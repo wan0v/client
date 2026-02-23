@@ -140,7 +140,7 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
             cursor: "pointer",
             background: idx === selectedIndex ? "var(--gray-4)" : "transparent",
             transition: "background 0.1s ease",
-            fontSize: "14px",
+            fontSize: "var(--chat-font-size, 16px)",
           }}
         >
           <span

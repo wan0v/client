@@ -1,5 +1,5 @@
 import { AlertDialog, Avatar, Box, Button, Flex, ScrollArea, Text, Tooltip } from "@radix-ui/themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MdCloudUpload } from "react-icons/md";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
@@ -11,7 +11,7 @@ import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageContextMenu, MessageHoverToolbar, MessageSkeleton, WelcomeMessage } from "./ChatMessage";
-import { type AttachmentMeta, type ChatMessage, DateSeparator,MessageTimestamp, toDate } from "./chatUtils";
+import { type AttachmentMeta, type ChatMessage, DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
 import { FileCard } from "./FileCard";
 import { ImageLightbox } from "./ImageLightbox";
@@ -56,6 +56,9 @@ export const ChatView = ({
   clearRestoreText,
   canDeleteAny,
   maxFileSize,
+  onLoadOlder,
+  isLoadingOlder,
+  hasOlderMessages,
 }: {
   chatMessages: ChatMessage[];
   canSend: boolean;
@@ -76,18 +79,28 @@ export const ChatView = ({
   clearRestoreText?: () => void;
   canDeleteAny?: boolean;
   maxFileSize?: number | null;
+  onLoadOlder?: () => void;
+  isLoadingOlder?: boolean;
+  hasOlderMessages?: boolean;
 }) => {
   const { chatMediaVolume, setChatMediaVolume, blurProfanity } = useSettings();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ChatEditorHandle>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const prevMessageCountRef = useRef(chatMessages.length);
   const prevLastMessageIdRef = useRef(chatMessages[chatMessages.length - 1]?.message_id);
+  const prevFirstMessageIdRef = useRef(chatMessages[0]?.message_id);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
   const dragCounterRef = useRef(0);
+
+  const windowFocusedRef = useRef(document.hasFocus());
+  const [newMessageMarkerId, setNewMessageMarkerId] = useState<string | null>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevConversationIdRef = useRef<string | undefined>(undefined);
 
   const [customEmojiList, setCustomEmojiList] = useState<CustomEmojiEntry[]>([]);
 
@@ -111,6 +124,34 @@ export const ChatView = ({
   useEffect(() => {
     return onCustomEmojisChange(syncCustomEmojiList);
   }, [syncCustomEmojiList]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      windowFocusedRef.current = true;
+      focusTimerRef.current = setTimeout(() => {
+        setNewMessageMarkerId(null);
+      }, 2000);
+    };
+    const onBlur = () => {
+      windowFocusedRef.current = false;
+      if (focusTimerRef.current) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    const cleanupElectron = window.electronAPI?.onWindowFocusChange((focused) => {
+      if (focused) onFocus();
+      else onBlur();
+    });
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
+      cleanupElectron?.();
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    };
+  }, []);
 
   const handleViewDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -142,32 +183,89 @@ export const ChatView = ({
     editorRef.current?.addFiles(files);
   }, []);
 
-  useEffect(() => {
+  const prevScrollHeightRef = useRef(0);
+
+  useLayoutEffect(() => {
+    const viewport = messagesEndRef.current?.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
+
     const lastId = chatMessages[chatMessages.length - 1]?.message_id;
+    const firstId = chatMessages[0]?.message_id;
+    const currentConvId = chatMessages[chatMessages.length - 1]?.conversation_id;
+    const previousLastId = prevLastMessageIdRef.current;
     const isNewMessage =
       chatMessages.length !== prevMessageCountRef.current ||
       lastId !== prevLastMessageIdRef.current;
 
     const wasBulkLoad = prevMessageCountRef.current === 0 && chatMessages.length > 1;
+    const wasOlderPrepend = firstId !== prevFirstMessageIdRef.current
+      && lastId === prevLastMessageIdRef.current
+      && prevMessageCountRef.current > 0;
+
+    const conversationSwitched =
+      currentConvId !== prevConversationIdRef.current &&
+      prevConversationIdRef.current !== undefined;
 
     prevMessageCountRef.current = chatMessages.length;
     prevLastMessageIdRef.current = lastId;
+    prevFirstMessageIdRef.current = firstId;
+    prevConversationIdRef.current = currentConvId;
+
+    if (conversationSwitched) {
+      setNewMessageMarkerId(null);
+    }
+
+    if (wasOlderPrepend && viewport) {
+      const delta = viewport.scrollHeight - prevScrollHeightRef.current;
+      viewport.scrollTop += delta;
+      prevScrollHeightRef.current = viewport.scrollHeight;
+      return;
+    }
+
+    if (isNewMessage && !wasBulkLoad && !wasOlderPrepend && !conversationSwitched
+        && !windowFocusedRef.current && previousLastId) {
+      setNewMessageMarkerId((prev) => prev ?? previousLastId);
+    }
 
     if (isNewMessage) {
       if (wasBulkLoad) {
-        requestAnimationFrame(() => {
-          const viewport = messagesEndRef.current?.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
-          if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
-          } else {
-            messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
-          }
-        });
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        } else {
+          messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+        }
       } else {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        const isNearBottom = viewport
+          ? viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 150
+          : true;
+        if (isNearBottom) {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
       }
     }
+
+    if (viewport) {
+      prevScrollHeightRef.current = viewport.scrollHeight;
+    }
   }, [chatMessages]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !onLoadOlder) return;
+
+    const viewport = sentinel.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasOlderMessages && !isLoadingOlder) {
+          onLoadOlder();
+        }
+      },
+      { root: viewport, rootMargin: "200px 0px 0px 0px", threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [onLoadOlder, hasOlderMessages, isLoadingOlder]);
 
   const scrollToMessage = useCallback((messageId: string) => {
     const el = messageRefs.current.get(messageId);
@@ -434,14 +532,25 @@ export const ChatView = ({
               <MessageSkeleton />
           ) : groups.length === 0 ? (
               <WelcomeMessage channelName={channelName} />
-          ) : (
-            groups.map((group, idx) => {
+          ) : (<>
+            <div ref={sentinelRef} style={{ height: 1, flexShrink: 0 }} />
+            {isLoadingOlder && (
+              <Flex justify="center" py="2">
+                <Text size="1" color="gray">Loading older messages...</Text>
+              </Flex>
+            )}
+            {groups.map((group, idx) => {
               const isSelf = !!currentUserId && group.senderId === currentUserId;
               const senderName = isSelf ? (currentUserNickname || "You") : getSenderName(group.messages[0]);
               const avatarUrl = getSenderAvatarUrl(group.messages[0]);
+              const prevGroup = idx > 0 ? groups[idx - 1] : null;
+              const prevGroupLastMsg = prevGroup?.messages[prevGroup.messages.length - 1];
+              const showDividerBeforeGroup = !!newMessageMarkerId &&
+                prevGroupLastMsg?.message_id === newMessageMarkerId;
 
               return (
                 <Flex key={`${group.senderId}-${idx}`} direction="column" style={{ width: "100%" }}>
+                  {showDividerBeforeGroup && <NewMessagesDivider />}
                   {group.dayBreak && <DateSeparator date={group.dayBreak} />}
                   <Flex gap="3" style={{ width: "100%" }} align="start">
                     <Avatar
@@ -464,15 +573,18 @@ export const ChatView = ({
                           </Tooltip>
                         )}
                       </Flex>
-                      {group.messages.map((m) => {
+                      {group.messages.map((m, mIdx) => {
                         const replyOriginal = m.reply_to_message_id ? findMessage(m.reply_to_message_id) : null;
                         const isMentioned = !!(currentUserNickname && m.text
                           && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
                         const mentionBg = isMentioned ? "var(--accent-a3)" : undefined;
+                        const showDividerBeforeMsg = !!newMessageMarkerId && mIdx > 0 &&
+                          group.messages[mIdx - 1].message_id === newMessageMarkerId;
 
                         return (
+                        <Fragment key={m.message_id}>
+                        {showDividerBeforeMsg && <NewMessagesDivider />}
                         <Flex
-                          key={m.message_id}
                           ref={(el) => {
                             if (el) messageRefs.current.set(m.message_id, el);
                             else messageRefs.current.delete(m.message_id);
@@ -652,14 +764,15 @@ export const ChatView = ({
                             </Flex>
                           )}
                         </Flex>
+                        </Fragment>
                         );
                       })}
                     </Flex>
                   </Flex>
                 </Flex>
               );
-            })
-          )}
+            })}
+          </>)}
           <div ref={messagesEndRef} />
         </Flex>
         </ScrollArea>

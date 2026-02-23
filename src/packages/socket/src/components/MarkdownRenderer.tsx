@@ -260,6 +260,8 @@ const components: Components = {
           style={{
             maxWidth: "100%",
             maxHeight: "300px",
+            height: "auto",
+            objectFit: "contain",
             borderRadius: "var(--radius-4)",
             margin: "4px 0",
             display: "block",

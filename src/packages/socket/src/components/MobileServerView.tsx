@@ -74,7 +74,9 @@ interface MobileServerViewProps {
   clearRestoreText?: () => void;
   canDeleteAny?: boolean;
   maxFileSize?: number | null;
-
+  onLoadOlder?: () => void;
+  isLoadingOlder?: boolean;
+  hasOlderMessages?: boolean;
   // VoiceView
   voiceWidth: string;
   clientsForHost: Record<string, Client>;
@@ -178,6 +180,9 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           clearRestoreText={props.clearRestoreText}
           canDeleteAny={props.canDeleteAny}
           maxFileSize={props.maxFileSize}
+          onLoadOlder={props.onLoadOlder}
+          isLoadingOlder={props.isLoadingOlder}
+          hasOlderMessages={props.hasOlderMessages}
           {...(props.isLoadingMessages !== undefined && { isLoadingMessages: props.isLoadingMessages })}
         />
       </div>

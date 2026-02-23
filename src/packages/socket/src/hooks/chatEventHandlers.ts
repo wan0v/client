@@ -54,28 +54,45 @@ export function handleNewMessage(
 
 // ── chat:history ────────────────────────────────────────────────────
 
+export interface HistoryPayload {
+  conversation_id: string;
+  items: ChatMessage[];
+  hasMore?: boolean;
+  before?: string;
+}
+
 export function handleHistoryPayload(
-  payload: { conversation_id: string; items: ChatMessage[] },
+  payload: HistoryPayload,
   activeConversationId: string,
   getCacheKey: CacheKeyFn,
   inFlightFetchRef: MutableRefObject<Set<string>>,
   setMessageCache: Dispatch<SetStateAction<MessageCache>>,
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>,
   setIsLoadingMessages: (v: boolean) => void,
+  setHasOlderMessages?: (v: boolean) => void,
+  setIsLoadingOlder?: (v: boolean) => void,
 ): void {
   if (!payload || !payload.conversation_id || !Array.isArray(payload.items)) return;
   const key = getCacheKey(payload.conversation_id);
   if (!key) return;
 
+  const isPrepend = !!payload.before;
+
   inFlightFetchRef.current.delete(key);
+
+  if (isPrepend) {
+    setIsLoadingOlder?.(false);
+  }
+
+  if (payload.hasMore !== undefined) {
+    setHasOlderMessages?.(payload.hasMore);
+  }
 
   setMessageCache((prev) => {
     const existing = prev[key] || [];
     const existingIds = new Set(existing.map((m) => m.message_id));
-    const merged = [...existing];
-    for (const it of payload.items) {
-      if (!existingIds.has(it.message_id)) merged.push(it);
-    }
+    const newItems = payload.items.filter((it) => !existingIds.has(it.message_id));
+    const merged = isPrepend ? [...newItems, ...existing] : [...existing, ...newItems];
     const bounded = merged.length > 200 ? merged.slice(merged.length - 200) : merged;
     return { ...prev, [key]: bounded };
   });
@@ -84,14 +101,13 @@ export function handleHistoryPayload(
 
   setChatMessages((prev) => {
     const existingIds = new Set(prev.map((m) => m.message_id));
-    const merged = [...prev];
-    for (const it of payload.items) {
-      if (!existingIds.has(it.message_id)) merged.push(it);
-    }
-    return merged;
+    const newItems = payload.items.filter((it) => !existingIds.has(it.message_id));
+    return isPrepend ? [...newItems, ...prev] : [...prev, ...newItems];
   });
 
-  setIsLoadingMessages(false);
+  if (!isPrepend) {
+    setIsLoadingMessages(false);
+  }
 }
 
 // ── chat:reaction ───────────────────────────────────────────────────

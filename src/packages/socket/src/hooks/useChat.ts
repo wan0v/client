@@ -19,6 +19,7 @@ import {
   handleMessageEdited,
   handleNewMessage,
   handleReactionUpdate,
+  type HistoryPayload,
   shouldFetchHistory,
 } from "./chatEventHandlers";
 
@@ -46,6 +47,9 @@ interface UseChatReturn {
   activeChannelName: string;
   restoreText: string | null;
   clearRestoreText: () => void;
+  fetchOlderMessages: () => void;
+  isLoadingOlder: boolean;
+  hasOlderMessages: boolean;
 }
 
 export function useChat({
@@ -83,6 +87,8 @@ export function useChat({
   const fetchDebounceRef = useRef<number | null>(null);
   const inFlightFetchRef = useRef<Set<string>>(new Set());
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
   const rateLimitIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -243,8 +249,8 @@ export function useChat({
       }
     };
 
-    const onHistory = (payload: { conversation_id: string; items: ChatMessage[] }) =>
-      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages);
+    const onHistory = (payload: HistoryPayload) =>
+      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlderMessages, setIsLoadingOlder);
 
     const onReaction = (updatedMessage: ChatMessage) =>
       handleReactionUpdate(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
@@ -304,6 +310,9 @@ export function useChat({
 
   // Reset chat list when conversation changes and load history
   useEffect(() => {
+    setHasOlderMessages(true);
+    setIsLoadingOlder(false);
+
     const cachedMessages = getCachedMessages(activeConversationId);
     if (cachedMessages.length > 0) {
       setChatMessages(cachedMessages);
@@ -544,6 +553,17 @@ export function useChat({
     doSend();
   };
 
+  const fetchOlderMessages = useCallback(() => {
+    if (!currentConnection || !activeConversationId || isLoadingOlder || !hasOlderMessages) return;
+    const oldest = chatMessages[0];
+    if (!oldest) return;
+    const before = new Date(oldest.created_at).toISOString();
+    setIsLoadingOlder(true);
+    const scopedKey = cacheKeyFor(activeConversationId);
+    inFlightFetchRef.current.add(scopedKey);
+    currentConnection.emit("chat:fetch", { conversationId: activeConversationId, limit: 50, before });
+  }, [currentConnection, activeConversationId, isLoadingOlder, hasOlderMessages, chatMessages, cacheKeyFor]);
+
   const editMessage = (messageId: string, conversationId: string, newText: string) => {
     const text = newText.trim();
     if (!text || !currentConnection) return;
@@ -565,5 +585,8 @@ export function useChat({
     activeChannelName,
     restoreText,
     clearRestoreText,
+    fetchOlderMessages,
+    isLoadingOlder,
+    hasOlderMessages,
   };
 }

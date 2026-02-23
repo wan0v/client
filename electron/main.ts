@@ -567,6 +567,9 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on("set-badge-count", (_event, count: number) => {
       app.setBadgeCount(count);
+      if (mainWindow) {
+        mainWindow.flashFrame(count > 0);
+      }
     });
 
     ipcMain.on("toggle-always-on-top", (event, pinned: boolean) => {

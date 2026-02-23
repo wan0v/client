@@ -4,6 +4,7 @@ export * from "./src/hooks/useAccount";
 export * from "./src/hooks/useTheme";
 export * from "./src/hooks/useUnreadBadge";
 export * from "./src/hooks/useUserId";
+export * from "./src/hooks/useZoomShortcuts";
 export * from "./src/types/account";
 export * from "./src/utils/auth";
 export * from "./src/utils/avatarStore";

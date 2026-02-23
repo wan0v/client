@@ -294,6 +294,7 @@ export const ServerView = () => {
     chatMessages, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, restoreText, clearRestoreText,
+    fetchOlderMessages, isLoadingOlder, hasOlderMessages,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -569,6 +570,9 @@ export const ServerView = () => {
             clearRestoreText={clearRestoreText}
             canDeleteAny={serverDetails?.server_info?.role === "owner"}
             maxFileSize={serverDetails?.server_info?.upload_max_bytes}
+            onLoadOlder={fetchOlderMessages}
+            isLoadingOlder={isLoadingOlder}
+            hasOlderMessages={hasOlderMessages}
             voiceWidth={voiceWidth}
             clientsForHost={clients[currentlyViewingServer.host] || {}}
             onVoiceDisconnect={handleVoiceDisconnect}
@@ -793,6 +797,9 @@ export const ServerView = () => {
                   clearRestoreText={clearRestoreText}
                   canDeleteAny={serverDetails?.server_info?.role === "owner"}
                   maxFileSize={serverDetails?.server_info?.upload_max_bytes}
+                  onLoadOlder={fetchOlderMessages}
+                  isLoadingOlder={isLoadingOlder}
+                  hasOlderMessages={hasOlderMessages}
                   {...(isLoadingMessages !== undefined && { isLoadingMessages })}
                 />
               </div>

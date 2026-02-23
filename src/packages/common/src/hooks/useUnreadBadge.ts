@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef } from "react";
 
 let unreadCount = 0;
 let windowFocused = document.hasFocus();
+const baseTitle = document.title;
 
 function setBadge(count: number) {
   unreadCount = count;
+  document.title = count > 0 ? `(${count}) ${baseTitle}` : baseTitle;
   window.electronAPI?.setBadgeCount(count);
 }
 

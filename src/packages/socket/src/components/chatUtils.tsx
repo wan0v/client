@@ -106,3 +106,13 @@ export const DateSeparator = ({ date }: { date: Date }) => (
     <div style={{ flex: 1, height: 1, background: "var(--gray-6)" }} />
   </Flex>
 );
+
+export const NewMessagesDivider = () => (
+  <Flex align="center" gap="3" style={{ padding: "8px 0", width: "100%" }}>
+    <div style={{ flex: 1, height: 1, background: "var(--red-8)" }} />
+    <Text size="1" color="red" weight="medium" style={{ whiteSpace: "nowrap" }}>
+      New since last visit
+    </Text>
+    <div style={{ flex: 1, height: 1, background: "var(--red-8)" }} />
+  </Flex>
+);

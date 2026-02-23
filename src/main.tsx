@@ -6,7 +6,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 
-import { useTheme } from "@/common";
+import { useTheme, useZoomShortcuts } from "@/common";
 
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
@@ -19,7 +19,12 @@ function ThemedApp() {
     accentColor,
     grayColor,
     radius,
+    uiScale,
+    chatFontSize,
   } = useTheme();
+
+  useZoomShortcuts();
+
   return (
     <Theme
       appearance={resolvedAppearance}
@@ -33,7 +38,9 @@ function ThemedApp() {
         flex: 1,
         display: "flex",
         flexDirection: "column",
-      }}
+        zoom: uiScale,
+        "--chat-font-size": `${chatFontSize}px`,
+      } as React.CSSProperties}
     >
       <Titlebar />
       <BrowserBanner />
