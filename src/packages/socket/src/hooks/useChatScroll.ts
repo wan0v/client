@@ -4,6 +4,11 @@ import type { ChatMessage } from "../components/chatUtils";
 
 const AT_BOTTOM_THRESHOLD = 120;
 
+interface ScrollAnchor {
+  id: string;
+  offset: number;
+}
+
 export function useChatScroll(
   chatMessages: ChatMessage[],
   conversationKey: string | undefined,
@@ -43,39 +48,68 @@ export function useChatScroll(
     isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
   }, []);
 
+  // Anchor-based scroll preservation: track the first visible message and
+  // its pixel offset from the scroll container top so we can restore position
+  // after older messages are prepended. This is more reliable than the
+  // scrollHeight-delta approach because content-visibility:auto makes
+  // scrollHeight estimates unreliable for off-screen elements.
+  const anchorRef = useRef<ScrollAnchor | null>(null);
+
+  const updateAnchor = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollTop = el.scrollTop;
+    const nodes = el.querySelectorAll<HTMLElement>("[data-message-id]");
+    for (const node of nodes) {
+      if (node.offsetTop + node.offsetHeight > scrollTop) {
+        const id = node.dataset.messageId;
+        if (id) anchorRef.current = { id, offset: scrollTop - node.offsetTop };
+        return;
+      }
+    }
+  }, []);
+
   const handleScroll = useCallback(() => {
     checkAtBottom();
+    updateAnchor();
     const el = scrollRef.current;
     if (el && el.scrollTop < 200 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
       onLoadOlder();
     }
-  }, [checkAtBottom, hasOlderMessages, isLoadingOlder, onLoadOlder]);
+  }, [checkAtBottom, updateAnchor, hasOlderMessages, isLoadingOlder, onLoadOlder]);
 
   const prevFirstMsgIdRef = useRef<string | undefined>(undefined);
-  const prevScrollHeightRef = useRef(0);
 
   useLayoutEffect(() => {
     prevFirstMsgIdRef.current = undefined;
-    prevScrollHeightRef.current = 0;
+    anchorRef.current = null;
   }, [conversationKey]);
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const firstMsgId = chatMessages[0]?.message_id;
-    if (prevFirstMsgIdRef.current && firstMsgId && firstMsgId !== prevFirstMsgIdRef.current) {
-      const delta = el.scrollHeight - prevScrollHeightRef.current;
-      if (delta > 0) el.scrollTop += delta;
+    if (
+      prevFirstMsgIdRef.current &&
+      firstMsgId &&
+      firstMsgId !== prevFirstMsgIdRef.current &&
+      anchorRef.current
+    ) {
+      const anchorEl = el.querySelector<HTMLElement>(
+        `[data-message-id="${anchorRef.current.id}"]`,
+      );
+      if (anchorEl) {
+        el.scrollTop = anchorEl.offsetTop + anchorRef.current.offset;
+      }
     }
     prevFirstMsgIdRef.current = firstMsgId;
-    prevScrollHeightRef.current = el.scrollHeight;
   }, [chatMessages]);
 
   useEffect(() => {
     lastMessageIdRef.current = undefined;
     forceScrollToBottomRef.current = false;
     prevFirstMsgIdRef.current = undefined;
-    prevScrollHeightRef.current = 0;
+    anchorRef.current = null;
     requestAnimationFrame(() => scrollToBottom("auto"));
   }, [conversationKey, scrollToBottom]);
 
