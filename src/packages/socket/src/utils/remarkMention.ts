@@ -93,7 +93,7 @@ export function createRemarkMention(members: MentionableMember[]): Plugin<[], Ro
 
     visit(tree, "text", (node: Text, index, parent) => {
       if (!parent || index == null) return;
-      if (parent.type === "link") return;
+      if (parent.type === "link" || (parent.type as string) === "mention") return;
       if (!node.value.includes("@")) return;
 
       const replacements = buildReplacements(node.value, sorted, nicknameToId);
