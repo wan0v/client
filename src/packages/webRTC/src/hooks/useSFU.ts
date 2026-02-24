@@ -24,7 +24,6 @@ function useSfuHook(): SFUInterface {
   const previousRemoteStreamsRef = useRef<Set<string>>(new Set());
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDisconnectingRef = useRef<boolean>(false);
-  const isNegotiatingRef = useRef<boolean>(false);
   const isConnectingRef = useRef<boolean>(false);
   const connectSeqRef = useRef<number>(0);
 
@@ -149,7 +148,6 @@ function useSfuHook(): SFUInterface {
     isDisconnectingRef,
     sfuWebSocketRef,
     peerConnectionRef,
-    isNegotiatingRef,
   }), []);
 
   // Track the last channel ID so we can reconnect after server restart
@@ -245,6 +243,14 @@ function useSfuHook(): SFUInterface {
     });
   }, [disconnectSoundFile, disconnectSoundVolume, disconnectSoundEnabled, performCleanup]);
 
+  const sendRenegotiate = useCallback(() => {
+    const ws = sfuWebSocketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    try {
+      ws.send(JSON.stringify({ event: "renegotiate", data: "" }));
+    } catch { /* ws may have closed between check and send */ }
+  }, []);
+
   const addVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
@@ -254,7 +260,8 @@ function useSfuHook(): SFUInterface {
     }
     const sender = pc.addTrack(track, stream);
     videoSenderRef.current = sender;
-  }, []);
+    sendRenegotiate();
+  }, [sendRenegotiate]);
 
   const removeVideoTrack = useCallback(() => {
     const pc = peerConnectionRef.current;
@@ -264,7 +271,8 @@ function useSfuHook(): SFUInterface {
       pc.removeTrack(sender);
     } catch { /* already removed */ }
     videoSenderRef.current = null;
-  }, []);
+    sendRenegotiate();
+  }, [sendRenegotiate]);
 
   const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
     const pc = peerConnectionRef.current;
@@ -275,7 +283,8 @@ function useSfuHook(): SFUInterface {
     }
     const sender = pc.addTrack(track, stream);
     screenVideoSenderRef.current = sender;
-  }, []);
+    sendRenegotiate();
+  }, [sendRenegotiate]);
 
   const removeScreenVideoTrack = useCallback(() => {
     const pc = peerConnectionRef.current;
@@ -283,7 +292,8 @@ function useSfuHook(): SFUInterface {
     if (!pc || !sender || pc.connectionState === "closed") return;
     try { pc.removeTrack(sender); } catch { /* already removed */ }
     screenVideoSenderRef.current = null;
-  }, []);
+    sendRenegotiate();
+  }, [sendRenegotiate]);
 
   const addScreenAudioTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
     const pc = peerConnectionRef.current;
@@ -294,7 +304,8 @@ function useSfuHook(): SFUInterface {
     }
     const sender = pc.addTrack(track, stream);
     screenAudioSenderRef.current = sender;
-  }, []);
+    sendRenegotiate();
+  }, [sendRenegotiate]);
 
   const removeScreenAudioTrack = useCallback(() => {
     const pc = peerConnectionRef.current;
@@ -302,7 +313,8 @@ function useSfuHook(): SFUInterface {
     if (!pc || !sender || pc.connectionState === "closed") return;
     try { pc.removeTrack(sender); } catch { /* already removed */ }
     screenAudioSenderRef.current = null;
-  }, []);
+    sendRenegotiate();
+  }, [sendRenegotiate]);
 
   // Listen for server-initiated disconnects (device switching)
   useEffect(() => {
