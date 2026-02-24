@@ -1,5 +1,6 @@
 import { Badge, Box, Button, Card, Flex, Heading, Link, Progress, Separator, Switch, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
+import { FaGithub } from "react-icons/fa";
 import {
   MdCancel,
   MdCheckCircle,
@@ -9,7 +10,6 @@ import {
   MdOpenInNew,
   MdRefresh,
 } from "react-icons/md";
-import { FaGithub } from "react-icons/fa";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";
