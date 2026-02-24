@@ -913,3 +913,67 @@ body {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ── Large-screen scaling for embeds & media ────────────── */
+
+@media (min-width: 1800px) {
+  .chat-attachment-image {
+    max-width: 480px;
+    max-height: 480px;
+  }
+
+  .link-embed-container {
+    max-width: 620px;
+  }
+
+  .link-embed-image {
+    max-height: 500px;
+  }
+
+  .link-embed-video {
+    max-height: 560px;
+  }
+
+  .link-embed-iframe-tiktok {
+    max-width: 400px;
+    max-height: 720px;
+  }
+
+  .link-embed-iframe-instagram {
+    height: 620px;
+  }
+
+  .link-embed-iframe-twitter {
+    height: 580px;
+  }
+
+  .link-embed-twitter-skeleton {
+    height: 580px;
+  }
+
+  .link-embed-card-image-wrap {
+    max-height: 300px;
+  }
+
+  .chat-audio-player {
+    max-width: 620px;
+    min-width: 320px;
+  }
+
+  .chat-video-player {
+    max-width: 700px;
+  }
+
+  .chat-file-card {
+    max-width: 480px;
+    min-width: 280px;
+  }
+
+  .markdown-image-wrap {
+    max-width: min(620px, 100%);
+  }
+
+  .markdown-image {
+    max-height: 480px;
+  }
+}

@@ -8,6 +8,14 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/** Test a URL against an Electron URL-filter pattern (e.g. "https://*.foo.com/*"). */
+function matchUrlPattern(pattern: string, url: string): boolean {
+  const escaped = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*");
+  return new RegExp(`^${escaped}$`).test(url);
+}
+
 const appIcon = app.isPackaged
   ? join(process.resourcesPath, "icon.png")
   : join(__dirname, "../build/icon.png");
@@ -552,6 +560,42 @@ if (!gotSingleInstanceLock) {
       closeSplashAndShowMain();
       initBackgroundUpdater();
     }
+
+    // ── Embed origin fix ────────────────────────────────────────────
+    // Third-party embed players (YouTube, Vimeo, Spotify, etc.) reject
+    // iframes whose parent is file://.  Spoof valid HTTP Referer/Origin
+    // so the embed players accept playback in packaged Electron.
+    const embedOriginMap: [string[], string][] = [
+      [["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*",
+        "https://*.googlevideo.com/*", "https://*.ytimg.com/*"],
+        "https://www.youtube-nocookie.com"],
+      [["https://*.vimeo.com/*", "https://*.vimeocdn.com/*"],
+        "https://player.vimeo.com"],
+      [["https://*.twitch.tv/*", "https://*.twitchcdn.net/*", "https://*.jtvnw.net/*"],
+        "https://player.twitch.tv"],
+      [["https://*.spotify.com/*", "https://*.spotifycdn.com/*"],
+        "https://open.spotify.com"],
+      [["https://*.tiktok.com/*", "https://*.tiktokcdn.com/*"],
+        "https://www.tiktok.com"],
+      [["https://*.instagram.com/*", "https://*.cdninstagram.com/*"],
+        "https://www.instagram.com"],
+      [["https://*.soundcloud.com/*", "https://*.sndcdn.com/*"],
+        "https://w.soundcloud.com"],
+    ];
+    const allEmbedPatterns = embedOriginMap.flatMap(([patterns]) => patterns);
+    session.defaultSession.webRequest.onBeforeSendHeaders(
+      { urls: allEmbedPatterns },
+      (details, callback) => {
+        for (const [patterns, origin] of embedOriginMap) {
+          if (patterns.some((p) => matchUrlPattern(p, details.url))) {
+            details.requestHeaders["Referer"] = origin + "/";
+            details.requestHeaders["Origin"] = origin;
+            break;
+          }
+        }
+        callback({ requestHeaders: details.requestHeaders });
+      },
+    );
 
     // ── Screen capture ────────────────────────────────────────────────
     // Allow getDisplayMedia by providing a default handler.

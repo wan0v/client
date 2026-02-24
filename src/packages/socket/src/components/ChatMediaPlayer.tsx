@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { sliderToGain } from "@/lib/audioVolume";
-
 export const ChatMediaPlayer = ({
   src,
   type,
@@ -22,10 +20,10 @@ export const ChatMediaPlayer = ({
 
   useEffect(() => {
     if (mediaRef.current) {
-      const clamped = sliderToGain(volume);
-      if (Math.abs(mediaRef.current.volume - clamped) > 0.005) {
+      const linear = Math.max(0, Math.min(1, volume / 100));
+      if (Math.abs(mediaRef.current.volume - linear) > 0.005) {
         suppressNextEvent.current = true;
-        mediaRef.current.volume = clamped;
+        mediaRef.current.volume = linear;
       }
     }
   }, [volume]);

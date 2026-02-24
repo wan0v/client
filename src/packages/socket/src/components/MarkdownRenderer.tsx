@@ -246,8 +246,9 @@ const components: Components = {
   p: ({ children }) => (
     <span style={{ display: "block", margin: "2px 0", lineHeight: 1.5 }}>{children}</span>
   ),
-  a: ({ href, children }) => {
-    if (href === "mention:") {
+  span: ({ className, children, ...props }) => {
+    const mentionId = (props as Record<string, unknown>)["data-mention-id"];
+    if (className === "chat-mention" && typeof mentionId === "string") {
       return (
         <span
           style={{
@@ -256,12 +257,16 @@ const components: Components = {
             background: "var(--accent-a3)",
             borderRadius: "var(--radius-2)",
             padding: "0 2px",
+            cursor: "default",
           }}
         >
           {children}
         </span>
       );
     }
+    return <span className={className} {...props}>{children}</span>;
+  },
+  a: ({ href, children }) => {
     return (
       <a
         href={href}
@@ -513,9 +518,9 @@ export const MarkdownRenderer = memo(({
           />
         );
       },
-      a: ({ href, children }) => {
-        const mentionId = href?.startsWith("mention:") ? href.slice("mention:".length) : null;
-        if (mentionId !== null) {
+      span: ({ className, children, ...props }) => {
+        const mentionId = (props as Record<string, unknown>)["data-mention-id"];
+        if (className === "chat-mention" && typeof mentionId === "string") {
           const display = (() => {
             if (!mentionId) return children;
             const nick = membersById.get(mentionId);
@@ -537,17 +542,18 @@ export const MarkdownRenderer = memo(({
             </span>
           );
         }
-        return (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "var(--accent-11)", textDecoration: "underline" }}
-          >
-            {children}
-          </a>
-        );
+        return <span className={className} {...props}>{children}</span>;
       },
+      a: ({ href, children }) => (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent-11)", textDecoration: "underline" }}
+        >
+          {children}
+        </a>
+      ),
     };
 
     if (!hasProfanity) return base;

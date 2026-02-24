@@ -1,4 +1,4 @@
-import type { Link, PhrasingContent, Root, Text } from "mdast";
+import type { PhrasingContent, Root, Text } from "mdast";
 import type { Plugin } from "unified";
 import { CONTINUE, visit } from "unist-util-visit";
 
@@ -47,10 +47,13 @@ function buildReplacements(
     const original = remaining.slice(earliest + 1, earliest + 1 + matchedLen);
     const id = matchedNickname ? nicknameToId.get(matchedNickname.toLowerCase()) : undefined;
     parts.push({
-      type: "link",
-      url: id ? `mention:${id}` : "mention:",
+      type: "mention",
+      data: {
+        hName: "span",
+        hProperties: { "data-mention-id": id ?? "", className: "chat-mention" },
+      },
       children: [{ type: "text", value: `@${original}` } as Text],
-    } as Link);
+    } as unknown as PhrasingContent);
 
     changed = true;
     remaining = remaining.slice(earliest + 1 + matchedLen);
@@ -68,6 +71,24 @@ export function createRemarkMention(members: MentionableMember[]): Plugin<[], Ro
   }
 
   return () => (tree: Root) => {
+    visit(tree, "link", (node: { type: string; url: string; children: PhrasingContent[] }, index, parent) => {
+      if (!parent || index == null) return;
+      if (!node.url.startsWith("mention:")) return;
+      const id = node.url.slice("mention:".length);
+      const textChild = node.children[0];
+      const label = textChild && "value" in textChild ? (textChild as Text).value : "";
+      const mentionNode = {
+        type: "mention",
+        data: {
+          hName: "span",
+          hProperties: { "data-mention-id": id, className: "chat-mention" },
+        },
+        children: [{ type: "text", value: label.startsWith("@") ? label : `@${label}` } as Text],
+      } as unknown as PhrasingContent;
+      (parent.children as PhrasingContent[]).splice(index, 1, mentionNode);
+      return [CONTINUE, index] as const;
+    });
+
     if (sorted.length === 0) return;
 
     visit(tree, "text", (node: Text, index, parent) => {

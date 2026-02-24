@@ -324,7 +324,10 @@ const TwitchEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void })
   const embed = getTwitchEmbed(url);
   if (!embed) return null;
   const parent = (() => {
-    try { return window.location.hostname; } catch { return "localhost"; }
+    try {
+      const h = window.location.hostname;
+      return h || "localhost";
+    } catch { return "localhost"; }
   })();
   const base = embed.kind === "clip" ? "https://clips.twitch.tv/embed" : "https://player.twitch.tv/";
   const src = (() => {
