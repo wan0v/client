@@ -267,6 +267,19 @@ function useSocketsHook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sockets, serverConnectionStatus, serverDetailsList]);
 
+  // Presence heartbeat: confirm online status to each server every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Object.keys(sockets).forEach((host) => {
+        const socket = sockets[host];
+        if (socket?.connected) {
+          socket.emit("presence:heartbeat");
+        }
+      });
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [sockets]);
+
   // Proactive access token refresh: run once shortly after startup, then every 4 minutes
   useEffect(() => {
     const refreshServerTokens = () => {

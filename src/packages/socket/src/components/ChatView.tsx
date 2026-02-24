@@ -1,39 +1,24 @@
 import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdCloudUpload } from "react-icons/md";
 
-import { getServerAccessToken, getUploadsFileUrl } from "@/common";
+import { getUploadsFileUrl } from "@/common";
 import { useSettings } from "@/settings";
 
+import { useChatActions } from "../hooks/useChatActions";
+import { useChatScroll } from "../hooks/useChatScroll";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
-import { recordReaction } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
-import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
+import type { ChatEditorHandle } from "./ChatEditor";
+import { ChatEditorBar } from "./ChatEditorBar";
 import { MessageContextMenu, MessageSkeleton, WelcomeMessage } from "./ChatMessage";
-import { type ChatMessage, toDate } from "./chatUtils";
+import type { ChatMessage } from "./chatUtils";
+import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
 import { EmojiText } from "./EmojiText";
 import { ImageLightbox } from "./ImageLightbox";
-import { type MessageMeta, MessageRow } from "./MessageRow";
+import { MessageRow } from "./MessageRow";
 
 export type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
-
-function getAttachmentPreview(msg: ChatMessage): string {
-  const enriched = msg.enriched_attachments;
-  if (enriched && enriched.length > 0) {
-    const names = enriched.map((a) => a.original_name).filter(Boolean) as string[];
-    if (names.length > 0) return names.join(", ");
-  }
-  return "Attachment";
-}
-
-function getReplyPreview(msg: ChatMessage | null | undefined, maxLen: number): string {
-  if (!msg) return "Original message";
-  if (msg.text) return msg.text.length > maxLen ? msg.text.slice(0, maxLen) + "..." : msg.text;
-  return getAttachmentPreview(msg);
-}
-
-const GROUP_GAP_MS = 5 * 60 * 1000;
-const AT_BOTTOM_THRESHOLD = 120;
 
 export const ChatView = memo(({
   chatMessages,
@@ -86,113 +71,51 @@ export const ChatView = memo(({
 }) => {
   const { chatMediaVolume, setChatMediaVolume, blurProfanity } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isAtBottomRef = useRef(true);
-  const lastMessageIdRef = useRef<string | undefined>(undefined);
-  const forceScrollToBottomRef = useRef(false);
-  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
-  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
   const dragCounterRef = useRef(0);
 
-  const windowFocusedRef = useRef(document.hasFocus());
-  const [newMessageMarkerId, setNewMessageMarkerId] = useState<string | null>(null);
-  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevConversationIdRef = useRef<string | undefined>(undefined);
-  const prevLastIdRef = useRef<string | undefined>(undefined);
+  const {
+    scrollRef,
+    handleScroll,
+    forceScrollToBottomRef,
+    seenMessageIdsRef,
+    newMessageMarkerId,
+  } = useChatScroll(chatMessages, conversationKey, hasOlderMessages, isLoadingOlder, onLoadOlder);
 
-  const seenMessageIdsRef = useRef<Set<string>>(new Set());
-  const prevConversationForAnimRef = useRef<string | undefined>(undefined);
-  const initialLoadDoneRef = useRef(false);
-
-  useMemo(() => {
-    const conversationId = chatMessages[0]?.conversation_id;
-    if (conversationId !== prevConversationForAnimRef.current) {
-      seenMessageIdsRef.current.clear();
-      chatMessages.forEach((m) => seenMessageIdsRef.current.add(m.message_id));
-      prevConversationForAnimRef.current = conversationId;
-      initialLoadDoneRef.current = false;
-    } else if (chatMessages.length > 0) {
-      initialLoadDoneRef.current = true;
-    }
-  }, [chatMessages]);
-
-  // ── Scroll helpers ────────────────────────────────────────────
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
-    const el = scrollRef.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
-  }, []);
-
-  const checkAtBottom = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    checkAtBottom();
-    const el = scrollRef.current;
-    if (el && el.scrollTop < 200 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
-      onLoadOlder();
-    }
-  }, [checkAtBottom, hasOlderMessages, isLoadingOlder, onLoadOlder]);
-
-  // Preserve scroll position when older messages are prepended
-  const prevFirstMsgIdRef = useRef<string | undefined>(undefined);
-  const prevScrollHeightRef = useRef(0);
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const firstMsgId = chatMessages[0]?.message_id;
-    if (prevFirstMsgIdRef.current && firstMsgId && firstMsgId !== prevFirstMsgIdRef.current) {
-      const delta = el.scrollHeight - prevScrollHeightRef.current;
-      if (delta > 0) el.scrollTop += delta;
-    }
-    prevFirstMsgIdRef.current = firstMsgId;
-    prevScrollHeightRef.current = el.scrollHeight;
-  }, [chatMessages]);
-
-  // Initial scroll to bottom on conversation switch
-  useEffect(() => {
-    lastMessageIdRef.current = undefined;
-    forceScrollToBottomRef.current = false;
-    prevFirstMsgIdRef.current = undefined;
-    prevScrollHeightRef.current = 0;
-    requestAnimationFrame(() => scrollToBottom("auto"));
-  }, [conversationKey, scrollToBottom]);
-
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
-    const lastId = chatMessages[chatMessages.length - 1]?.message_id;
-    if (!lastId) return;
-    const prev = lastMessageIdRef.current;
-    lastMessageIdRef.current = lastId;
-    if (!prev) return;
-    if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
-    requestAnimationFrame(() => {
-      scrollToBottom(initialLoadDoneRef.current ? "smooth" : "auto");
-    });
-    forceScrollToBottomRef.current = false;
-  }, [chatMessages, scrollToBottom]);
-
-  // Restore scroll on fullscreen exit (e.g. Twitch embed)
-  useEffect(() => {
-    let savedScrollTop = 0;
-    const onFullscreenChange = () => {
-      const el = scrollRef.current;
-      if (!el) return;
-      if (document.fullscreenElement) {
-        savedScrollTop = el.scrollTop;
-      } else {
-        const restore = savedScrollTop;
-        requestAnimationFrame(() => { el.scrollTop = restore; });
-      }
-    };
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
+  const {
+    replyingTo,
+    editingMessage,
+    pendingDeleteMessage,
+    setPendingDeleteMessage,
+    contextMenu,
+    cancelReply,
+    handleMessageRightClick,
+    closeContextMenu,
+    handleReaction,
+    handleReply,
+    handleReport,
+    requestDelete,
+    confirmDelete,
+    startEditing,
+    cancelEditing,
+    handleArrowUpEmpty,
+    handleEditorSend,
+    scrollToMessage,
+    isContextMenuOpen,
+  } = useChatActions({
+    chatMessages,
+    socketConnection,
+    currentUserId,
+    serverHost,
+    canDeleteAny,
+    canSend,
+    isRateLimited,
+    sendChat,
+    editMessage,
+    editorRef,
+    forceScrollToBottomRef,
+  });
 
   // ── Custom emoji ──────────────────────────────────────────────
   const [customEmojiList, setCustomEmojiList] = useState<CustomEmojiEntry[]>([]);
@@ -217,51 +140,6 @@ export const ChatView = memo(({
   useEffect(() => {
     return onCustomEmojisChange(syncCustomEmojiList);
   }, [syncCustomEmojiList]);
-
-  // ── Focus / blur tracking for new-message marker ──────────────
-  useEffect(() => {
-    const onFocus = () => {
-      windowFocusedRef.current = true;
-      focusTimerRef.current = setTimeout(() => {
-        setNewMessageMarkerId(null);
-      }, 2000);
-    };
-    const onBlur = () => {
-      windowFocusedRef.current = false;
-      if (focusTimerRef.current) {
-        clearTimeout(focusTimerRef.current);
-        focusTimerRef.current = null;
-      }
-    };
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("blur", onBlur);
-    const cleanupElectron = window.electronAPI?.onWindowFocusChange((focused) => {
-      if (focused) onFocus();
-      else onBlur();
-    });
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("blur", onBlur);
-      cleanupElectron?.();
-      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    const currentConvId = chatMessages[chatMessages.length - 1]?.conversation_id;
-    const lastId = chatMessages[chatMessages.length - 1]?.message_id;
-    const conversationSwitched =
-      currentConvId !== prevConversationIdRef.current && prevConversationIdRef.current !== undefined;
-
-    if (conversationSwitched) {
-      setNewMessageMarkerId(null);
-    } else if (lastId !== prevLastIdRef.current && prevLastIdRef.current && !windowFocusedRef.current) {
-      setNewMessageMarkerId((prev) => prev ?? prevLastIdRef.current!);
-    }
-
-    prevConversationIdRef.current = currentConvId;
-    prevLastIdRef.current = lastId;
-  }, [chatMessages]);
 
   // ── Drag & drop ───────────────────────────────────────────────
   const handleViewDragEnter = useCallback((e: React.DragEvent) => {
@@ -322,152 +200,16 @@ export const ChatView = memo(({
   );
 
   // ── Message metadata ──────────────────────────────────────────
-  const messageMetadata = useMemo(() => {
-    let lastDay: string | null = null;
-    return chatMessages.map((m, i): MessageMeta => {
-      const prev = i > 0 ? chatMessages[i - 1] : null;
-      const d = toDate(m.created_at);
-      const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      const needsDayBreak = dayKey !== lastDay;
-      lastDay = dayKey;
+  const messageMetadata = useMemo(
+    () => buildMessageMetadata(chatMessages, newMessageMarkerId, currentUserId, currentUserNickname, getSenderName, getSenderAvatarUrl),
+    [chatMessages, newMessageMarkerId, currentUserId, currentUserNickname, getSenderName, getSenderAvatarUrl],
+  );
 
-      const timeSincePrev = prev ? d.getTime() - toDate(prev.created_at).getTime() : Infinity;
-      const isFirstInGroup = !prev || prev.sender_server_id !== m.sender_server_id || timeSincePrev > GROUP_GAP_MS || needsDayBreak;
-
-      const showNewMessageDivider = !!(newMessageMarkerId && prev && prev.message_id === newMessageMarkerId);
-
-      const isSelf = !!currentUserId && m.sender_server_id === currentUserId;
-      const senderName = isSelf ? (currentUserNickname || "You") : getSenderName(m);
-      const avatarUrl = getSenderAvatarUrl(m);
-      const isFirstEdited = isFirstInGroup && !!m.edited_at;
-
-      return { isFirstInGroup, dayBreak: needsDayBreak ? d : null, showNewMessageDivider, senderName, avatarUrl, isSelf, isFirstEdited };
-    });
-  }, [chatMessages, newMessageMarkerId, currentUserId, currentUserNickname, getSenderName, getSenderAvatarUrl]);
-
-  const messageMap = useMemo(() => {
-    const map = new Map<string, ChatMessage>();
-    for (const m of chatMessages) map.set(m.message_id, m);
-    return map;
-  }, [chatMessages]);
-
-  // ── Context menu / actions ────────────────────────────────────
-  const [contextMenu, setContextMenu] = useState<{
-    message: ChatMessage;
-    position: { x: number; y: number };
-  } | null>(null);
-
-  const handleMessageRightClick = useCallback((event: React.MouseEvent, message: ChatMessage) => {
-    event.preventDefault();
-    setContextMenu({ message, position: { x: event.clientX, y: event.clientY } });
-  }, []);
-
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
-
-  const handleReaction = useCallback((reactionSrc: string, message: ChatMessage) => {
-    if (!socketConnection || !currentUserId) return;
-    const accessToken = getServerAccessToken(serverHost || "");
-    if (!accessToken) return;
-    recordReaction(reactionSrc);
-    (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:react", {
-      conversationId: message.conversation_id,
-      messageId: message.message_id,
-      reactionSrc,
-      accessToken,
-    });
-  }, [socketConnection, currentUserId, serverHost]);
-
-  const handleReply = useCallback((message: ChatMessage) => {
-    setReplyingTo(message);
-    editorRef.current?.focus();
-  }, []);
-
-  const handleReport = useCallback(() => {
-    const targetMessage = contextMenu?.message;
-    if (!targetMessage || !socketConnection || !currentUserId) return;
-    const accessToken = getServerAccessToken(serverHost || "");
-    if (!accessToken) return;
-    (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:report", {
-      conversationId: targetMessage.conversation_id,
-      messageId: targetMessage.message_id,
-      accessToken,
-    });
-  }, [contextMenu, socketConnection, currentUserId, serverHost]);
-
-  const [pendingDeleteMessage, setPendingDeleteMessage] = useState<ChatMessage | null>(null);
-
-  const requestDelete = useCallback((message: ChatMessage) => {
-    if (!socketConnection || !currentUserId) return;
-    if (message.sender_server_id !== currentUserId && !canDeleteAny) return;
-    setPendingDeleteMessage(message);
-  }, [socketConnection, currentUserId, canDeleteAny]);
-
-  const confirmDelete = useCallback(() => {
-    if (!pendingDeleteMessage || !socketConnection) return;
-    const accessToken = getServerAccessToken(serverHost || "");
-    if (!accessToken) return;
-    (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:delete", {
-      conversationId: pendingDeleteMessage.conversation_id,
-      messageId: pendingDeleteMessage.message_id,
-      accessToken,
-    });
-    setPendingDeleteMessage(null);
-  }, [pendingDeleteMessage, socketConnection, serverHost]);
-
-  const startEditing = useCallback((message: ChatMessage) => {
-    if (!message.text) return;
-    setEditingMessage(message);
-    setReplyingTo(null);
-    requestAnimationFrame(() => { editorRef.current?.setContent(message.text!); });
-  }, []);
-
-  const cancelEditing = useCallback(() => {
-    setEditingMessage(null);
-    editorRef.current?.clear();
-  }, []);
-
-  const handleArrowUpEmpty = useCallback(() => {
-    if (!currentUserId) return;
-    for (let i = chatMessages.length - 1; i >= 0; i--) {
-      const msg = chatMessages[i];
-      if (msg.sender_server_id === currentUserId && msg.text && !msg.pending && !msg.failed) {
-        startEditing(msg);
-        return;
-      }
-    }
-  }, [chatMessages, currentUserId, startEditing]);
-
-  const handleEditorSend = useCallback((markdown: string, files: File[]) => {
-    if (editingMessage) {
-      const trimmed = markdown.trim();
-      if (trimmed && trimmed !== editingMessage.text?.trim() && editMessage) {
-        editMessage(editingMessage.message_id, editingMessage.conversation_id, trimmed);
-      }
-      setEditingMessage(null);
-      editorRef.current?.clear();
-      return;
-    }
-    if (!canSend && !isRateLimited) return;
-    forceScrollToBottomRef.current = true;
-    sendChat(markdown, files, replyingTo?.message_id);
-    setReplyingTo(null);
-  }, [canSend, isRateLimited, sendChat, replyingTo, editingMessage, editMessage]);
-
-  const scrollToMessage = useCallback((messageId: string) => {
-    const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
-    if (!el) return;
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
-    setTimeout(() => {
-      el.style.background = "var(--accent-4)";
-      setTimeout(() => { el.style.background = "transparent"; }, 1500);
-    }, 300);
-  }, []);
+  const messageMap = useMemo(() => buildMessageMap(chatMessages), [chatMessages]);
 
   const onLightboxOpen = useCallback((src: string, alt?: string) => {
     setLightboxImage({ src, alt });
   }, []);
-
-  const isContextMenuOpen = !!contextMenu;
 
   const editorPlaceholder =
     !canViewVoiceChannelText && isVoiceChannelTextChat
@@ -604,77 +346,19 @@ export const ChatView = memo(({
             </div>
           ) : null}
 
-          {replyingTo && (
-            <Flex
-              align="center"
-              gap="2"
-              style={{
-                padding: "6px 12px",
-                marginBottom: "4px",
-                borderLeft: "3px solid var(--accent-9)",
-                background: "var(--gray-4)",
-                borderRadius: "0 var(--radius-3) var(--radius-3) 0",
-                fontSize: "13px",
-              }}
-            >
-              <Flex align="center" gap="1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                <Text size="2" color="gray">Replying to</Text>
-                <Text size="2" weight="bold">{getSenderName(replyingTo)}</Text>
-                <Text size="1" color="gray" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {getReplyPreview(replyingTo, 80)}
-                </Text>
-              </Flex>
-              <Button
-                variant="ghost"
-                size="1"
-                onClick={() => setReplyingTo(null)}
-                style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
-              >
-                ✕
-              </Button>
-            </Flex>
-          )}
-
-          {editingMessage && (
-            <Flex
-              align="center"
-              gap="2"
-              style={{
-                padding: "6px 12px",
-                marginBottom: "4px",
-                borderLeft: "3px solid var(--amber-9)",
-                background: "var(--gray-4)",
-                borderRadius: "0 var(--radius-3) var(--radius-3) 0",
-                fontSize: "13px",
-              }}
-            >
-              <Flex align="center" gap="1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                <Text size="2" color="gray">Editing message</Text>
-                <Text size="1" color="gray" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 4 }}>
-                  press Escape to cancel
-                </Text>
-              </Flex>
-              <Button
-                variant="ghost"
-                size="1"
-                onClick={cancelEditing}
-                style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
-              >
-                ✕
-              </Button>
-            </Flex>
-          )}
-
-          <ChatEditor
-            ref={editorRef}
+          <ChatEditorBar
+            replyingTo={replyingTo}
+            editingMessage={editingMessage}
+            editorRef={editorRef}
             placeholder={editorPlaceholder}
             disabled={editorDisabled}
             maxFileSize={maxFileSize}
+            memberList={mentionMembers}
+            getSenderName={getSenderName}
+            onCancelReply={cancelReply}
+            onCancelEditing={cancelEditing}
             onSend={handleEditorSend}
             onArrowUpEmpty={handleArrowUpEmpty}
-            onCancel={editingMessage ? cancelEditing : undefined}
-            isEditing={!!editingMessage}
-            memberList={mentionMembers}
           />
         </Flex>
       </Box>

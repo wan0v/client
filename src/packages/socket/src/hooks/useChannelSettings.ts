@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { MutableRefObject, useCallback, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
 import type { Channel } from "@/settings/src/types/server";
@@ -15,7 +15,7 @@ interface UseChannelSettingsParams {
   setNoiseGate: (v: number) => void;
 }
 
-export function useChannelSettings({
+function useChannelSettings({
   inputMode, rnnoiseEnabled, eSportsModeEnabled, noiseGate, isConnected,
   setInputMode, setRnnoiseEnabled, setESportsModeEnabled, setNoiseGate,
 }: UseChannelSettingsParams) {
@@ -67,3 +67,93 @@ export function useChannelSettings({
 
   return { applyChannelSettings };
 }
+
+interface UseHandleChannelClickParams {
+  currentlyViewingServer: { host: string; name: string } | null;
+  isConnected: boolean;
+  currentServerConnected: string | null;
+  currentChannelId: string;
+  selectedChannelId: string | null;
+  isConnecting: boolean;
+  showVoiceView: boolean;
+  mediaAutoShownRef: MutableRefObject<boolean>;
+  setSelectedChannelId: (id: string) => void;
+  setShowVoiceView: (v: boolean) => void;
+  setPendingChannelId: (id: string | null) => void;
+  setSettingsTab: (tab: string) => void;
+  setShowSettings: (v: boolean) => void;
+  setLastSelectedChannelForServer: (host: string, channelId: string) => void;
+  connect: (channelId: string, eSportsMode?: boolean, maxBitrate?: number | null) => Promise<void>;
+  applyChannelSettings: (channel: Channel) => void;
+}
+
+function useHandleChannelClick({
+  currentlyViewingServer, isConnected, currentServerConnected,
+  currentChannelId, selectedChannelId, isConnecting,
+  showVoiceView, mediaAutoShownRef,
+  setSelectedChannelId, setShowVoiceView, setPendingChannelId,
+  setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
+  connect, applyChannelSettings,
+}: UseHandleChannelClickParams) {
+  return useCallback((channel: Channel) => {
+    if (!currentlyViewingServer) return;
+    switch (channel.type) {
+      case "voice": {
+        const isAlreadyConnectedToThis =
+          isConnected && currentServerConnected === currentlyViewingServer.host && currentChannelId === channel.id;
+
+        if (isAlreadyConnectedToThis) {
+          mediaAutoShownRef.current = false;
+          if (selectedChannelId !== channel.id && channel.textInVoice) {
+            setSelectedChannelId(channel.id);
+          }
+          setShowVoiceView(!showVoiceView);
+          return;
+        }
+
+        if (isConnecting && currentChannelId === channel.id) {
+          mediaAutoShownRef.current = false;
+          if (channel.textInVoice) {
+            setSelectedChannelId(channel.id);
+          }
+          setShowVoiceView(!showVoiceView);
+          return;
+        }
+
+        setPendingChannelId(null);
+        applyChannelSettings(channel);
+        mediaAutoShownRef.current = false;
+        setShowVoiceView(false);
+        connect(channel.id, channel.eSportsMode, channel.maxBitrate).catch((error) => {
+          console.error("SFU connection failed:", error);
+          if (error instanceof Error && error.message.includes("Microphone not available")) {
+            setPendingChannelId(channel.id);
+            setSettingsTab("audio");
+            setShowSettings(true);
+            toast.error("No microphone selected. Please choose a device in Settings → Audio.");
+          } else if (error instanceof Error) {
+            toast.error(error.message);
+          } else {
+            toast.error("Failed to connect to voice channel");
+          }
+        });
+        break;
+      }
+      case "text":
+        setSelectedChannelId(channel.id);
+        if (currentlyViewingServer) {
+          setLastSelectedChannelForServer(currentlyViewingServer.host, channel.id);
+        }
+        break;
+    }
+  }, [
+    currentlyViewingServer, isConnected, currentServerConnected,
+    currentChannelId, selectedChannelId, isConnecting,
+    showVoiceView, mediaAutoShownRef,
+    setSelectedChannelId, setShowVoiceView, setPendingChannelId,
+    setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
+    connect, applyChannelSettings,
+  ]);
+}
+
+export { useChannelSettings, useHandleChannelClick };

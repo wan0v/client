@@ -1,4 +1,5 @@
 import {
+  Badge,
   Button,
   Flex,
   IconButton,
@@ -21,6 +22,20 @@ import { DEFAULT_MAX_EMOJI_BYTES, IMAGE_MIME_ACCEPT } from "../utils/emojiFileUt
 import { BttvImport } from "./BttvImport";
 import { EmojiList } from "./EmojiList";
 
+type EmojiJobStatus = "queued" | "processing" | "done" | "error" | "superseded";
+
+interface EmojiJobListItem {
+  job_id: string;
+  name: string;
+  status: EmojiJobStatus;
+  error_message: string | null;
+}
+
+interface EmojiQueueState {
+  pendingCount: number;
+  jobs: EmojiJobListItem[];
+}
+
 export function ServerEmojisTab({
   host,
   socket,
@@ -38,6 +53,7 @@ export function ServerEmojisTab({
   const [emojis, setEmojis] = useState<EmojiItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [emojiMaxBytes, setEmojiMaxBytes] = useState<number>(DEFAULT_MAX_EMOJI_BYTES);
+  const [queueJobs, setQueueJobs] = useState<EmojiJobListItem[]>([]);
 
   const effectiveAccessToken = useMemo(
     () => accessToken || getServerAccessToken(host),
@@ -79,15 +95,27 @@ export function ServerEmojisTab({
       }
     };
 
+    const onQueueState = (payload: unknown) => {
+      const root = (payload && typeof payload === "object") ? (payload as EmojiQueueState) : null;
+      if (root && Array.isArray(root.jobs)) {
+        setQueueJobs(root.jobs.filter((j) => j.status === "queued" || j.status === "processing"));
+      }
+    };
+
     socket.on("server:settings", onSettings);
     socket.on("server:emojis:updated", onEmojisUpdated);
+    socket.on("server:emojiQueue:state", onQueueState);
     socket.emit("server:settings:get");
+
+    const token = effectiveAccessToken;
+    if (token) socket.emit("server:emojiQueue:get", { accessToken: token });
 
     return () => {
       socket.off("server:settings", onSettings);
       socket.off("server:emojis:updated", onEmojisUpdated);
+      socket.off("server:emojiQueue:state", onQueueState);
     };
-  }, [socket, refresh]);
+  }, [socket, refresh, effectiveAccessToken]);
 
   const {
     pendingEmojis,
@@ -272,6 +300,33 @@ export function ServerEmojisTab({
           </Flex>
         )}
       </Flex>
+
+      {queueJobs.length > 0 && (
+        <Flex
+          direction="column"
+          gap="2"
+          p="3"
+          style={{
+            border: "1px solid var(--amber-a5)",
+            borderRadius: "var(--radius-2)",
+            background: "var(--amber-a2)",
+          }}
+        >
+          <Text size="2" weight="medium">
+            Processing {queueJobs.length} emoji{queueJobs.length !== 1 ? "s" : ""}…
+          </Text>
+          {queueJobs.map((j) => (
+            <Flex key={j.job_id} justify="between" align="center" gap="2">
+              <Text size="2" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                :{j.name}:
+              </Text>
+              <Badge size="1" variant="soft" color={j.status === "processing" ? "amber" : "gray"}>
+                {j.status}
+              </Badge>
+            </Flex>
+          ))}
+        </Flex>
+      )}
 
       <BttvImport
         host={host}

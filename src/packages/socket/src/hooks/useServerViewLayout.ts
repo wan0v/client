@@ -1,10 +1,59 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const SIDEBAR_WIDTH_PX = 240;
 const SIDEBAR_HOVER_PX = 8;
 const SIDEBAR_CLOSE_DELAY = 1000;
 const VOICE_MIN_WIDTH = 200;
 const MIN_CHAT_WIDTH = 320;
+
+interface UseMediaAutoShowParams {
+  showVoiceView: boolean;
+  setShowVoiceView: (v: boolean) => void;
+  isCompact: boolean;
+  isConnected: boolean;
+  currentChannelId: string;
+  serverClients: Record<string, { voiceChannelId?: string; screenShareEnabled?: boolean; cameraEnabled?: boolean }> | undefined;
+}
+
+function useMediaAutoShow({
+  showVoiceView, setShowVoiceView, isCompact, isConnected,
+  currentChannelId, serverClients,
+}: UseMediaAutoShowParams) {
+  const compactAutoHiddenRef = useRef(false);
+  useEffect(() => {
+    if (isCompact && showVoiceView) {
+      compactAutoHiddenRef.current = true;
+      setShowVoiceView(false);
+    } else if (!isCompact && compactAutoHiddenRef.current) {
+      compactAutoHiddenRef.current = false;
+      setShowVoiceView(true);
+    }
+  }, [isCompact, setShowVoiceView, showVoiceView]);
+
+  const mediaAutoShownRef = useRef(false);
+  const anyMediaActive = useMemo(() => {
+    if (!serverClients || !currentChannelId || !isConnected) return false;
+    return Object.values(serverClients).some(
+      (c) => c.voiceChannelId === currentChannelId && (c.screenShareEnabled || c.cameraEnabled),
+    );
+  }, [serverClients, currentChannelId, isConnected]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      mediaAutoShownRef.current = false;
+      return;
+    }
+    if (anyMediaActive && !showVoiceView) {
+      mediaAutoShownRef.current = true;
+      setShowVoiceView(true);
+    } else if (!anyMediaActive && showVoiceView && mediaAutoShownRef.current) {
+      mediaAutoShownRef.current = false;
+      setShowVoiceView(false);
+    }
+  }, [anyMediaActive, isConnected, showVoiceView, setShowVoiceView]);
+
+  return { mediaAutoShownRef };
+}
 
 interface UseSidebarHoverParams {
   pinChannelsSidebar: boolean;
@@ -169,6 +218,7 @@ export {
   MIN_CHAT_WIDTH,
   SIDEBAR_HOVER_PX,
   SIDEBAR_WIDTH_PX,
+  useMediaAutoShow,
   useSidebarHover,
   useVoiceResize,
   VOICE_MIN_WIDTH,

@@ -1,0 +1,133 @@
+import {
+  Badge,
+  Checkbox,
+  Flex,
+  Text,
+  TextField,
+} from "@radix-ui/themes";
+import { type ChangeEvent } from "react";
+
+import { BTTV_CDN, type BttvEmoteWithMeta } from "../utils/bttvImportUtils";
+
+interface BttvEmoteRowProps {
+  emote: BttvEmoteWithMeta;
+  importing: boolean;
+  onToggleSelect: (id: string) => void;
+  onUpdateName: (id: string, name: string) => void;
+}
+
+export function BttvEmoteRow({
+  emote: e,
+  importing,
+  onToggleSelect,
+  onUpdateName,
+}: BttvEmoteRowProps) {
+  return (
+    <Flex
+      align="center"
+      gap="2"
+      py="1"
+      px="2"
+      style={{
+        border: "1px solid var(--gray-a4)",
+        borderRadius: "var(--radius-1)",
+        opacity: e.selected ? 1 : 0.5,
+      }}
+    >
+      <Checkbox
+        size="1"
+        checked={e.selected}
+        onCheckedChange={() => onToggleSelect(e.id)}
+        disabled={importing}
+      />
+      <div
+        className="emoji-upload-preview-wrap"
+        data-status={
+          e.status === "processing"
+            ? "processing"
+            : (e.status === "uploading" || e.status === "downloading")
+              ? "uploading"
+              : undefined
+        }
+      >
+        <img
+          className="emoji-upload-preview-img"
+          src={`${BTTV_CDN}/${e.id}/2x`}
+          alt={e.code}
+        />
+        {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (
+          <div className="emoji-upload-preview-overlay">
+            <div className="emoji-upload-preview-label">
+              {e.status === "downloading"
+                ? `DL ${e.progress}%`
+                : e.status === "processing"
+                  ? "PROC"
+                  : `${e.progress}%`}
+            </div>
+            {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (
+              <div className="emoji-upload-preview-bar">
+                <div
+                  className="emoji-upload-preview-bar-inner"
+                  style={{ width: `${e.status === "processing" ? 100 : e.progress}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      <Flex
+        direction="column"
+        gap="1"
+        style={{ flex: 1, minWidth: 0 }}
+      >
+        <Flex align="center" gap="1">
+          <TextField.Root
+            size="1"
+            value={e.name}
+            onChange={(ev: ChangeEvent<HTMLInputElement>) =>
+              onUpdateName(e.id, ev.target.value)
+            }
+            placeholder="shortcode"
+            disabled={importing || !e.selected}
+            style={{ flex: 1 }}
+          />
+          {e.code !== e.name && (
+            <Text
+              size="1"
+              color="gray"
+              style={{
+                flexShrink: 0,
+                maxWidth: 100,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {e.code}
+            </Text>
+          )}
+        </Flex>
+        {e.selected && e.nameError && (
+          <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+            {e.nameError}
+          </Text>
+        )}
+        {e.selected && !e.nameError && e.nameWarning && (
+          <Text size="1" color="yellow" style={{ lineHeight: 1.2 }}>
+            {e.nameWarning}
+          </Text>
+        )}
+        {e.selected && e.status === "error" && e.lastError && (
+          <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+            {e.lastError}
+          </Text>
+        )}
+      </Flex>
+      {e.animated && (
+        <Badge size="1" variant="soft" color="purple">
+          GIF
+        </Badge>
+      )}
+    </Flex>
+  );
+}
