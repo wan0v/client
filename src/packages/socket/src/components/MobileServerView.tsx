@@ -164,6 +164,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
       >
         <ChatView
           chatMessages={props.chatMessages}
+          conversationKey={props.selectedChannelId ?? undefined}
           canSend={props.canSend}
           sendChat={props.sendChat}
           editMessage={props.editMessage}

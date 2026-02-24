@@ -44,6 +44,7 @@ VirtuosoScroller.displayName = "VirtuosoScroller";
 
 export const ChatView = memo(({
   chatMessages,
+  conversationKey,
   canSend,
   sendChat,
   editMessage,
@@ -68,6 +69,7 @@ export const ChatView = memo(({
   firstItemIndex,
 }: {
   chatMessages: ChatMessage[];
+  conversationKey?: string;
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
@@ -423,6 +425,22 @@ export const ChatView = memo(({
     return initialLoadDoneRef.current ? "smooth" as const : "auto" as const;
   }, []);
 
+  const pendingInitialScrollRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    pendingInitialScrollRef.current = conversationKey ?? null;
+  }, [conversationKey]);
+
+  useEffect(() => {
+    if (!conversationKey) return;
+    if (pendingInitialScrollRef.current !== conversationKey) return;
+    if (chatMessages.length === 0) return;
+    requestAnimationFrame(() => {
+      virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
+      pendingInitialScrollRef.current = null;
+    });
+  }, [conversationKey, chatMessages.length]);
+
   const itemContent = useCallback((index: number) => {
     const localIdx = index - (firstItemIndex ?? 100_000);
     const m = chatMessages[localIdx];
@@ -550,15 +568,18 @@ export const ChatView = memo(({
             </Flex>
           ) : showMessages ? (
             <Virtuoso
+              key={conversationKey}
               ref={virtuosoRef}
               style={{ flex: 1, minWidth: 0, marginBottom: 12 }}
               data={chatMessages}
               firstItemIndex={firstItemIndex}
-              initialTopMostItemIndex={chatMessages.length - 1}
+              alignToBottom
+              initialTopMostItemIndex={{ index: "LAST", align: "end" }}
               followOutput={followOutput}
               rangeChanged={handleRangeChanged}
               overscan={400}
               increaseViewportBy={{ top: 200, bottom: 200 }}
+              computeItemKey={(_, item) => item.message_id}
               itemContent={itemContent}
               components={{ Header: headerContent, Scroller: VirtuosoScroller }}
             />

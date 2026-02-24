@@ -340,12 +340,19 @@ function MessageContent({
               const mime = attachMeta?.mime || "";
 
               if (mime.startsWith("image/")) {
+                const w = attachMeta?.width ?? undefined;
+                const h = attachMeta?.height ?? undefined;
                 return (
                   <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} isImage>
                     <img
                       src={url}
                       alt={attachMeta?.original_name || "Attachment"}
                       className="chat-attachment-image"
+                      width={w}
+                      height={h}
+                      loading="lazy"
+                      decoding="async"
+                      style={w && h ? { aspectRatio: `${w} / ${h}` } : undefined}
                       onClick={() => onLightboxOpen(url, attachMeta?.original_name || "Attachment")}
                     />
                   </MediaContextMenu>

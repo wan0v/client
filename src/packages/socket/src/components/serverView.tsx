@@ -785,6 +785,7 @@ export const ServerView = () => {
               }}>
                 <ChatView
                   chatMessages={chatMessages}
+                  conversationKey={activeConversationId}
                   canSend={canSend}
                   sendChat={sendChat}
                   editMessage={editMessage}

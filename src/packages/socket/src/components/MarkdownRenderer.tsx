@@ -13,6 +13,13 @@ import type { ProfanityMatchRange } from "./chatUtils";
 import { MediaContextMenu } from "./MediaContextMenu";
 import { BlurredWord } from "./ProfanityBlur";
 
+type MarkdownImgProps = React.ImgHTMLAttributes<HTMLImageElement> & {
+  node?: unknown;
+  "data-emoji-name"?: string;
+};
+
+const markdownImageSizeCache = new Map<string, { width: number; height: number }>();
+
 const PROFANITY_START = "\uE000";
 const PROFANITY_END = "\uE001";
 const PROFANITY_RE = /\uE000([\s\S]*?)\uE001/g;
@@ -230,10 +237,9 @@ const components: Components = {
   li: ({ children }) => (
     <li style={{ lineHeight: 1.5 }}>{children}</li>
   ),
-  img: ({ src, alt, className, ...props }) => {
+  img: ({ src, alt, className, ...props }: MarkdownImgProps) => {
     const isCustomEmoji = className === "inline-emoji"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      || (props as any)["data-emoji-name"]
+      || Boolean(props["data-emoji-name"])
       || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
     if (isCustomEmoji) {
       return (
@@ -252,23 +258,31 @@ const components: Components = {
         />
       );
     }
+
+    const cacheKey = src ?? "";
+    const cached = cacheKey ? markdownImageSizeCache.get(cacheKey) : undefined;
+
     return (
       <MediaContextMenu src={src || ""} isImage>
-        <img
-          src={src}
-          alt={alt || ""}
-          style={{
-            maxWidth: "100%",
-            maxHeight: "300px",
-            height: "auto",
-            objectFit: "contain",
-            borderRadius: "var(--radius-4)",
-            margin: "4px 0",
-            display: "block",
-            cursor: "pointer",
-          }}
-          onClick={() => src && window.open(src, "_blank")}
-        />
+        <div className="markdown-image-wrap">
+          <img
+            src={src}
+            alt={alt || ""}
+            className="markdown-image"
+            width={cached?.width}
+            height={cached?.height}
+            loading="lazy"
+            decoding="async"
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (!cacheKey) return;
+              if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                markdownImageSizeCache.set(cacheKey, { width: img.naturalWidth, height: img.naturalHeight });
+              }
+            }}
+            onClick={() => src && window.open(src, "_blank")}
+          />
+        </div>
       </MediaContextMenu>
     );
   },
