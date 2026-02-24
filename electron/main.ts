@@ -649,6 +649,8 @@ if (!gotSingleInstanceLock) {
         "https://www.youtube-nocookie.com"],
       [["https://*.vimeo.com/*", "https://*.vimeocdn.com/*"],
         "https://player.vimeo.com"],
+      [["https://clips.twitch.tv/*"],
+        "https://clips.twitch.tv"],
       [["https://*.twitch.tv/*", "https://*.twitchcdn.net/*", "https://*.jtvnw.net/*"],
         "https://player.twitch.tv"],
       [["https://*.spotify.com/*", "https://*.spotifycdn.com/*"],
@@ -676,13 +678,16 @@ if (!gotSingleInstanceLock) {
     );
 
     // Strip Content-Security-Policy from embed provider responses so
-    // frame-ancestors doesn't block embedding inside Electron (file://).
+    // frame-ancestors doesn't block embedding inside Electron.
     session.defaultSession.webRequest.onHeadersReceived(
       { urls: allEmbedPatterns },
       (details, callback) => {
         const headers = { ...details.responseHeaders };
-        delete headers["Content-Security-Policy"];
-        delete headers["content-security-policy"];
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-security-policy") {
+            delete headers[key];
+          }
+        }
         callback({ responseHeaders: headers });
       },
     );
