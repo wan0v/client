@@ -110,11 +110,33 @@ export const MessageRow = memo(({
 
       {meta.isSystem ? (
         <Flex
+          ref={rowRef}
+          data-message-id={m.message_id}
           gap="3"
-          style={{ width: "100%", marginTop: 12 }}
           align="start"
           onContextMenu={(e) => onContextMenu(e, m)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            width: "100%",
+            marginTop: 12,
+            borderRadius: "var(--radius-3)",
+            padding: "2px 6px",
+            margin: "12px -6px 0",
+            transition: "background 0.3s ease",
+            cursor: "default",
+            position: "relative",
+          }}
         >
+          {showToolbar && (
+            <MessageHoverToolbar
+              onReaction={(emoji) => onReaction(emoji, m)}
+              onReply={() => onReply(m)}
+              canDelete={canDelete}
+              onDelete={canDelete ? () => onDelete(m) : undefined}
+              onPickerOpenChange={handlePickerOpenChange}
+            />
+          )}
           <div style={{ flexShrink: 0, width: 51 }} />
           <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
             <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>

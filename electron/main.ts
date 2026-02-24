@@ -666,6 +666,11 @@ if (!gotSingleInstanceLock) {
     session.defaultSession.webRequest.onBeforeSendHeaders(
       { urls: allEmbedPatterns },
       (details, callback) => {
+        const existingOrigin = details.requestHeaders["Origin"];
+        if (existingOrigin && existingOrigin.startsWith("https://")) {
+          callback({ requestHeaders: details.requestHeaders });
+          return;
+        }
         for (const [patterns, origin] of embedOriginMap) {
           if (patterns.some((p) => matchUrlPattern(p, details.url))) {
             details.requestHeaders["Referer"] = origin + "/";
