@@ -93,7 +93,7 @@ export const TwitchEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => 
       return h || "localhost";
     } catch { return "localhost"; }
   })();
-  const base = embed.kind === "clip" ? "https://clips.twitch.tv/embed" : "https://player.twitch.tv/";
+  const base = "https://player.twitch.tv/";
   const src = (() => {
     const u = new URL(base);
     if (embed.kind === "clip") {
