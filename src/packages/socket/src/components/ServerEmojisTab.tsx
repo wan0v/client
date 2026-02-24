@@ -18,6 +18,7 @@ import {
   getCustomEmojiUrl,
   setCustomEmojis,
 } from "../utils/emojiData";
+import { uploadEmojiViaXhr } from "../utils/uploadEmojiViaXhr";
 import { BttvImport } from "./BttvImport";
 
 const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
@@ -385,98 +386,73 @@ export function ServerEmojisTab({
     });
     setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "uploading", progress: 0 } : p)));
 
-    return new Promise<boolean>((resolve) => {
-      const xhr = new XMLHttpRequest();
-      let lastLoggedPct = -1;
-      const startedAt = Date.now();
+    const startedAt = Date.now();
+    let lastLoggedMilestone = -1;
 
-      xhr.upload.addEventListener("loadstart", () => {
-        console.log("[EmojiUpload] uploadOne: xhr upload loadstart", { id: item.id, name: item.name });
-      });
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          if (pct >= 0 && pct <= 100) {
-            const milestone = Math.floor(pct / 25) * 25;
-            if (milestone !== lastLoggedPct) {
-              lastLoggedPct = milestone;
-              console.log("[EmojiUpload] uploadOne: progress", { id: item.id, name: item.name, pct });
-            }
-          }
-          setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
+    return uploadEmojiViaXhr({
+      base,
+      accessToken: effectiveAccessToken,
+      file: item.file,
+      name: item.name,
+      onProgress: (pct) => {
+        const milestone = Math.floor(pct / 25) * 25;
+        if (milestone !== lastLoggedMilestone) {
+          lastLoggedMilestone = milestone;
+          console.log("[EmojiUpload] uploadOne: progress", { id: item.id, name: item.name, pct });
         }
-      });
-      xhr.upload.addEventListener("loadend", () => {
-        // Upload finished; server may still be converting to AVIF.
+        setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
+      },
+      onUploadFinished: () => {
+        // Upload finished; server may still be converting to AVIF/WebP.
         console.log("[EmojiUpload] uploadOne: upload finished; waiting for server response", { id: item.id, name: item.name });
         setPendingEmojis((prev) => prev.map((p) => (
           p.id === item.id && p.status === "uploading"
             ? { ...p, status: "processing", progress: 100 }
             : p
         )));
+      },
+    }).then((result) => {
+      console.log("[EmojiUpload] uploadOne: server response", {
+        id: item.id,
+        name: item.name,
+        status: result.status,
+        ok: result.ok,
+        ms: Date.now() - startedAt,
       });
 
-      xhr.addEventListener("load", () => {
-        let data: Record<string, unknown> = {};
-        try { data = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
-        console.log("[EmojiUpload] uploadOne: server response", {
+      if (result.ok) {
+        toast.success(`Emoji :${item.name}: uploaded!`);
+        console.log("[EmojiUpload] uploadOne: applying optimistic list update", {
           id: item.id,
-          name: item.name,
-          status: xhr.status,
-          ok: xhr.status >= 200 && xhr.status < 300,
-          ms: Date.now() - startedAt,
+          uploadedName: result.name,
+          uploadedFileId: result.file_id,
         });
-        if (xhr.status >= 200 && xhr.status < 300) {
-          toast.success(`Emoji :${item.name}: uploaded!`);
-          const uploadedName = typeof data.name === "string" ? data.name : null;
-          const uploadedFileId = typeof data.file_id === "string" ? data.file_id : null;
-          if (uploadedName && uploadedFileId) {
-            console.log("[EmojiUpload] uploadOne: applying optimistic list update", { id: item.id, uploadedName, uploadedFileId });
-            setEmojis((prev) => {
-              const next = [
-                ...prev.filter((e) => e.name !== uploadedName),
-                { name: uploadedName, file_id: uploadedFileId },
-              ].sort((a, b) => a.name.localeCompare(b.name));
-              setCustomEmojis(next, host);
-              return next;
-            });
-          }
-          setPendingEmojis((prev) => {
-            const existing = prev.find((p) => p.id === item.id);
-            if (existing) URL.revokeObjectURL(existing.previewUrl);
-            const remaining = prev.filter((p) => p.id !== item.id);
-            const batchNames = remaining.map((p) => p.name);
-            console.log("[EmojiUpload] uploadOne: removed from pending", { id: item.id, name: item.name, remaining: remaining.length });
-            return remaining.map((p, i) => {
-              const { error, warning } = validateName(p.name, existingNames, batchNames, i);
-              return { ...p, nameError: error, nameWarning: warning };
-            });
+        setEmojis((prev) => {
+          const next = [
+            ...prev.filter((e) => e.name !== result.name),
+            { name: result.name, file_id: result.file_id },
+          ].sort((a, b) => a.name.localeCompare(b.name));
+          setCustomEmojis(next, host);
+          return next;
+        });
+
+        setPendingEmojis((prev) => {
+          const existing = prev.find((p) => p.id === item.id);
+          if (existing) URL.revokeObjectURL(existing.previewUrl);
+          const remaining = prev.filter((p) => p.id !== item.id);
+          const batchNames = remaining.map((p) => p.name);
+          console.log("[EmojiUpload] uploadOne: removed from pending", { id: item.id, name: item.name, remaining: remaining.length });
+          return remaining.map((p, i) => {
+            const { error, warning } = validateName(p.name, existingNames, batchNames, i);
+            return { ...p, nameError: error, nameWarning: warning };
           });
-          resolve(true);
-        } else {
-          const errMsg = (typeof data?.message === "string" && data.message) ||
-            (typeof data?.error === "string" && data.error) ||
-            `HTTP ${xhr.status}`;
-          toast.error(`:${item.name}: — ${errMsg}`);
-          setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
-          resolve(false);
-        }
-      });
+        });
+        return true;
+      }
 
-      xhr.addEventListener("error", () => {
-        toast.error(`:${item.name}: — Upload failed.`);
-        console.log("[EmojiUpload] uploadOne: xhr error", { id: item.id, name: item.name, ms: Date.now() - startedAt });
-        setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
-        resolve(false);
-      });
-
-      const form = new FormData();
-      form.append("file", item.file);
-      form.append("name", item.name);
-
-      xhr.open("POST", `${base}/api/emojis`);
-      xhr.setRequestHeader("Authorization", `Bearer ${effectiveAccessToken}`);
-      xhr.send(form);
+      toast.error(`:${item.name}: — ${result.message}`);
+      setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
+      return false;
     });
   };
 

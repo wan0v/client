@@ -12,10 +12,14 @@ import { MdClose, MdDownload, MdSearch } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
 
+import { uploadEmojiViaXhr } from "../utils/uploadEmojiViaXhr";
+
 const BTTV_USER_URL_RE = /betterttv\.com\/users\/([a-f0-9]{20,30})/;
 const BTTV_EMOTE_URL_RE = /betterttv\.com\/emotes\/([a-f0-9]{20,30})/;
 const BTTV_CDN = "https://cdn.betterttv.net/emote";
 const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
+
+type EmoteImportStatus = "idle" | "downloading" | "uploading" | "processing" | "error";
 
 interface BttvEmote {
   id: string;
@@ -29,6 +33,9 @@ interface BttvEmoteWithMeta extends BttvEmote {
   name: string;
   nameError: string | null;
   nameWarning: string | null;
+  status: EmoteImportStatus;
+  progress: number;
+  lastError: string | null;
 }
 
 function sanitizeName(code: string): string {
@@ -36,6 +43,17 @@ function sanitizeName(code: string): string {
   const trimmed = sanitized.replace(/^_+|_+$/g, "").replace(/_{2,}/g, "_");
   if (trimmed.length < 2) return trimmed.padEnd(2, "_");
   return trimmed.slice(0, 32);
+}
+
+function mimeToExt(mime: string): string | null {
+  const lower = mime.toLowerCase();
+  if (lower === "image/png") return "png";
+  if (lower === "image/jpeg") return "jpg";
+  if (lower === "image/gif") return "gif";
+  if (lower === "image/webp") return "webp";
+  if (lower === "image/avif") return "avif";
+  if (lower === "image/svg+xml") return "svg";
+  return null;
 }
 
 function validateName(
@@ -155,6 +173,9 @@ export function BttvImport({
             name: sanitizeName(code),
             nameError: null,
             nameWarning: null,
+            status: "idle",
+            progress: 0,
+            lastError: null,
           },
         ];
         const validated = revalidateAll(withMeta);
@@ -187,6 +208,9 @@ export function BttvImport({
           name: sanitizeName(e.code),
           nameError: null,
           nameWarning: null,
+          status: "idle",
+          progress: 0,
+          lastError: null,
         }));
         const validated = revalidateAll(withMeta);
         setEmotes(validated);
@@ -247,54 +271,100 @@ export function BttvImport({
 
     setImporting(true);
     try {
-      const resp = await fetch(`${base}/api/emojis/bttv/import`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${effectiveAccessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          emotes: toImport.map((e) => ({
-            id: e.id,
-            code: e.code,
-            imageType: e.imageType,
-            name: e.name,
-          })),
-        }),
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok && !data.results) {
-        throw new Error(
-          (typeof data?.message === "string" && data.message) ||
-            `Import failed (${resp.status})`,
-        );
+      const startedAt = Date.now();
+      console.log("[BttvImport] start", { count: toImport.length });
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const emote of toImport) {
+        console.log("[BttvImport] emote: start", { id: emote.id, name: emote.name, code: emote.code });
+        setEmotes((prev) => prev.map((e) => (
+          e.id === emote.id
+            ? { ...e, status: "downloading", progress: 0, lastError: null }
+            : e
+        )));
+
+        try {
+          const fileResp = await fetch(`${base}/api/emojis/bttv/file/${emote.id}`, { cache: "no-store" });
+          if (!fileResp.ok) {
+            const data: unknown = await fileResp.json().catch(() => null);
+            const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
+            const msg = typeof root.message === "string" ? root.message : `Failed to fetch emote file (${fileResp.status})`;
+            throw new Error(msg);
+          }
+
+          const blob = await fileResp.blob();
+          const mime = blob.type || (emote.imageType === "gif" ? "image/gif" : emote.imageType === "webp" ? "image/webp" : "image/png");
+          const ext = mimeToExt(mime) ?? (emote.imageType || "png");
+          const file = new File([blob], `${emote.name}.${ext}`, { type: mime });
+
+          setEmotes((prev) => prev.map((e) => (
+            e.id === emote.id
+              ? { ...e, status: "uploading", progress: 0, lastError: null }
+              : e
+          )));
+
+          const uploadStartedAt = Date.now();
+          const result = await uploadEmojiViaXhr({
+            base,
+            accessToken: effectiveAccessToken,
+            file,
+            name: emote.name,
+            onProgress: (pct) => {
+              setEmotes((prev) => prev.map((e) => (
+                e.id === emote.id
+                  ? { ...e, status: "uploading", progress: pct }
+                  : e
+              )));
+            },
+            onUploadFinished: () => {
+              setEmotes((prev) => prev.map((e) => (
+                e.id === emote.id && e.status === "uploading"
+                  ? { ...e, status: "processing", progress: 100 }
+                  : e
+              )));
+            },
+          });
+
+          console.log("[BttvImport] emote: upload result", {
+            id: emote.id,
+            name: emote.name,
+            ok: result.ok,
+            status: result.status,
+            ms: Date.now() - uploadStartedAt,
+          });
+
+          if (result.ok) {
+            successCount++;
+            toast.success(`:${emote.name}: imported!`);
+            setEmotes((prev) => prev.filter((e) => e.id !== emote.id));
+            onImportComplete();
+          } else {
+            failCount++;
+            toast.error(`:${emote.name}: — ${result.message}`);
+            setEmotes((prev) => prev.map((e) => (
+              e.id === emote.id
+                ? { ...e, status: "error", progress: 0, lastError: result.message }
+                : e
+            )));
+          }
+        } catch (err) {
+          failCount++;
+          const msg = err instanceof Error ? err.message : "Import failed.";
+          toast.error(`:${emote.name}: — ${msg}`);
+          setEmotes((prev) => prev.map((e) => (
+            e.id === emote.id
+              ? { ...e, status: "error", progress: 0, lastError: msg }
+              : e
+          )));
+        }
       }
 
-      const results: Array<{ name: string; ok: boolean; message?: string }> =
-        data.results || [];
-      const successCount = results.filter((r) => r.ok).length;
-      const failCount = results.filter((r) => !r.ok).length;
-
+      console.log("[BttvImport] done", { successCount, failCount, ms: Date.now() - startedAt });
       if (successCount > 0) {
         toast.success(`Imported ${successCount} emoji(s)!`);
       }
-      if (failCount > 0) {
-        const failures = results.filter((r) => !r.ok);
-        for (const f of failures.slice(0, 3)) {
-          toast.error(`:${f.name}: — ${f.message || "Failed"}`);
-        }
-        if (failures.length > 3) {
-          toast.error(`…and ${failures.length - 3} more failed.`);
-        }
-      }
-
-      setEmotes((prev) => {
-        const successNames = new Set(
-          results.filter((r) => r.ok).map((r) => r.name),
-        );
-        return prev.filter((e) => !successNames.has(e.name));
-      });
-      onImportComplete();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Import failed.",
@@ -422,17 +492,41 @@ export function BttvImport({
                   onCheckedChange={() => toggleSelect(e.id)}
                   disabled={importing}
                 />
-                <img
-                  src={`${BTTV_CDN}/${e.id}/2x`}
-                  alt={e.code}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    objectFit: "contain",
-                    borderRadius: "var(--radius-1)",
-                    flexShrink: 0,
-                  }}
-                />
+                <div
+                  className="emoji-upload-preview-wrap"
+                  data-status={
+                    e.status === "processing"
+                      ? "processing"
+                      : (e.status === "uploading" || e.status === "downloading")
+                        ? "uploading"
+                        : undefined
+                  }
+                >
+                  <img
+                    className="emoji-upload-preview-img"
+                    src={`${BTTV_CDN}/${e.id}/2x`}
+                    alt={e.code}
+                  />
+                  {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (
+                    <div className="emoji-upload-preview-overlay">
+                      <div className="emoji-upload-preview-label">
+                        {e.status === "downloading"
+                          ? "DL"
+                          : e.status === "processing"
+                            ? "PROC"
+                            : `${e.progress}%`}
+                      </div>
+                      {(e.status === "uploading" || e.status === "processing") && (
+                        <div className="emoji-upload-preview-bar">
+                          <div
+                            className="emoji-upload-preview-bar-inner"
+                            style={{ width: `${e.status === "processing" ? 100 : e.progress}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <Flex
                   direction="column"
                   gap="1"
@@ -473,6 +567,11 @@ export function BttvImport({
                   {e.selected && !e.nameError && e.nameWarning && (
                     <Text size="1" color="yellow" style={{ lineHeight: 1.2 }}>
                       {e.nameWarning}
+                    </Text>
+                  )}
+                  {e.selected && e.status === "error" && e.lastError && (
+                    <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+                      {e.lastError}
                     </Text>
                   )}
                 </Flex>
