@@ -276,7 +276,7 @@ function MessageContent({
         padding: "2px 6px",
         margin: "0 -6px",
         transition: "background 0.3s ease",
-        cursor: "context-menu",
+        cursor: "default",
         position: "relative",
         background: mentionBg,
       }}
