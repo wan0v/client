@@ -59,12 +59,29 @@ function writeConfig(patch: Record<string, unknown>) {
   writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
+function readBoolConfig(key: string, defaultValue: boolean): boolean {
+  const v = readConfig()[key];
+  return typeof v === "boolean" ? v : defaultValue;
+}
+
 // ── Auto-updater config ─────────────────────────────────────────────────
 
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
+let startWithWindows = process.platform === "win32"
+  ? readBoolConfig("startWithWindows", true)
+  : false;
+
+function applyStartWithWindowsSetting(enabled: boolean) {
+  if (process.platform !== "win32") return;
+  try {
+    app.setLoginItemSettings({ openAtLogin: enabled });
+  } catch {
+    // Best-effort: some environments (portable/dev) may not support this.
+  }
+}
 
 function sendToSplash(status: string, info?: Record<string, unknown>) {
   splashWindow?.webContents.send("update-status", { status, ...info });
@@ -485,6 +502,17 @@ if (!gotSingleInstanceLock) {
       closeToTray = enabled;
       writeConfig({ closeToTray: enabled });
     });
+
+    ipcMain.handle("get-start-with-windows-supported", () => process.platform === "win32");
+    ipcMain.handle("get-start-with-windows", () => startWithWindows);
+    ipcMain.on("set-start-with-windows", (_event, enabled: boolean) => {
+      startWithWindows = !!enabled;
+      writeConfig({ startWithWindows });
+      applyStartWithWindowsSetting(startWithWindows);
+    });
+
+    // Apply at startup (default enabled on Windows).
+    applyStartWithWindowsSetting(startWithWindows);
 
     initUiohook();
     createMainWindow();

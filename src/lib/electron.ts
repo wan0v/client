@@ -27,6 +27,9 @@ export interface ElectronAPI {
   setBetaChannel(enabled: boolean): void;
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;
+  getStartWithWindowsSupported(): Promise<boolean>;
+  getStartWithWindows(): Promise<boolean>;
+  setStartWithWindows(enabled: boolean): void;
   setBadgeCount(count: number): void;
   toggleAlwaysOnTop(pinned: boolean): void;
   getDesktopSources(): Promise<DesktopSource[]>;

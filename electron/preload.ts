@@ -47,6 +47,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-close-to-tray", enabled);
   },
 
+  getStartWithWindowsSupported(): Promise<boolean> {
+    return ipcRenderer.invoke("get-start-with-windows-supported");
+  },
+
+  getStartWithWindows(): Promise<boolean> {
+    return ipcRenderer.invoke("get-start-with-windows");
+  },
+
+  setStartWithWindows(enabled: boolean) {
+    ipcRenderer.send("set-start-with-windows", enabled);
+  },
+
   onUpdateStatus(callback: (status: { status: string; version?: string; percent?: number; message?: string }) => void) {
     const handler = (_event: Electron.IpcRendererEvent, data: { status: string; version?: string; percent?: number; message?: string }) => callback(data);
     ipcRenderer.on("update-status", handler);

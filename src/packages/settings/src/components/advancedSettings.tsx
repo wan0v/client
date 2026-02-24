@@ -22,6 +22,8 @@ export function AdvancedSettings() {
 
   const inElectron = isElectron();
   const [closeToTray, setCloseToTray] = useState(true);
+  const [startWithWindowsSupported, setStartWithWindowsSupported] = useState(false);
+  const [startWithWindows, setStartWithWindows] = useState(true);
   const [persistTokens, setPersistTokens] = useState(true);
 
   useEffect(() => {
@@ -34,9 +36,23 @@ export function AdvancedSettings() {
     getElectronAPI()?.getCloseToTray().then(setCloseToTray);
   }, [inElectron]);
 
+  useEffect(() => {
+    if (!inElectron) return;
+    getElectronAPI()?.getStartWithWindowsSupported().then((supported) => {
+      setStartWithWindowsSupported(supported);
+      if (!supported) return;
+      getElectronAPI()?.getStartWithWindows().then(setStartWithWindows);
+    });
+  }, [inElectron]);
+
   const handleCloseToTrayToggle = useCallback((enabled: boolean) => {
     setCloseToTray(enabled);
     getElectronAPI()?.setCloseToTray(enabled);
+  }, []);
+
+  const handleStartWithWindowsToggle = useCallback((enabled: boolean) => {
+    setStartWithWindows(enabled);
+    getElectronAPI()?.setStartWithWindows(enabled);
   }, []);
 
   return (
@@ -45,6 +61,17 @@ export function AdvancedSettings() {
 
       {inElectron && (
         <>
+          {startWithWindowsSupported && (
+            <>
+              <ToggleSetting
+                title="Start with Windows"
+                description="Automatically launch Gryt.chat when you sign in to Windows."
+                checked={startWithWindows}
+                onCheckedChange={handleStartWithWindowsToggle}
+              />
+              <Separator size="4" />
+            </>
+          )}
           <ToggleSetting
             title="Minimize to Tray on Close"
             description="When enabled, closing the window minimizes to the system tray instead of quitting the app."
