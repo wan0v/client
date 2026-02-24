@@ -137,6 +137,13 @@ export interface Settings {
 
 // ── localStorage helpers ────────────────────────────────────────────
 
+export function readNumeric(key: string, fallback: number): number {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  const n = Number(raw);
+  return Number.isNaN(n) ? fallback : n;
+}
+
 export function updateStorage(key: string, value: string, state: (d: string) => void) {
   state(value);
   localStorage.setItem(key, value);
@@ -167,11 +174,11 @@ export function readInitialMicVolume(): number {
 export const settingsInit: Settings = {
   micID: readInitialMicID(),
   setMicID: () => {},
-  micVolume: Number(localStorage.getItem("micVolume")) || 50,
+  micVolume: readNumeric("micVolume", 50),
   setMicVolume: () => {},
-  outputVolume: Number(localStorage.getItem("outputVolume")) || 50,
+  outputVolume: readNumeric("outputVolume", 50),
   setOutputVolume: () => {},
-  noiseGate: Number(localStorage.getItem("noiseGate")) || 10,
+  noiseGate: readNumeric("noiseGate", 10),
   setNoiseGate: () => {},
   loopbackEnabled: false,
   setLoopbackEnabled: () => {},
@@ -179,11 +186,11 @@ export const settingsInit: Settings = {
   setRnnoiseEnabled: () => {},
   autoGainEnabled: localStorage.getItem("autoGainEnabled") !== "false",
   setAutoGainEnabled: () => {},
-  autoGainTargetDb: Number(localStorage.getItem("autoGainTargetDb")) || -20,
+  autoGainTargetDb: readNumeric("autoGainTargetDb", -20),
   setAutoGainTargetDb: () => {},
   compressorEnabled: localStorage.getItem("compressorEnabled") !== "false",
   setCompressorEnabled: () => {},
-  compressorAmount: Number(localStorage.getItem("compressorAmount")) || 50,
+  compressorAmount: readNumeric("compressorAmount", 50),
   setCompressorAmount: () => {},
   isMuted: false,
   setIsMuted: () => {},
@@ -216,9 +223,9 @@ export const settingsInit: Settings = {
   setConnectSoundEnabled: () => {},
   disconnectSoundEnabled: localStorage.getItem("disconnectSoundEnabled") !== "false",
   setDisconnectSoundEnabled: () => {},
-  connectSoundVolume: Number(localStorage.getItem("connectSoundVolume")) || 30,
+  connectSoundVolume: readNumeric("connectSoundVolume", 30),
   setConnectSoundVolume: () => {},
-  disconnectSoundVolume: Number(localStorage.getItem("disconnectSoundVolume")) || 30,
+  disconnectSoundVolume: readNumeric("disconnectSoundVolume", 30),
   setDisconnectSoundVolume: () => {},
   customConnectSoundFile: localStorage.getItem("customConnectSoundFile") || null,
   setCustomConnectSoundFile: () => {},
@@ -257,12 +264,12 @@ export const settingsInit: Settings = {
 
   messageSoundEnabled: localStorage.getItem("messageSoundEnabled") !== "false",
   setMessageSoundEnabled: () => {},
-  messageSoundVolume: Number(localStorage.getItem("messageSoundVolume")) || 30,
+  messageSoundVolume: readNumeric("messageSoundVolume", 30),
   setMessageSoundVolume: () => {},
   customMessageSoundFile: localStorage.getItem("customMessageSoundFile") || null,
   setCustomMessageSoundFile: () => {},
 
-  chatMediaVolume: Number(localStorage.getItem("chatMediaVolume")) || 50,
+  chatMediaVolume: readNumeric("chatMediaVolume", 50),
   setChatMediaVolume: () => {},
 
   blurProfanity: localStorage.getItem("blurProfanity") !== "false",
@@ -277,7 +284,7 @@ export const settingsInit: Settings = {
 
   screenShareQuality: localStorage.getItem("screenShareQuality") || "native",
   setScreenShareQuality: () => {},
-  screenShareFps: Number(localStorage.getItem("screenShareFps")) || 30,
+  screenShareFps: readNumeric("screenShareFps", 30),
   setScreenShareFps: () => {},
 
   experimentalScreenShare: localStorage.getItem("experimentalScreenShare") === "true",

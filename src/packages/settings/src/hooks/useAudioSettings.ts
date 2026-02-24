@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   readInitialMicID,
   readInitialMicVolume,
+  readNumeric,
   updateRnnoiseEnabled,
   updateStorage,
 } from "./settingsStorage";
@@ -22,22 +23,22 @@ export function useAudioSettings() {
     localStorage.getItem("autoGainEnabled") !== "false"
   );
   const [autoGainTargetDb, setAutoGainTargetDb] = useState(
-    Number(localStorage.getItem("autoGainTargetDb")) || -20
+    readNumeric("autoGainTargetDb", -20)
   );
   const [compressorEnabled, setCompressorEnabled] = useState(
     localStorage.getItem("compressorEnabled") !== "false"
   );
   const [compressorAmount, setCompressorAmount] = useState(
-    Number(localStorage.getItem("compressorAmount")) || 50
+    readNumeric("compressorAmount", 50)
   );
 
   const [micID, setMicID] = useState<string | undefined>(readInitialMicID);
   const [micVolume, setMicVolume] = useState(readInitialMicVolume);
   const [outputVolume, setOutputVolume] = useState(
-    Number(localStorage.getItem("outputVolume")) || 50
+    readNumeric("outputVolume", 50)
   );
   const [noiseGate, setNoiseGate] = useState(
-    Number(localStorage.getItem("noiseGate")) || 10
+    readNumeric("noiseGate", 10)
   );
 
   const [eSportsModeEnabled, setESportsModeEnabled] = useState(
@@ -66,10 +67,10 @@ export function useAudioSettings() {
     localStorage.getItem("disconnectSoundEnabled") !== "false"
   );
   const [connectSoundVolume, setConnectSoundVolume] = useState(
-    Number(localStorage.getItem("connectSoundVolume")) || 30
+    readNumeric("connectSoundVolume", 30)
   );
   const [disconnectSoundVolume, setDisconnectSoundVolume] = useState(
-    Number(localStorage.getItem("disconnectSoundVolume")) || 30
+    readNumeric("disconnectSoundVolume", 30)
   );
   const [customConnectSoundFile, setCustomConnectSoundFile] = useState<string | null>(
     localStorage.getItem("customConnectSoundFile") || null
@@ -82,7 +83,7 @@ export function useAudioSettings() {
     localStorage.getItem("messageSoundEnabled") !== "false"
   );
   const [messageSoundVolume, setMessageSoundVolume] = useState(
-    Number(localStorage.getItem("messageSoundVolume")) || 30
+    readNumeric("messageSoundVolume", 30)
   );
   const [customMessageSoundFile, setCustomMessageSoundFile] = useState<string | null>(
     localStorage.getItem("customMessageSoundFile") || null

@@ -3,7 +3,7 @@ import { singletonHook } from "react-singleton-hook";
 
 import { clearStoredAvatar, getStoredAvatar, setStoredAvatar } from "@/common";
 
-import { settingsInit, updateStorage } from "./settingsStorage";
+import { readNumeric, settingsInit, updateStorage } from "./settingsStorage";
 import { useAudioSettings } from "./useAudioSettings";
 
 
@@ -31,7 +31,7 @@ function useSettingsHook() {
   );
 
   const [chatMediaVolume, setChatMediaVolume] = useState(
-    Number(localStorage.getItem("chatMediaVolume")) || 50
+    readNumeric("chatMediaVolume", 50)
   );
 
   const [blurProfanity, setBlurProfanityState] = useState(
@@ -52,7 +52,7 @@ function useSettingsHook() {
     localStorage.getItem("screenShareQuality") || "native"
   );
   const [screenShareFps, setScreenShareFps] = useState(
-    Number(localStorage.getItem("screenShareFps")) || 30
+    readNumeric("screenShareFps", 30)
   );
   const [experimentalScreenShare, setExperimentalScreenShare] = useState(
     localStorage.getItem("experimentalScreenShare") === "true"
@@ -73,7 +73,7 @@ function useSettingsHook() {
 
   const [isAFK, setIsAFK] = useState(false);
   const [afkTimeoutMinutes, setAfkTimeoutMinutes] = useState(
-    Number(localStorage.getItem("afkTimeoutMinutes")) || 5
+    readNumeric("afkTimeoutMinutes", 5)
   );
 
   function updateAvatarDataUrl(dataUrl: string | null) {
