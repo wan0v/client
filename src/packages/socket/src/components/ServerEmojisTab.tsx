@@ -20,7 +20,7 @@ import {
 } from "../utils/emojiData";
 import { BttvImport } from "./BttvImport";
 
-const EMOJI_NAME_RE = /^[a-z0-9_]{2,32}$/;
+const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
 const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|svg\+xml|avif)$/i;
 const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|svg|avif)$/i;
 const ZIP_TYPES = new Set(["application/zip", "application/x-zip-compressed", "application/x-zip"]);
@@ -40,7 +40,7 @@ interface PendingEmoji {
 
 function deriveEmojiName(filename: string): string {
   const base = filename.replace(/\.[^.]+$/, "").replace(/^\d+[-_]/, "");
-  const sanitized = base.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+  const sanitized = base.replace(/[^A-Za-z0-9_]/g, "_");
   const trimmed = sanitized.replace(/^_+|_+$/g, "").replace(/_{2,}/g, "_");
   if (trimmed.length < 2) return trimmed.padEnd(2, "_");
   return trimmed.slice(0, 32);
@@ -109,7 +109,7 @@ function validateName(
   selfIndex: number,
 ): { error: string | null; warning: string | null } {
   if (!name) return { error: "Name is required.", warning: null };
-  if (!EMOJI_NAME_RE.test(name)) return { error: "2-32 lowercase letters, numbers, or underscores.", warning: null };
+  if (!EMOJI_NAME_RE.test(name)) return { error: "2-32 letters (case-sensitive), numbers, or underscores.", warning: null };
   for (let i = 0; i < batchNames.length; i++) {
     if (i !== selfIndex && batchNames[i] === name) return { error: "Duplicate name in batch.", warning: null };
   }
@@ -252,7 +252,7 @@ export function ServerEmojisTab({
   };
 
   const updatePendingName = (id: string, newName: string) => {
-    const sanitized = newName.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const sanitized = newName.replace(/[^A-Za-z0-9_]/g, "");
     setPendingEmojis((prev) => {
       const idx = prev.findIndex((p) => p.id === id);
       if (idx === -1) return prev;
@@ -485,10 +485,10 @@ export function ServerEmojisTab({
 
   const handleRename = async () => {
     if (!editingEmoji || !effectiveAccessToken) return;
-    const newName = editingName.trim().toLowerCase();
+    const newName = editingName.trim();
     if (newName === editingEmoji) { cancelEditing(); return; }
     if (!EMOJI_NAME_RE.test(newName)) {
-      setEditingError("2-32 lowercase letters, numbers, or underscores.");
+      setEditingError("2-32 letters (case-sensitive), numbers, or underscores.");
       return;
     }
     if (existingNames.has(newName)) {
@@ -766,7 +766,7 @@ export function ServerEmojisTab({
                         size="1"
                         value={editingName}
                         onChange={(ev: ChangeEvent<HTMLInputElement>) => {
-                          const v = ev.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+                          const v = ev.target.value.replace(/[^A-Za-z0-9_]/g, "");
                           setEditingName(v);
                           setEditingError(null);
                         }}

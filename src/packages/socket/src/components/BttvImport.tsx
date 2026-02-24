@@ -14,7 +14,7 @@ import { getServerAccessToken, getServerHttpBase } from "@/common";
 
 const BTTV_URL_RE = /betterttv\.com\/users\/([a-f0-9]{20,30})/;
 const BTTV_CDN = "https://cdn.betterttv.net/emote";
-const EMOJI_NAME_RE = /^[a-z0-9_]{2,32}$/;
+const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
 
 interface BttvEmote {
   id: string;
@@ -31,7 +31,7 @@ interface BttvEmoteWithMeta extends BttvEmote {
 }
 
 function sanitizeName(code: string): string {
-  const sanitized = code.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+  const sanitized = code.replace(/[^A-Za-z0-9_]/g, "_");
   const trimmed = sanitized.replace(/^_+|_+$/g, "").replace(/_{2,}/g, "_");
   if (trimmed.length < 2) return trimmed.padEnd(2, "_");
   return trimmed.slice(0, 32);
@@ -45,7 +45,7 @@ function validateName(
 ): { error: string | null; warning: string | null } {
   if (!name) return { error: "Name is required.", warning: null };
   if (!EMOJI_NAME_RE.test(name))
-    return { error: "2-32 lowercase letters, numbers, or underscores.", warning: null };
+    return { error: "2-32 letters (case-sensitive), numbers, or underscores.", warning: null };
   for (let i = 0; i < batchNames.length; i++) {
     if (i !== selfIndex && batchNames[i] === name)
       return { error: "Duplicate name in batch.", warning: null };
@@ -185,7 +185,7 @@ export function BttvImport({
 
   const updateName = useCallback(
     (id: string, newName: string) => {
-      const sanitized = newName.toLowerCase().replace(/[^a-z0-9_]/g, "");
+      const sanitized = newName.replace(/[^A-Za-z0-9_]/g, "");
       setEmotes((prev) => {
         const updated = prev.map((e) =>
           e.id === id ? { ...e, name: sanitized } : e,

@@ -272,6 +272,23 @@ export const ChatView = memo(({
     });
   }, [chatMessages, newMessageMarkerId, currentUserId, currentUserNickname, getSenderName, getSenderAvatarUrl]);
 
+  const messageIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (let i = 0; i < chatMessages.length; i++) {
+      map.set(chatMessages[i].message_id, i);
+    }
+    return map;
+  }, [chatMessages]);
+
+  const messageMetaById = useMemo(() => {
+    const map = new Map<string, MessageMeta>();
+    for (let i = 0; i < chatMessages.length; i++) {
+      const meta = messageMetadata[i];
+      if (meta) map.set(chatMessages[i].message_id, meta);
+    }
+    return map;
+  }, [chatMessages, messageMetadata]);
+
   // Build a map for quick reply-preview lookups
   const messageMap = useMemo(() => {
     const map = new Map<string, ChatMessage>();
@@ -442,12 +459,10 @@ export const ChatView = memo(({
     });
   }, [conversationKey, chatMessages.length, firstItemIndex]);
 
-  const itemContent = useCallback((index: number) => {
-    const localIdx = index - (firstItemIndex ?? 100_000);
-    const m = chatMessages[localIdx];
-    if (!m) return null;
-    const meta = messageMetadata[localIdx];
-    if (!meta) return null;
+  const itemContent = useCallback((_index: number, m: ChatMessage) => {
+    const localIdx = messageIndexById.get(m.message_id);
+    const meta = messageMetaById.get(m.message_id);
+    if (localIdx === undefined || !meta) return null;
 
     const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
     const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
@@ -483,7 +498,7 @@ export const ChatView = memo(({
       />
     );
   }, [
-    firstItemIndex, chatMessages, messageMetadata, messageMap, currentUserNickname,
+    chatMessages.length, messageIndexById, messageMetaById, messageMap, currentUserNickname,
     customEmojiList, memberNicknames, blurProfanity, serverHost, currentUserId,
     canDeleteAny, chatMediaVolume, isContextMenuOpen, memberList, setChatMediaVolume,
     handleMessageRightClick, handleReaction, handleReply, requestDelete,
