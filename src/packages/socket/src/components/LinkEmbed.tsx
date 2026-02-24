@@ -17,13 +17,190 @@ interface LinkPreviewData {
   title: string | null;
   description: string | null;
   image: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   siteName: string | null;
   favicon: string | null;
 }
 
-type EmbedType = "image" | "video" | "audio" | "link";
+function safeParseUrl(url: string): URL | null {
+  try { return new URL(url); } catch { return null; }
+}
+
+function getTwitchEmbed(url: string): { kind: "channel" | "video" | "clip"; value: string } | null {
+  const u = safeParseUrl(url);
+  if (!u) return null;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+
+  if (host === "clips.twitch.tv") {
+    const slug = u.pathname.split("/").filter(Boolean)[0];
+    return slug ? { kind: "clip", value: slug } : null;
+  }
+
+  if (host !== "twitch.tv") return null;
+
+  const parts = u.pathname.split("/").filter(Boolean);
+  if (parts.length === 0) return null;
+
+  // twitch.tv/videos/<id>
+  if (parts[0] === "videos" && parts[1] && /^\d+$/.test(parts[1])) {
+    return { kind: "video", value: `v${parts[1]}` };
+  }
+
+  // twitch.tv/<channel>/clip/<slug>
+  const clipIdx = parts.findIndex((p) => p === "clip");
+  if (clipIdx !== -1) {
+    const slug = parts[clipIdx + 1];
+    return slug ? { kind: "clip", value: slug } : null;
+  }
+
+  // twitch.tv/<channel>
+  const channel = parts[0];
+  if (!channel) return null;
+  if (["directory", "downloads", "jobs", "login", "p", "search", "settings", "signup"].includes(channel)) return null;
+  return { kind: "channel", value: channel };
+}
+
+function getYouTubeVideoId(url: string): string | null {
+  const u = safeParseUrl(url);
+  if (!u) return null;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+
+  // youtu.be/<id>
+  if (host === "youtu.be") {
+    const id = u.pathname.split("/").filter(Boolean)[0];
+    return id || null;
+  }
+
+  if (host !== "youtube.com" && host !== "m.youtube.com" && host !== "music.youtube.com") return null;
+
+  // youtube.com/watch?v=<id>
+  const v = u.searchParams.get("v");
+  if (v) return v;
+
+  // youtube.com/shorts/<id>, /embed/<id>
+  const parts = u.pathname.split("/").filter(Boolean);
+  const idx = parts.findIndex((p) => p === "shorts" || p === "embed");
+  if (idx !== -1) {
+    const id = parts[idx + 1];
+    return id || null;
+  }
+
+  return null;
+}
+
+function getVimeoVideoId(url: string): string | null {
+  const u = safeParseUrl(url);
+  if (!u) return null;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+
+  // vimeo.com/<id>
+  if (host === "vimeo.com") {
+    const id = u.pathname.split("/").filter(Boolean)[0];
+    return id && /^\d+$/.test(id) ? id : null;
+  }
+
+  // player.vimeo.com/video/<id>
+  if (host === "player.vimeo.com") {
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts[0] === "video") {
+      const id = parts[1];
+      return id && /^\d+$/.test(id) ? id : null;
+    }
+  }
+
+  return null;
+}
+
+function isSoundCloudUrl(url: string): boolean {
+  const u = safeParseUrl(url);
+  if (!u) return false;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+  return host === "soundcloud.com" || host === "on.soundcloud.com";
+}
+
+type SpotifyEmbedInfo = { embedSrc: string; height: number };
+
+function getSpotifyEmbed(url: string): SpotifyEmbedInfo | null {
+  const u = safeParseUrl(url);
+  if (!u) return null;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "open.spotify.com") return null;
+
+  const parts = u.pathname.split("/").filter(Boolean);
+  const type = parts[0];
+  const id = parts[1];
+  if (!type || !id) return null;
+
+  const allowed = new Set(["track", "album", "playlist", "artist", "show", "episode"]);
+  if (!allowed.has(type)) return null;
+
+  const embedSrc = `https://open.spotify.com/embed/${type}/${encodeURIComponent(id)}`;
+  const height = type === "track" || type === "episode" ? 152 : 352;
+  return { embedSrc, height };
+}
+
+function getTikTokVideoId(url: string): string | null {
+  const u = safeParseUrl(url);
+  if (!u) return null;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "tiktok.com" && host !== "vm.tiktok.com" && host !== "vt.tiktok.com") return null;
+
+  // Most common: /@user/video/<id>
+  const m1 = u.pathname.match(/\/video\/(\d{10,})/);
+  if (m1?.[1]) return m1[1];
+
+  // Fallback: any long numeric id in path
+  const m2 = u.pathname.match(/(\d{10,})/);
+  if (m2?.[1]) return m2[1];
+
+  return null;
+}
+
+function getInstagramEmbedSrc(url: string): string | null {
+  const u = safeParseUrl(url);
+  if (!u) return null;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "instagram.com") return null;
+  const parts = u.pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  const kind = parts[0];
+  const shortcode = parts[1];
+  if (!shortcode) return null;
+  if (kind !== "p" && kind !== "reel" && kind !== "tv") return null;
+  return `https://www.instagram.com/${kind}/${encodeURIComponent(shortcode)}/embed/`;
+}
+
+function isXUrl(url: string): boolean {
+  const u = safeParseUrl(url);
+  if (!u) return false;
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+  return host === "x.com" || host === "twitter.com";
+}
+
+type EmbedType =
+  | "image"
+  | "video"
+  | "audio"
+  | "youtube"
+  | "vimeo"
+  | "twitch"
+  | "soundcloud"
+  | "spotify"
+  | "tiktok"
+  | "instagram"
+  | "x"
+  | "link";
 
 function getEmbedType(url: string): EmbedType {
+  if (getTwitchEmbed(url)) return "twitch";
+  if (getYouTubeVideoId(url)) return "youtube";
+  if (getVimeoVideoId(url)) return "vimeo";
+  if (getTikTokVideoId(url)) return "tiktok";
+  if (getInstagramEmbedSrc(url)) return "instagram";
+  if (getSpotifyEmbed(url)) return "spotify";
+  if (isSoundCloudUrl(url)) return "soundcloud";
+  if (isXUrl(url)) return "x";
   if (IMAGE_EXT.test(url)) return "image";
   if (VIDEO_EXT.test(url)) return "video";
   if (AUDIO_EXT.test(url)) return "audio";
@@ -75,8 +252,44 @@ const DismissButton = ({ onDismiss }: { onDismiss: () => void }) => (
 
 const imageEmbedSizeCache = new Map<string, { width: number; height: number }>();
 
-const ImageEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
-  const cached = imageEmbedSizeCache.get(url);
+type RemoteImageMetadata = { width: number | null; height: number | null };
+
+function parseRemoteImageMetadata(raw: unknown): RemoteImageMetadata | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const rec = raw as Record<string, unknown>;
+  const width = typeof rec.width === "number" ? rec.width : null;
+  const height = typeof rec.height === "number" ? rec.height : null;
+  return { width, height };
+}
+
+const ImageEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost: string; onDismiss: () => void }) => {
+  const [cached, setCached] = useState(() => imageEmbedSizeCache.get(url));
+
+  useEffect(() => {
+    setCached(imageEmbedSizeCache.get(url));
+  }, [url]);
+
+  useEffect(() => {
+    if (cached) return;
+    const accessToken = getServerAccessToken(serverHost);
+    if (!accessToken) return;
+    const base = getServerHttpBase(serverHost);
+    let cancelled = false;
+    fetch(`${base}/api/media/metadata?url=${encodeURIComponent(url)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("metadata_failed"))))
+      .then((j: unknown) => {
+        if (cancelled) return;
+        const meta = parseRemoteImageMetadata(j);
+        if (!meta?.width || !meta.height) return;
+        imageEmbedSizeCache.set(url, { width: meta.width, height: meta.height });
+        setCached({ width: meta.width, height: meta.height });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [cached, serverHost, url]);
+
   return (
     <div className="link-embed-container">
       <DismissButton onDismiss={onDismiss} />
@@ -106,6 +319,227 @@ const VideoEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) 
     <video src={url} controls className="link-embed-video" preload="metadata" />
   </div>
 );
+
+const TwitchEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
+  const embed = getTwitchEmbed(url);
+  if (!embed) return null;
+  const parent = (() => {
+    try { return window.location.hostname; } catch { return "localhost"; }
+  })();
+  const base = embed.kind === "clip" ? "https://clips.twitch.tv/embed" : "https://player.twitch.tv/";
+  const src = (() => {
+    const u = new URL(base);
+    if (embed.kind === "clip") {
+      u.searchParams.set("clip", embed.value);
+      u.searchParams.set("autoplay", "false");
+    } else if (embed.kind === "video") {
+      u.searchParams.set("video", embed.value);
+      u.searchParams.set("autoplay", "false");
+      u.searchParams.set("muted", "true");
+    } else {
+      u.searchParams.set("channel", embed.value);
+      u.searchParams.set("autoplay", "false");
+      u.searchParams.set("muted", "true");
+    }
+    u.searchParams.set("parent", parent);
+    return u.toString();
+  })();
+
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe"
+        src={src}
+        title="Twitch"
+        loading="lazy"
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+};
+
+const SoundCloudEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
+  const src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=false&hide_related=true&show_comments=false&show_reposts=false&visual=false`;
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe-soundcloud"
+        src={src}
+        title="SoundCloud"
+        loading="lazy"
+        allow="autoplay"
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+};
+
+const SpotifyEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
+  const info = getSpotifyEmbed(url);
+  if (!info) return null;
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe-spotify"
+        src={info.embedSrc}
+        title="Spotify"
+        height={info.height}
+        loading="lazy"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+};
+
+const TikTokEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
+  const id = getTikTokVideoId(url);
+  if (!id) return null;
+  const src = `https://www.tiktok.com/player/v1/${encodeURIComponent(id)}`;
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe-tiktok"
+        src={src}
+        title="TikTok"
+        loading="lazy"
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+};
+
+const InstagramEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
+  const src = getInstagramEmbedSrc(url);
+  if (!src) return null;
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe-instagram"
+        src={src}
+        title="Instagram"
+        loading="lazy"
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+};
+
+const YouTubeEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
+  const videoId = getYouTubeVideoId(url);
+  if (!videoId) return null;
+  const embedUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}`;
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe"
+        src={embedUrl}
+        title="YouTube video"
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+};
+
+const VimeoEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
+  const videoId = getVimeoVideoId(url);
+  if (!videoId) return null;
+  const embedUrl = `https://player.vimeo.com/video/${encodeURIComponent(videoId)}`;
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe"
+        src={embedUrl}
+        title="Vimeo video"
+        loading="lazy"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+};
+
+type OEmbedPayload = { html: string };
+
+function safeJsonParseOEmbed(raw: unknown): OEmbedPayload | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const rec = raw as Record<string, unknown>;
+  if (typeof rec.html !== "string") return null;
+  return { html: rec.html };
+}
+
+const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost: string; onDismiss: () => void }) => {
+  const [html, setHtml] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setHtml(null);
+    setFailed(false);
+  }, [url]);
+
+  useEffect(() => {
+    if (html || failed) return;
+    const accessToken = getServerAccessToken(serverHost);
+    if (!accessToken) { setFailed(true); return; }
+    const base = getServerHttpBase(serverHost);
+    let cancelled = false;
+    fetch(`${base}/api/oembed?url=${encodeURIComponent(url)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("oembed_failed"))))
+      .then((j: unknown) => {
+        if (cancelled) return;
+        const parsed = safeJsonParseOEmbed(j);
+        if (!parsed) { setFailed(true); return; }
+        setHtml(parsed.html);
+      })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [url, serverHost, html, failed]);
+
+  if (failed) return null;
+  if (!html) {
+    return (
+      <div className="link-embed-container">
+        <DismissButton onDismiss={onDismiss} />
+        <div className="link-embed-twitter-skeleton">
+          <SkeletonBase width="100%" height="100%" borderRadius="var(--radius-4)" />
+        </div>
+      </div>
+    );
+  }
+
+  const srcDoc = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>html,body{margin:0;padding:0;background:transparent;}body{display:flex;justify-content:center;}blockquote{margin:0!important;}</style></head><body>${html}<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></body></html>`;
+
+  return (
+    <div className="link-embed-container">
+      <DismissButton onDismiss={onDismiss} />
+      <iframe
+        className="link-embed-iframe-twitter"
+        title="X"
+        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+        srcDoc={srcDoc}
+      />
+    </div>
+  );
+};
 
 const AudioEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => (
   <div className="link-embed-container link-embed-audio-wrap">
@@ -233,12 +667,21 @@ const LinkPreviewCard = memo(({
               </div>
             )}
           </div>
-          <div className="link-embed-card-image-wrap">
+          <div
+            className="link-embed-card-image-wrap"
+            style={
+              data.imageWidth && data.imageHeight
+                ? { aspectRatio: `${data.imageWidth} / ${data.imageHeight}` }
+                : undefined
+            }
+          >
             {data.image && !imageFailed ? (
               <img
                 src={data.image}
                 alt={data.title || "Preview"}
                 className="link-embed-card-image"
+                width={data.imageWidth ?? undefined}
+                height={data.imageHeight ?? undefined}
                 loading="lazy"
                 decoding="async"
                 onError={() => setImageFailed(true)}
@@ -289,11 +732,27 @@ export const MessageEmbeds = memo(({
         const type = getEmbedType(url);
         switch (type) {
           case "image":
-            return <ImageEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+            return <ImageEmbed key={url} url={url} serverHost={serverHost} onDismiss={() => handleDismiss(url)} />;
           case "video":
             return <VideoEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
           case "audio":
             return <AudioEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "youtube":
+            return <YouTubeEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "vimeo":
+            return <VimeoEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "twitch":
+            return <TwitchEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "soundcloud":
+            return <SoundCloudEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "spotify":
+            return <SpotifyEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "tiktok":
+            return <TikTokEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "instagram":
+            return <InstagramEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
+          case "x":
+            return <XEmbed key={url} url={url} serverHost={serverHost} onDismiss={() => handleDismiss(url)} />;
           case "link":
             return <LinkPreviewCard key={url} url={url} serverHost={serverHost} onDismiss={() => handleDismiss(url)} />;
         }

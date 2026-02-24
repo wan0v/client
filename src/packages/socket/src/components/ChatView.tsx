@@ -382,7 +382,7 @@ export const ChatView = memo(({
   const scrollToMessage = useCallback((messageId: string) => {
     const idx = chatMessages.findIndex((m) => m.message_id === messageId);
     if (idx === -1) return;
-    virtuosoRef.current?.scrollToIndex({ index: idx, align: "center", behavior: "smooth" });
+    virtuosoRef.current?.scrollToIndex({ index: (firstItemIndex ?? 100_000) + idx, align: "center", behavior: "smooth" });
     setTimeout(() => {
       const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
       if (el) {
@@ -390,7 +390,7 @@ export const ChatView = memo(({
         setTimeout(() => { el.style.background = "transparent"; }, 1500);
       }
     }, 300);
-  }, [chatMessages]);
+  }, [chatMessages, firstItemIndex]);
 
   const onLightboxOpen = useCallback((src: string, alt?: string) => {
     setLightboxImage({ src, alt });
@@ -435,11 +435,12 @@ export const ChatView = memo(({
     if (!conversationKey) return;
     if (pendingInitialScrollRef.current !== conversationKey) return;
     if (chatMessages.length === 0) return;
+    const lastIndex = (firstItemIndex ?? 100_000) + chatMessages.length - 1;
     requestAnimationFrame(() => {
-      virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
+      virtuosoRef.current?.scrollToIndex({ index: lastIndex, align: "end", behavior: "auto" });
       pendingInitialScrollRef.current = null;
     });
-  }, [conversationKey, chatMessages.length]);
+  }, [conversationKey, chatMessages.length, firstItemIndex]);
 
   const itemContent = useCallback((index: number) => {
     const localIdx = index - (firstItemIndex ?? 100_000);
@@ -573,8 +574,10 @@ export const ChatView = memo(({
               style={{ flex: 1, minWidth: 0, marginBottom: 12 }}
               data={chatMessages}
               firstItemIndex={firstItemIndex}
-              alignToBottom
-              initialTopMostItemIndex={{ index: "LAST", align: "end" }}
+              initialTopMostItemIndex={{
+                index: (firstItemIndex ?? 100_000) + chatMessages.length - 1,
+                align: "end",
+              }}
               followOutput={followOutput}
               rangeChanged={handleRangeChanged}
               overscan={400}

@@ -10,7 +10,7 @@ interface MentionAutocompleteProps {
   query: string;
   visible: boolean;
   members: MentionMember[];
-  onSelect: (nickname: string) => void;
+  onSelect: (member: MentionMember) => void;
   onClose: () => void;
 }
 
@@ -61,7 +61,7 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
       } else if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         e.stopPropagation();
-        onSelect(results[selectedIndex].nickname);
+        onSelect(results[selectedIndex]);
       } else if (e.key === "Escape") {
         e.preventDefault();
         onClose();
@@ -128,7 +128,7 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
           key={member.serverUserId}
           onMouseDown={(e) => {
             e.preventDefault();
-            onSelect(member.nickname);
+            onSelect(member);
           }}
           onMouseEnter={() => setSelectedIndex(idx)}
           style={{

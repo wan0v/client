@@ -34,7 +34,7 @@ interface PendingEmoji {
   name: string;
   nameError: string | null;
   nameWarning: string | null;
-  status: "pending" | "uploading" | "done" | "error";
+  status: "pending" | "uploading" | "processing" | "done" | "error";
   progress: number;
 }
 
@@ -303,6 +303,14 @@ export function ServerEmojisTab({
           setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
         }
       });
+      xhr.upload.addEventListener("loadend", () => {
+        // Upload finished; server may still be converting to AVIF.
+        setPendingEmojis((prev) => prev.map((p) => (
+          p.id === item.id && p.status === "uploading"
+            ? { ...p, status: "processing", progress: 100 }
+            : p
+        )));
+      });
 
       xhr.addEventListener("load", () => {
         let data: Record<string, unknown> = {};
@@ -346,12 +354,22 @@ export function ServerEmojisTab({
     }
 
     setUploading(true);
+    const concurrencyLimit = Math.min(6, toUpload.length);
+    let nextIndex = 0;
     let successCount = 0;
 
-    for (const item of toUpload) {
-      const ok = await uploadOne(item);
-      if (ok) successCount++;
-    }
+    const worker = async () => {
+      while (nextIndex < toUpload.length) {
+        const i = nextIndex;
+        nextIndex++;
+        const item = toUpload[i];
+        if (!item) break;
+        const ok = await uploadOne(item);
+        if (ok) successCount++;
+      }
+    };
+
+    await Promise.all(Array.from({ length: concurrencyLimit }, worker));
 
     if (successCount > 0) await refresh();
 
@@ -563,20 +581,30 @@ export function ServerEmojisTab({
                 style={{
                   border: "1px solid var(--gray-a4)",
                   borderRadius: "var(--radius-1)",
-                  opacity: p.status === "uploading" ? 0.6 : 1,
+                  opacity: p.status === "uploading" || p.status === "processing" ? 0.6 : 1,
                 }}
               >
-                <img
-                  src={p.previewUrl}
-                  alt="preview"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    objectFit: "contain",
-                    borderRadius: "var(--radius-1)",
-                    flexShrink: 0,
-                  }}
-                />
+                <div
+                  className="emoji-upload-preview-wrap"
+                  aria-busy={p.status === "uploading"}
+                  data-status={p.status}
+                >
+                  <img
+                    src={p.previewUrl}
+                    alt="preview"
+                    className="emoji-upload-preview-img"
+                  />
+                  {(p.status === "uploading" || p.status === "processing") && (
+                    <div className="emoji-upload-preview-overlay" aria-hidden="true">
+                      <div className="emoji-upload-preview-bar">
+                        <div
+                          className="emoji-upload-preview-bar-inner"
+                          style={{ width: `${p.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
                   <TextField.Root
                     size="1"
@@ -594,23 +622,6 @@ export function ServerEmojisTab({
                     <Text size="1" color="yellow" style={{ lineHeight: 1.2 }}>
                       {p.nameWarning}
                     </Text>
-                  )}
-                  {p.status === "uploading" && (
-                    <div style={{
-                      width: "100%",
-                      height: 4,
-                      borderRadius: 2,
-                      background: "var(--gray-a4)",
-                      overflow: "hidden",
-                    }}>
-                      <div style={{
-                        width: `${p.progress}%`,
-                        height: "100%",
-                        borderRadius: 2,
-                        background: "var(--accent-9)",
-                        transition: "width 150ms ease",
-                      }} />
-                    </div>
                   )}
                 </Flex>
                 {p.status === "uploading" && (

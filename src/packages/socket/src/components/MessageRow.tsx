@@ -318,6 +318,8 @@ function MessageContent({
           content={m.text}
           customEmojis={customEmojiList}
           memberNicknames={memberNicknames}
+          mentionMembersById={memberList}
+          serverHost={serverHost}
           profanityMatches={m.profanity_matches}
           blurProfanity={blurProfanity}
         />

@@ -1,11 +1,11 @@
-import { cloneElement, isValidElement, memo, useCallback, useMemo, useRef, useState } from "react";
+import { cloneElement, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdCheck, MdContentCopy } from "react-icons/md";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
-import { useTheme } from "@/common";
+import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
 import { type CustomEmojiEntry, preprocessCustomEmojis, remarkEmoji } from "../utils/remarkEmoji";
 import { createRemarkMention } from "../utils/remarkMention";
@@ -19,6 +19,86 @@ type MarkdownImgProps = React.ImgHTMLAttributes<HTMLImageElement> & {
 };
 
 const markdownImageSizeCache = new Map<string, { width: number; height: number }>();
+
+type RemoteImageMetadata = { width: number | null; height: number | null };
+
+function parseRemoteImageMetadata(raw: unknown): RemoteImageMetadata | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const rec = raw as Record<string, unknown>;
+  const width = typeof rec.width === "number" ? rec.width : null;
+  const height = typeof rec.height === "number" ? rec.height : null;
+  return { width, height };
+}
+
+const RemoteMarkdownImage = memo(({
+  src,
+  alt,
+  serverHost,
+  cacheKey,
+  cached,
+}: {
+  src: string;
+  alt: string;
+  serverHost: string | null;
+  cacheKey: string;
+  cached: { width: number; height: number } | undefined;
+}) => {
+  const [size, setSize] = useState<{ width: number; height: number } | undefined>(cached);
+
+  useEffect(() => {
+    setSize(markdownImageSizeCache.get(cacheKey));
+  }, [cacheKey]);
+
+  useEffect(() => {
+    if (size) return;
+    if (!serverHost) return;
+    const accessToken = getServerAccessToken(serverHost);
+    if (!accessToken) return;
+    const base = getServerHttpBase(serverHost);
+    let cancelled = false;
+    fetch(`${base}/api/media/metadata?url=${encodeURIComponent(src)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("metadata_failed"))))
+      .then((j: unknown) => {
+        if (cancelled) return;
+        const meta = parseRemoteImageMetadata(j);
+        if (!meta?.width || !meta.height) return;
+        const next = { width: meta.width, height: meta.height };
+        markdownImageSizeCache.set(cacheKey, next);
+        setSize(next);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [serverHost, size, cacheKey, src]);
+
+  return (
+    <MediaContextMenu src={src} isImage>
+      <div className="markdown-image-wrap">
+        <img
+          src={src}
+          alt={alt}
+          className="markdown-image"
+          width={size?.width}
+          height={size?.height}
+          loading="lazy"
+          decoding="async"
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+              const next = { width: img.naturalWidth, height: img.naturalHeight };
+              markdownImageSizeCache.set(cacheKey, next);
+              setSize(next);
+            }
+          }}
+          onClick={() => window.open(src, "_blank")}
+        />
+      </div>
+    </MediaContextMenu>
+  );
+});
+
+RemoteMarkdownImage.displayName = "RemoteMarkdownImage";
 
 const PROFANITY_START = "\uE000";
 const PROFANITY_END = "\uE001";
@@ -327,18 +407,31 @@ export const MarkdownRenderer = memo(({
   content,
   customEmojis,
   memberNicknames,
+  mentionMembersById,
+  serverHost,
   profanityMatches,
   blurProfanity,
 }: {
   content: string | null;
   customEmojis?: CustomEmojiEntry[];
   memberNicknames?: string[];
+  mentionMembersById?: Record<string, { nickname: string }>;
+  serverHost?: string | null;
   profanityMatches?: ProfanityMatchRange[];
   blurProfanity?: boolean;
 }) => {
   const { emojiSize } = useTheme();
   const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
   const hasProfanity = !!(blurProfanity && profanityMatches && profanityMatches.length > 0);
+
+  const membersById = useMemo(() => {
+    const m = new Map<string, string>();
+    if (!mentionMembersById) return m;
+    for (const [id, info] of Object.entries(mentionMembersById)) {
+      if (info?.nickname) m.set(id, info.nickname);
+    }
+    return m;
+  }, [mentionMembersById]);
 
   const markedContent = useMemo(() => {
     if (!content) return null;
@@ -352,28 +445,109 @@ export const MarkdownRenderer = memo(({
   );
 
   const remarkPlugins = useMemo(() => {
+    if (mentionMembersById) {
+      const members = Object.entries(mentionMembersById)
+        .map(([serverUserId, m]) => ({ serverUserId, nickname: m.nickname }))
+        .filter((m) => Boolean(m.nickname));
+      if (members.length === 0) return baseRemarkPlugins;
+      return [...baseRemarkPlugins, createRemarkMention(members)];
+    }
     if (!memberNicknames || memberNicknames.length === 0) return baseRemarkPlugins;
-    return [...baseRemarkPlugins, createRemarkMention(memberNicknames)];
-  }, [memberNicknames]);
+    return [...baseRemarkPlugins, createRemarkMention(memberNicknames.map((n) => ({ serverUserId: n, nickname: n })))];
+  }, [memberNicknames, mentionMembersById]);
 
   const activeComponents = useMemo(() => {
-    if (!hasProfanity) return components;
+    const base: Components = {
+      ...components,
+      img: ({ src, alt, className, ...props }: MarkdownImgProps) => {
+        const isCustomEmoji = className === "inline-emoji"
+          || Boolean(props["data-emoji-name"])
+          || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
+        if (isCustomEmoji) {
+          return (
+            <img
+              src={src}
+              alt={alt || ""}
+              className="inline-emoji"
+              style={{
+                height: "1.4em",
+                width: "1.4em",
+                verticalAlign: "middle",
+                display: "inline",
+                objectFit: "contain",
+                margin: "0 1px",
+              }}
+            />
+          );
+        }
+
+        if (!src) return null;
+        const cacheKey = src;
+        const cached = markdownImageSizeCache.get(cacheKey);
+        return (
+          <RemoteMarkdownImage
+            src={src}
+            alt={alt || ""}
+            serverHost={serverHost ?? null}
+            cacheKey={cacheKey}
+            cached={cached}
+          />
+        );
+      },
+      a: ({ href, children }) => {
+        const mentionId = href?.startsWith("mention:") ? href.slice("mention:".length) : null;
+        if (mentionId !== null) {
+          const display = (() => {
+            if (!mentionId) return children;
+            const nick = membersById.get(mentionId);
+            if (!nick) return children;
+            return `@${nick}`;
+          })();
+          return (
+            <span
+              style={{
+                color: "var(--accent-11)",
+                fontWeight: 600,
+                background: "var(--accent-a3)",
+                borderRadius: "var(--radius-2)",
+                padding: "0 2px",
+                cursor: "default",
+              }}
+            >
+              {display}
+            </span>
+          );
+        }
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--accent-11)", textDecoration: "underline" }}
+          >
+            {children}
+          </a>
+        );
+      },
+    };
+
+    if (!hasProfanity) return base;
     const wrap = (Component: React.FC<{ children?: React.ReactNode }>) =>
       ({ children, ...rest }: { children?: React.ReactNode }) => (
         <Component {...rest}>{processProfanityInChildren(children)}</Component>
       );
 
     return {
-      ...components,
-      p: wrap(components.p as React.FC<{ children?: React.ReactNode }>),
-      h1: wrap(components.h1 as React.FC<{ children?: React.ReactNode }>),
-      h2: wrap(components.h2 as React.FC<{ children?: React.ReactNode }>),
-      h3: wrap(components.h3 as React.FC<{ children?: React.ReactNode }>),
-      li: wrap(components.li as React.FC<{ children?: React.ReactNode }>),
-      td: wrap(components.td as React.FC<{ children?: React.ReactNode }>),
-      th: wrap(components.th as React.FC<{ children?: React.ReactNode }>),
+      ...base,
+      p: wrap(base.p as React.FC<{ children?: React.ReactNode }>),
+      h1: wrap(base.h1 as React.FC<{ children?: React.ReactNode }>),
+      h2: wrap(base.h2 as React.FC<{ children?: React.ReactNode }>),
+      h3: wrap(base.h3 as React.FC<{ children?: React.ReactNode }>),
+      li: wrap(base.li as React.FC<{ children?: React.ReactNode }>),
+      td: wrap(base.td as React.FC<{ children?: React.ReactNode }>),
+      th: wrap(base.th as React.FC<{ children?: React.ReactNode }>),
     } as Components;
-  }, [hasProfanity]);
+  }, [hasProfanity, membersById, serverHost]);
 
   if (!processed) return null;
 

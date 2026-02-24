@@ -67,6 +67,10 @@ function serializeContentEditable(el: HTMLElement): string {
       const elem = node as HTMLElement;
       if (elem.tagName === "IMG" && elem.dataset.emojiName) {
         result += `:${elem.dataset.emojiName}:`;
+      } else if (elem.dataset.mentionId) {
+        const id = elem.dataset.mentionId;
+        const name = elem.dataset.mentionName || elem.textContent || "";
+        result += `[${name}](mention:${id})`;
       } else if (elem.tagName === "BR") {
         result += "\n";
       } else if (elem.tagName === "DIV" || elem.tagName === "P") {
@@ -127,7 +131,7 @@ function getMentionQueryAtCursor(): string | null {
   return match[2];
 }
 
-function replaceMentionQueryAtCursor(nickname: string): void {
+function replaceMentionQueryAtCursor(member: MentionMember): void {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
 
@@ -149,11 +153,21 @@ function replaceMentionQueryAtCursor(nickname: string): void {
   replaceRange.setEnd(node, offset);
   replaceRange.deleteContents();
 
-  const textNode = document.createTextNode(`@${nickname} `);
-  replaceRange.insertNode(textNode);
+  const mention = document.createElement("span");
+  mention.className = "chat-editor-mention";
+  mention.dataset.mentionId = member.serverUserId;
+  mention.dataset.mentionName = `@${member.nickname}`;
+  mention.textContent = `@${member.nickname}`;
+  mention.contentEditable = "false";
+  mention.draggable = false;
+
+  const trailing = document.createTextNode(" ");
+  replaceRange.insertNode(trailing);
+  replaceRange.insertNode(mention);
+
   sel.removeAllRanges();
   const newRange = document.createRange();
-  newRange.setStartAfter(textNode);
+  newRange.setStartAfter(trailing);
   newRange.collapse(true);
   sel.addRange(newRange);
 }
@@ -355,8 +369,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       setEmojiQuery(null);
     }, []);
 
-    const handleMentionSelect = useCallback((nickname: string) => {
-      replaceMentionQueryAtCursor(nickname);
+    const handleMentionSelect = useCallback((member: MentionMember) => {
+      replaceMentionQueryAtCursor(member);
       setShowMentionAutocomplete(false);
       setMentionQuery(null);
       if (editorRef.current) autoResize(editorRef.current);

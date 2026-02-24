@@ -149,6 +149,72 @@ body {
   margin: 0 1px;
 }
 
+.chat-editor-mention {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-11);
+  font-weight: 600;
+  background: var(--accent-a3);
+  border-radius: var(--radius-2);
+  padding: 0 2px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* ── Emoji Upload (per-emoji progress overlay) ─────────────── */
+
+.emoji-upload-preview-wrap {
+  width: 32px;
+  height: 32px;
+  position: relative;
+  flex-shrink: 0;
+  border-radius: var(--radius-1);
+  overflow: hidden;
+  background: var(--gray-3);
+}
+
+.emoji-upload-preview-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: block;
+}
+
+.emoji-upload-preview-wrap[data-status="uploading"] .emoji-upload-preview-img {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.emoji-upload-preview-wrap[data-status="processing"] .emoji-upload-preview-img {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.emoji-upload-preview-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: stretch;
+  pointer-events: none;
+}
+
+.emoji-upload-preview-bar {
+  width: 100%;
+  height: 5px;
+  background: var(--gray-a6);
+}
+
+.emoji-upload-preview-bar-inner {
+  height: 100%;
+  background: var(--accent-9);
+  transition: width 150ms ease;
+}
+
+.emoji-upload-preview-wrap[data-status="processing"] .emoji-upload-preview-bar-inner {
+  background: var(--amber-9);
+}
+
 /* ── File Preview Bar (editor) ─────────────────────────────── */
 
 .chat-editor-file-preview-bar {
@@ -528,6 +594,66 @@ body {
   display: block;
 }
 
+.link-embed-iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  border-radius: var(--radius-4);
+  display: block;
+  background: var(--gray-3);
+}
+
+.link-embed-iframe-soundcloud {
+  width: 100%;
+  height: 166px;
+  border: none;
+  border-radius: var(--radius-4);
+  display: block;
+  background: var(--gray-3);
+}
+
+.link-embed-iframe-spotify {
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-4);
+  display: block;
+  background: var(--gray-3);
+}
+
+.link-embed-iframe-tiktok {
+  width: 100%;
+  max-width: 325px;
+  aspect-ratio: 9 / 16;
+  max-height: 600px;
+  border: none;
+  border-radius: var(--radius-4);
+  display: block;
+  background: var(--gray-3);
+}
+
+.link-embed-iframe-instagram {
+  width: 100%;
+  height: 480px;
+  border: none;
+  border-radius: var(--radius-4);
+  display: block;
+  background: var(--gray-3);
+}
+
+.link-embed-iframe-twitter {
+  width: 100%;
+  height: 460px;
+  border: none;
+  border-radius: var(--radius-4);
+  display: block;
+  background: var(--gray-3);
+}
+
+.link-embed-twitter-skeleton {
+  width: 100%;
+  height: 460px;
+}
+
 .link-embed-audio-wrap {
   padding: 8px 12px;
   background: var(--gray-2);
@@ -620,7 +746,7 @@ body {
 
 .link-embed-card-image-wrap {
   width: 100%;
-  height: 160px;
+  max-height: 200px;
   overflow: hidden;
   display: flex;
   align-items: center;
