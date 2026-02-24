@@ -59,6 +59,7 @@ export function MiniControls({
     experimentalScreenShare,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
+    cameraFlipped, setCameraFlipped,
   } = useSettings();
 
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -195,6 +196,8 @@ export function MiniControls({
         onQualityChange={setCameraQuality}
         mirrored={cameraMirrored}
         onMirroredChange={setCameraMirrored}
+        flipped={cameraFlipped}
+        onFlippedChange={setCameraFlipped}
         onStart={() => setCameraEnabled(true)}
       />
 
