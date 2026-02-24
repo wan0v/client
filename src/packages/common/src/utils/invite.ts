@@ -6,7 +6,7 @@ export type PendingInvite = {
 
 const PENDING_INVITE_KEY = "pendingInvite";
 
-function normalizeHost(input: string): string {
+export function normalizeHost(input: string): string {
   let h = String(input || "").trim();
   h = h.replace(/^(wss?:\/\/|https?:\/\/)/i, "");
   h = h.split("/")[0] || "";
@@ -14,7 +14,7 @@ function normalizeHost(input: string): string {
   return h;
 }
 
-function normalizeCode(input: string): string {
+export function normalizeCode(input: string): string {
   return String(input || "")
     .trim()
     .replace(/\s+/g, "")

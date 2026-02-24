@@ -1,10 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useGlobalHotkeys } from "@/audio";
-import { capturePendingInviteFromUrl, clearPendingInvite, type PendingInvite, readPendingInvite, useAccount } from "@/common";
+import {
+  capturePendingInviteFromUrl,
+  clearPendingInvite,
+  getValidIdentityToken,
+  normalizeCode,
+  normalizeHost,
+  type PendingInvite,
+  readPendingInvite,
+  setServerAccessToken,
+  setServerRefreshToken,
+  useAccount,
+} from "@/common";
 import { AddNewServer, Nickname, PushToTalkModal, Settings, useSettings } from "@/settings";
 import { SignUpModal } from "@/signUp";
-import { DeviceSwitchModal, InviteAcceptModal, ServerSettingsModal, useServerManagement } from "@/socket";
+import {
+  DeviceSwitchModal,
+  InviteAcceptModal,
+  joinServerOnce,
+  ServerSettingsModal,
+  useServerManagement,
+} from "@/socket";
 import { useSFU } from "@/webRTC";
 
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
@@ -17,7 +34,7 @@ import { Welcome } from "./components/welcome";
 export function App() {
   const { isSignedIn } = useAccount();
   const { showAddServer, setShowAddServer, addServer } = useServerManagement();
-  const { showDebugOverlay } = useSettings();
+  const { nickname, showDebugOverlay } = useSettings();
   const { disconnect } = useSFU();
 
   const handleHotkeyDisconnect = useCallback(() => {
@@ -28,6 +45,10 @@ export function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const [pendingInvite, setPendingInvite] = useState<PendingInvite | null>(null);
+  const [inviteJoinState, setInviteJoinState] = useState<{ joining: boolean; error: string }>({
+    joining: false,
+    error: "",
+  });
 
   // Capture invite links early (even before sign-in), then clean the URL.
   useEffect(() => {
@@ -40,19 +61,57 @@ export function App() {
     const pending = readPendingInvite();
     if (!pending) return;
     setPendingInvite(pending);
+    setInviteJoinState({ joining: false, error: "" });
   }, [isSignedIn]);
 
   const handleAcceptInvite = useCallback(() => {
     if (!pendingInvite) return;
-    addServer({ host: pendingInvite.host, name: pendingInvite.host, token: pendingInvite.code }, true);
-    clearPendingInvite();
-    setPendingInvite(null);
-  }, [addServer, pendingInvite]);
+    if (inviteJoinState.joining) return;
+
+    void (async () => {
+      const host = normalizeHost(pendingInvite.host);
+      const code = normalizeCode(pendingInvite.code);
+      if (!host || !code) return;
+
+      setInviteJoinState({ joining: true, error: "" });
+
+      const identityToken = await getValidIdentityToken().catch(() => undefined);
+      const result = await joinServerOnce({
+        host,
+        nickname,
+        identityToken,
+        inviteCode: code,
+      });
+      // Note: we don't persist invite codes; we just use it for the initial join.
+
+      if (!result.ok) {
+        const message =
+          result.error.message ||
+          (result.error.error === "invalid_invite"
+            ? "Invalid invite code."
+            : result.error.error === "invite_rate_limited" || result.error.error === "rate_limited"
+              ? "Too many attempts. Please wait and try again."
+              : `Failed to join server: ${result.error.error}`);
+        setInviteJoinState({ joining: false, error: message });
+        return;
+      }
+
+      setServerAccessToken(host, result.joinInfo.accessToken);
+      if (result.joinInfo.refreshToken) setServerRefreshToken(host, result.joinInfo.refreshToken);
+
+      addServer({ host, name: host }, true);
+      clearPendingInvite();
+      setPendingInvite(null);
+      setInviteJoinState({ joining: false, error: "" });
+    })();
+  }, [addServer, inviteJoinState.joining, nickname, pendingInvite]);
 
   const handleDismissInvite = useCallback(() => {
+    if (inviteJoinState.joining) return;
     clearPendingInvite();
     setPendingInvite(null);
-  }, []);
+    setInviteJoinState({ joining: false, error: "" });
+  }, [inviteJoinState.joining]);
 
   useEffect(() => {
     if (isSignedIn === undefined) {
@@ -75,7 +134,13 @@ export function App() {
           <LeaveServer />
           <DeviceSwitchModal />
           <ServerSettingsModal />
-          <InviteAcceptModal invite={pendingInvite} onAccept={handleAcceptInvite} onDismiss={handleDismissInvite} />
+          <InviteAcceptModal
+            invite={pendingInvite}
+            joinError={inviteJoinState.error}
+            joining={inviteJoinState.joining}
+            onAccept={handleAcceptInvite}
+            onDismiss={handleDismissInvite}
+          />
           <PushToTalkModal />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
         </>

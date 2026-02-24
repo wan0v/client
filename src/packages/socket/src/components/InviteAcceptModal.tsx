@@ -1,6 +1,6 @@
-import { Button, Dialog, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
+import { Button, Callout, Dialog, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MdClose, MdGroup, MdMail } from "react-icons/md";
+import { MdClose, MdGroup, MdMail, MdWarning } from "react-icons/md";
 import { io, Socket } from "socket.io-client";
 
 import { getServerWsBase, type PendingInvite } from "@/common";
@@ -13,11 +13,19 @@ type ServerPreview = {
 
 interface InviteAcceptModalProps {
   invite: PendingInvite | null;
-  onAccept: () => void;
+  joining?: boolean;
+  joinError?: string;
+  onAccept: () => void | Promise<void>;
   onDismiss: () => void;
 }
 
-export function InviteAcceptModal({ invite, onAccept, onDismiss }: InviteAcceptModalProps) {
+export function InviteAcceptModal({
+  invite,
+  joining = false,
+  joinError,
+  onAccept,
+  onDismiss,
+}: InviteAcceptModalProps) {
   const [preview, setPreview] = useState<ServerPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -83,7 +91,15 @@ export function InviteAcceptModal({ invite, onAccept, onDismiss }: InviteAcceptM
   const isOpen = invite !== null;
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) onDismiss(); }}>
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          if (joining) return;
+          onDismiss();
+        }
+      }}
+    >
       <Dialog.Content style={{ maxWidth: 420 }}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
@@ -92,7 +108,15 @@ export function InviteAcceptModal({ invite, onAccept, onDismiss }: InviteAcceptM
               <Dialog.Title>Server Invite</Dialog.Title>
             </Flex>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={onDismiss}>
+              <IconButton
+                variant="ghost"
+                color="gray"
+                disabled={joining}
+                onClick={() => {
+                  if (joining) return;
+                  onDismiss();
+                }}
+              >
                 <MdClose size={16} />
               </IconButton>
             </Dialog.Close>
@@ -136,12 +160,40 @@ export function InviteAcceptModal({ invite, onAccept, onDismiss }: InviteAcceptM
             You&apos;ve been invited to join this server. No password required.
           </Text>
 
+          {joinError ? (
+            <Callout.Root color="red" role="alert">
+              <Callout.Icon>
+                <MdWarning size={16} />
+              </Callout.Icon>
+              <Callout.Text>{joinError}</Callout.Text>
+            </Callout.Root>
+          ) : null}
+
           <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={onDismiss}>
+            <Button
+              variant="soft"
+              color="gray"
+              disabled={joining}
+              onClick={() => {
+                if (joining) return;
+                onDismiss();
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={onAccept} disabled={loading}>
-              Accept Invite
+            <Button
+              onClick={() => {
+                void onAccept();
+              }}
+              disabled={loading || joining}
+            >
+              {joining ? (
+                <>
+                  <Spinner size="2" /> Joining…
+                </>
+              ) : (
+                "Accept Invite"
+              )}
             </Button>
           </Flex>
         </Flex>

@@ -15,10 +15,20 @@ import { useEffect, useState } from "react";
 import { MdClose, MdWarning, MdWifi } from "react-icons/md";
 import { io, Socket } from "socket.io-client";
 
-import { getServerHttpBase, getServerWsBase } from "@/common";
+import {
+  getServerHttpBase,
+  getServerWsBase,
+  getValidIdentityToken,
+  normalizeCode,
+  normalizeHost,
+  setServerAccessToken,
+  setServerRefreshToken,
+} from "@/common";
+import { joinServerOnce } from "@/socket";
 
 import { SkeletonBase } from "../../../socket/src/components/skeletons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
+import { useSettings } from "../hooks/useSettings";
 
 export type FetchInfo = {
   name: string;
@@ -33,48 +43,116 @@ interface AddNewServerProps {
 
 export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerProps) {
   const { addServer, servers } = useServerManagement();
-  
+  const { nickname } = useSettings();
+
   const [serverHost, setServerHost] = useState("");
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   const [hasError, setHasError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+  const [inviteRequired, setInviteRequired] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [joinError, setJoinError] = useState("");
 
   function closeDialog() {
-    if (!isSearching) {
+    if (!isSearching && !isJoining) {
       setServerInfo(null);
       setHasError("");
       setIsSearching(false);
       socket?.close();
       setSocket(null);
+      setIsJoining(false);
+      setInviteRequired(false);
+      setInviteCode("");
+      setJoinError("");
       setShowAddServer(false);
     }
   }
 
-  function joinServer() {
-    if (serverInfo) {
-      addServer({
-        name: serverInfo.name,
-        host: serverHost,
-      }, true); // Auto-focus the new server
+  async function joinServer() {
+    if (!serverInfo) return;
+    if (servers[serverHost]) return;
 
-      closeDialog();
+    const normalizedHost = normalizeHost(serverHost);
+    if (!normalizedHost) return;
 
-      setServerHost("");
+    const code = inviteRequired ? normalizeCode(inviteCode) : "";
+    if (inviteRequired && code.length === 0) {
+      setJoinError("Invite code required to join this server.");
+      return;
     }
+
+    setIsJoining(true);
+    setJoinError("");
+
+    const identityToken = await getValidIdentityToken().catch(() => undefined);
+    const result = await joinServerOnce({
+      host: normalizedHost,
+      nickname,
+      identityToken,
+      inviteCode: code.length > 0 ? code : undefined,
+    });
+
+    if (!result.ok) {
+      if (result.error.error === "invite_required") {
+        setInviteRequired(true);
+        setJoinError(result.error.message || "This server is invite-only. Paste an invite code to join.");
+      } else if (result.error.error === "invalid_invite") {
+        setInviteRequired(true);
+        setJoinError(result.error.message || "Invalid invite code.");
+      } else if (result.error.error === "invite_rate_limited" || result.error.error === "rate_limited") {
+        setJoinError(result.error.message || "Too many attempts. Please wait and try again.");
+      } else {
+        setJoinError(result.error.message || `Failed to join server: ${result.error.error}`);
+      }
+      setIsJoining(false);
+      return;
+    }
+
+    setServerAccessToken(normalizedHost, result.joinInfo.accessToken);
+    if (result.joinInfo.refreshToken) {
+      setServerRefreshToken(normalizedHost, result.joinInfo.refreshToken);
+    }
+
+    addServer(
+      {
+        name: serverInfo.name,
+        host: normalizedHost,
+      },
+      true
+    ); // Auto-focus the new server
+
+    closeDialog();
+    setServerHost("");
   }
 
   useEffect(() => {
     setHasError("");
+    setInviteRequired(false);
+    setInviteCode("");
+    setJoinError("");
   }, [serverHost]);
 
+  useEffect(() => {
+    setJoinError("");
+  }, [inviteCode]);
+
   function getServerInfo() {
+    const normalizedHost = normalizeHost(serverHost);
+    if (!normalizedHost) return;
+
     setIsSearching(true);
     setHasError("");
     setServerInfo(null);
+    setInviteRequired(false);
+    setInviteCode("");
+    setJoinError("");
 
-    const new_socket = io(`${getServerWsBase(serverHost)}`, {
+    const new_socket = io(`${getServerWsBase(normalizedHost)}`, {
+      transports: ["websocket"],
       reconnectionAttempts: 0,
+      timeout: 8000,
     });
 
     new_socket.on("connect_error", (error) => {
@@ -90,11 +168,13 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     new_socket.on("server:info", (info: FetchInfo) => {
       setIsSearching(false);
       setServerInfo(info);
+      setServerHost(normalizedHost);
     });
   }
 
   const handleEnterKey = (event: { key: string }) => {
     if (event.key === "Enter") {
+      if (isSearching || isJoining) return;
       getServerInfo();
     }
   };
@@ -127,13 +207,13 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
             <Flex gap="2" align="center">
               <TextField.Root
                 type="url"
-                disabled={isSearching}
+                disabled={isSearching || isJoining}
                 onKeyDown={handleEnterKey}
                 radius="full"
                 placeholder="gryt.chat"
                 value={serverHost}
                 onChange={(e) =>
-                  setServerHost(e.target.value.replace(/ /g, ""))
+                  setServerHost(normalizeHost(e.target.value))
                 }
                 style={{ width: "100%" }}
               >
@@ -142,7 +222,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
 
               <Button
                 onClick={getServerInfo}
-                disabled={isSearching || serverHost.length === 0}
+                disabled={isSearching || isJoining || serverHost.length === 0}
               >
                 {isSearching ? (
                   <SkeletonBase width="16px" height="16px" borderRadius="50%" />
@@ -216,9 +296,64 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                     </Card>
                   </Box>
 
-                  <Button disabled={!!servers[serverHost]} onClick={joinServer}>
+                  <AnimatePresence>
+                    {joinError.length > 0 && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                      >
+                        <Callout.Root color="red" role="alert">
+                          <Callout.Icon>
+                            <MdWarning size={16} />
+                          </Callout.Icon>
+                          <Callout.Text>{joinError}</Callout.Text>
+                        </Callout.Root>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {inviteRequired && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                      >
+                        <Flex direction="column" gap="2">
+                          <Text size="2" color="gray" weight="bold">
+                            Invite code
+                          </Text>
+                          <TextField.Root
+                            disabled={isJoining}
+                            radius="full"
+                            placeholder="Paste invite code"
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(normalizeCode(e.target.value))}
+                          />
+                        </Flex>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <Button
+                    disabled={
+                      !!servers[serverHost] ||
+                      isJoining ||
+                      (inviteRequired && normalizeCode(inviteCode).length === 0)
+                    }
+                    onClick={() => {
+                      void joinServer();
+                    }}
+                  >
                     {servers[serverHost] ? (
                       "You are already a member"
+                    ) : isJoining ? (
+                      <>
+                        <SkeletonBase width="16px" height="16px" borderRadius="50%" /> Joining…
+                      </>
+                    ) : inviteRequired ? (
+                      <>Join with code</>
                     ) : (
                       <>Join {serverInfo.name}</>
                     )}
