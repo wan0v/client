@@ -17,6 +17,12 @@ const QUALITY_OPTIONS = [
   { value: "144p", label: "144p (256×144)" },
   { value: "96p", label: "96p (170×96)" },
   { value: "64p", label: "64p (114×64)" },
+  { value: "48p", label: "48p (85×48)" },
+  { value: "32p", label: "32p (57×32)" },
+  { value: "24p", label: "24p (43×24)" },
+  { value: "16p", label: "16p (28×16)" },
+  { value: "8p", label: "8p (14×8)" },
+  { value: "4p", label: "4p (7×4)" },
 ];
 
 export function CameraSettings() {
@@ -27,6 +33,8 @@ export function CameraSettings() {
     setCameraQuality,
     cameraMirrored,
     setCameraMirrored,
+    cameraFlipped,
+    setCameraFlipped,
   } = useSettings();
 
   const { cameraEnabled, cameraStream: globalStream, devices, getDevices } = useCamera();
@@ -166,7 +174,8 @@ export function CameraSettings() {
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
-                  transform: cameraMirrored ? "scaleX(-1)" : undefined,
+                  transform: (cameraEnabled ? cameraMirrored : (cameraFlipped !== cameraMirrored))
+                    ? "scaleX(-1)" : undefined,
                 }}
               />
               {actualRes && (
@@ -243,6 +252,13 @@ export function CameraSettings() {
           </Select.Content>
         </Select.Root>
       </Flex>
+
+      <ToggleSetting
+        title="Flip Camera"
+        description="Horizontally flip the video sent to everyone (mirrors the actual stream)"
+        checked={cameraFlipped}
+        onCheckedChange={setCameraFlipped}
+      />
 
       <ToggleSetting
         title="Mirror Preview"

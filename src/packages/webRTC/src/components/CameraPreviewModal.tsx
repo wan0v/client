@@ -13,6 +13,8 @@ interface CameraPreviewModalProps {
   onQualityChange: (q: string) => void;
   mirrored: boolean;
   onMirroredChange: (m: boolean) => void;
+  flipped: boolean;
+  onFlippedChange: (f: boolean) => void;
   onStart: () => void;
 }
 
@@ -49,6 +51,8 @@ export function CameraPreviewModal({
   onQualityChange,
   mirrored,
   onMirroredChange,
+  flipped,
+  onFlippedChange,
   onStart,
 }: CameraPreviewModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,6 +62,7 @@ export function CameraPreviewModal({
   const [localCameraID, setLocalCameraID] = useState(cameraID);
   const [localQuality, setLocalQuality] = useState(quality);
   const [localMirrored, setLocalMirrored] = useState(mirrored);
+  const [localFlipped, setLocalFlipped] = useState(flipped);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -65,8 +70,9 @@ export function CameraPreviewModal({
       setLocalCameraID(cameraID);
       setLocalQuality(quality);
       setLocalMirrored(mirrored);
+      setLocalFlipped(flipped);
     }
-  }, [open, cameraID, quality, mirrored]);
+  }, [open, cameraID, quality, mirrored, flipped]);
 
   const startPreview = useCallback(async (deviceId: string, q: string) => {
     const qc = QUALITY_CONSTRAINTS[q] ?? QUALITY_CONSTRAINTS.native;
@@ -208,6 +214,7 @@ export function CameraPreviewModal({
     onCameraIDChange(localCameraID);
     onQualityChange(localQuality);
     onMirroredChange(localMirrored);
+    onFlippedChange(localFlipped);
     onStart();
     onOpenChange(false);
   };
@@ -246,7 +253,7 @@ export function CameraPreviewModal({
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                transform: localMirrored ? "scaleX(-1)" : undefined,
+                transform: (localFlipped !== localMirrored) ? "scaleX(-1)" : undefined,
               }}
             />
             {previewStream && actualRes && (
@@ -317,6 +324,11 @@ export function CameraPreviewModal({
                 </Select.Content>
               </Select.Root>
             </Flex>
+
+            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <Checkbox size="1" checked={localFlipped} onCheckedChange={(v) => setLocalFlipped(v === true)} />
+              Flip camera (affects what everyone sees)
+            </Text>
 
             <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox size="1" checked={localMirrored} onCheckedChange={(v) => setLocalMirrored(v === true)} />

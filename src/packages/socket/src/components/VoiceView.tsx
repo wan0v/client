@@ -321,7 +321,12 @@ export const VoiceView = ({
         width: showVoiceView ? voiceWidth : 0,
         paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
-      style={{ overflow: "hidden", maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined }}
+      style={{
+        overflow: "hidden",
+        ...(isFocused && showVoiceView
+          ? { flexGrow: 1, minWidth: 0 }
+          : { maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined }),
+      }}
     >
       <Flex
         style={{ background: "var(--gray-3)", borderRadius: "var(--radius-5)" }}

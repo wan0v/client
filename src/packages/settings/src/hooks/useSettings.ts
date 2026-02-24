@@ -47,6 +47,9 @@ function useSettingsHook() {
   const [cameraMirrored, setCameraMirrored] = useState(
     localStorage.getItem("cameraMirrored") !== "false"
   );
+  const [cameraFlipped, setCameraFlipped] = useState(
+    localStorage.getItem("cameraFlipped") === "true"
+  );
 
   const [screenShareQuality, setScreenShareQuality] = useState(
     localStorage.getItem("screenShareQuality") || "native"
@@ -144,6 +147,11 @@ function useSettingsHook() {
   function updateCameraMirrored(mirrored: boolean) {
     setCameraMirrored(mirrored);
     localStorage.setItem("cameraMirrored", mirrored.toString());
+  }
+
+  function updateCameraFlipped(flipped: boolean) {
+    setCameraFlipped(flipped);
+    localStorage.setItem("cameraFlipped", flipped.toString());
   }
 
   function updateScreenShareQuality(quality: string) {
@@ -289,6 +297,8 @@ function useSettingsHook() {
     setCameraQuality: updateCameraQuality,
     cameraMirrored,
     setCameraMirrored: updateCameraMirrored,
+    cameraFlipped,
+    setCameraFlipped: updateCameraFlipped,
     screenShareQuality,
     setScreenShareQuality: updateScreenShareQuality,
     screenShareFps,

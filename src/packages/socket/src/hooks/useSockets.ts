@@ -162,12 +162,14 @@ function useSocketsHook() {
 
     Object.keys(servers).forEach((host) => {
       if (!newSockets[host]) {
-        const accessToken = getServerAccessToken(host);
-        
+        const serverToken = servers[host].token;
+
         const socket = io(`${getServerWsBase(host)}`, {
-          auth: {
-            token: servers[host].token,
-            accessToken: accessToken || undefined,
+          auth: (cb: (data: Record<string, unknown>) => void) => {
+            cb({
+              token: serverToken,
+              accessToken: getServerAccessToken(host) || undefined,
+            });
           },
         });
         

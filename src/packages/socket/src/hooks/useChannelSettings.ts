@@ -85,6 +85,8 @@ interface UseHandleChannelClickParams {
   setLastSelectedChannelForServer: (host: string, channelId: string) => void;
   connect: (channelId: string, eSportsMode?: boolean, maxBitrate?: number | null) => Promise<void>;
   applyChannelSettings: (channel: Channel) => void;
+  setIsMuted: (v: boolean) => void;
+  setIsDeafened: (v: boolean) => void;
 }
 
 function useHandleChannelClick({
@@ -93,7 +95,7 @@ function useHandleChannelClick({
   showVoiceView, mediaAutoShownRef,
   setSelectedChannelId, setShowVoiceView, setPendingChannelId,
   setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
-  connect, applyChannelSettings,
+  connect, applyChannelSettings, setIsMuted, setIsDeafened,
 }: UseHandleChannelClickParams) {
   return useCallback((channel: Channel) => {
     if (!currentlyViewingServer) return;
@@ -124,6 +126,8 @@ function useHandleChannelClick({
         applyChannelSettings(channel);
         mediaAutoShownRef.current = false;
         setShowVoiceView(false);
+        setIsMuted(false);
+        setIsDeafened(false);
         connect(channel.id, channel.eSportsMode, channel.maxBitrate).catch((error) => {
           console.error("SFU connection failed:", error);
           if (error instanceof Error && error.message.includes("Microphone not available")) {
@@ -152,7 +156,7 @@ function useHandleChannelClick({
     showVoiceView, mediaAutoShownRef,
     setSelectedChannelId, setShowVoiceView, setPendingChannelId,
     setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
-    connect, applyChannelSettings,
+    connect, applyChannelSettings, setIsMuted, setIsDeafened,
   ]);
 }
 

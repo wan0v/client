@@ -3,7 +3,11 @@ import { singletonHook } from "react-singleton-hook";
 
 import { useSettings } from "@/settings";
 
-export type CameraQuality = "native" | "1080p" | "720p" | "480p" | "360p" | "240p" | "144p" | "96p" | "64p";
+import { createFlippedStream, type FlippedStream } from "../utils/flipVideoStream";
+
+export type CameraQuality =
+  | "native" | "1080p" | "720p" | "480p" | "360p" | "240p"
+  | "144p" | "96p" | "64p" | "48p" | "32p" | "24p" | "16p" | "8p" | "4p";
 
 export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height?: number; frameRate: number }> = {
   native: { frameRate: 30 },
@@ -15,6 +19,12 @@ export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height
   "144p": { width: 256, height: 144, frameRate: 15 },
   "96p": { width: 170, height: 96, frameRate: 10 },
   "64p": { width: 114, height: 64, frameRate: 10 },
+  "48p": { width: 85, height: 48, frameRate: 10 },
+  "32p": { width: 57, height: 32, frameRate: 5 },
+  "24p": { width: 43, height: 24, frameRate: 5 },
+  "16p": { width: 28, height: 16, frameRate: 5 },
+  "8p": { width: 14, height: 8, frameRate: 2 },
+  "4p": { width: 7, height: 4, frameRate: 1 },
 };
 
 export interface CameraInterface {
@@ -45,12 +55,13 @@ function friendlyCameraError(err: unknown): string {
 }
 
 function useCameraHook(): CameraInterface {
-  const { cameraID, setCameraID, cameraQuality } = useSettings();
+  const { cameraID, setCameraID, cameraQuality, cameraFlipped } = useSettings();
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraEnabled, setCameraEnabledState] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const flippedRef = useRef<FlippedStream | null>(null);
 
   const getDevices = useCallback(async () => {
     try {
@@ -73,28 +84,62 @@ function useCameraHook(): CameraInterface {
     return () => navigator.mediaDevices.removeEventListener("devicechange", handler);
   }, [getDevices]);
 
+  const applyFlip = useCallback((rawStream: MediaStream, flip: boolean) => {
+    if (flippedRef.current) {
+      flippedRef.current.stop();
+      flippedRef.current = null;
+    }
+    if (flip) {
+      const flipped = createFlippedStream(rawStream);
+      flippedRef.current = flipped;
+      setCameraStream(flipped.stream);
+    } else {
+      setCameraStream(rawStream);
+    }
+  }, []);
+
   const startCamera = useCallback(async () => {
     const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
     const videoConstraints: MediaTrackConstraints = {
       ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
-      frameRate: { ideal: quality.frameRate },
+      frameRate: { ideal: quality.frameRate, max: quality.frameRate },
     };
     if (quality.width) {
-      videoConstraints.width = { ideal: quality.width };
-      videoConstraints.height = { ideal: quality.height };
+      videoConstraints.width = { ideal: quality.width, max: quality.width };
+      videoConstraints.height = { ideal: quality.height, max: quality.height };
     }
     const constraints: MediaStreamConstraints = {
       video: videoConstraints,
       audio: false,
     };
 
+    const oldTrackId = streamRef.current?.getVideoTracks()[0]?.id;
+    console.log("[Camera] startCamera called", {
+      quality: cameraQuality,
+      constraints: videoConstraints,
+      oldStreamId: streamRef.current?.id,
+      oldTrackId,
+    });
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const newTrack = stream.getVideoTracks()[0];
+      const settings = newTrack?.getSettings();
+      console.log("[Camera] getUserMedia succeeded", {
+        streamId: stream.id,
+        trackId: newTrack?.id,
+        trackReadyState: newTrack?.readyState,
+        actualWidth: settings?.width,
+        actualHeight: settings?.height,
+        actualFrameRate: settings?.frameRate,
+      });
+
       if (streamRef.current) {
+        console.log("[Camera] Stopping old tracks", { oldStreamId: streamRef.current.id });
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
       streamRef.current = stream;
-      setCameraStream(stream);
+      applyFlip(stream, cameraFlipped);
       setCameraError(null);
 
       const allDevices = await navigator.mediaDevices.enumerateDevices();
@@ -110,9 +155,13 @@ function useCameraHook(): CameraInterface {
       setCameraError(friendlyCameraError(error));
       setCameraEnabledState(false);
     }
-  }, [cameraID, cameraQuality, setCameraID]);
+  }, [cameraID, cameraQuality, cameraFlipped, setCameraID, applyFlip]);
 
   const stopCamera = useCallback(() => {
+    if (flippedRef.current) {
+      flippedRef.current.stop();
+      flippedRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -138,15 +187,32 @@ function useCameraHook(): CameraInterface {
 
   // Restart when device or quality changes while camera is on
   useEffect(() => {
+    console.log("[Camera] Quality/device change effect", {
+      cameraEnabled,
+      cameraID,
+      cameraQuality,
+      willRestart: cameraEnabled && !!cameraID,
+    });
     if (cameraEnabled && cameraID) {
       startCamera();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraID, cameraQuality]);
 
+  // Rebuild flip pipeline when cameraFlipped changes while camera is on
+  useEffect(() => {
+    if (cameraEnabled && streamRef.current) {
+      applyFlip(streamRef.current, cameraFlipped);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraFlipped]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (flippedRef.current) {
+        flippedRef.current.stop();
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }

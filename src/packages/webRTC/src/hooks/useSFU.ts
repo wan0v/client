@@ -14,6 +14,7 @@ import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuClean
 import { sfuConnect } from "./sfuConnectFlow";
 import { SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
+import { voiceLog } from "./voiceLogger";
 
 function useSfuHook(): SFUInterface {
   // Core WebRTC references
@@ -259,11 +260,41 @@ function useSfuHook(): SFUInterface {
 
   const addVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
     const pc = peerConnectionRef.current;
-    if (!pc || pc.connectionState === "closed") return;
-    if (videoSenderRef.current) {
-      videoSenderRef.current.replaceTrack(track).catch(() => {});
+    if (!pc || pc.connectionState === "closed") {
+      voiceLog.warn("CAMERA", `addVideoTrack skipped — pc ${pc ? pc.connectionState : "null"}`);
       return;
     }
+    if (videoSenderRef.current) {
+      const oldTrackId = videoSenderRef.current.track?.id;
+      voiceLog.step("CAMERA", "replace", "replaceTrack on existing sender", {
+        oldTrackId,
+        newTrackId: track.id,
+        newTrackReadyState: track.readyState,
+        pcState: pc.connectionState,
+        senderTransport: videoSenderRef.current.transport?.state,
+      });
+      videoSenderRef.current.replaceTrack(track)
+        .then(() => {
+          voiceLog.ok("CAMERA", "replace", "replaceTrack succeeded", {
+            senderTrackId: videoSenderRef.current?.track?.id,
+            newTrackId: track.id,
+            trackReadyState: track.readyState,
+          });
+        })
+        .catch((err: unknown) => {
+          voiceLog.fail("CAMERA", "replace", "replaceTrack FAILED", {
+            error: err,
+            pcState: pc.connectionState,
+            senderTrackId: videoSenderRef.current?.track?.id,
+          });
+        });
+      return;
+    }
+    voiceLog.step("CAMERA", "add", "addTrack + renegotiate (first camera track)", {
+      trackId: track.id,
+      streamId: stream.id,
+      pcState: pc.connectionState,
+    });
     const sender = pc.addTrack(track, stream);
     videoSenderRef.current = sender;
     sendRenegotiate();
@@ -273,6 +304,10 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     const sender = videoSenderRef.current;
     if (!pc || !sender || pc.connectionState === "closed") return;
+    voiceLog.step("CAMERA", "remove", "Removing video track", {
+      trackId: sender.track?.id,
+      pcState: pc.connectionState,
+    });
     try {
       pc.removeTrack(sender);
     } catch { /* already removed */ }
@@ -284,7 +319,10 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenVideoSenderRef.current) {
-      screenVideoSenderRef.current.replaceTrack(track).catch(() => {});
+      voiceLog.info("CAMERA", "Screen video replaceTrack");
+      screenVideoSenderRef.current.replaceTrack(track)
+        .then(() => voiceLog.ok("CAMERA", "screenReplace", "Screen video replaceTrack succeeded"))
+        .catch((err: unknown) => voiceLog.fail("CAMERA", "screenReplace", "Screen video replaceTrack FAILED", err));
       return;
     }
     const sender = pc.addTrack(track, stream);
@@ -305,7 +343,10 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenAudioSenderRef.current) {
-      screenAudioSenderRef.current.replaceTrack(track).catch(() => {});
+      voiceLog.info("CAMERA", "Screen audio replaceTrack");
+      screenAudioSenderRef.current.replaceTrack(track)
+        .then(() => voiceLog.ok("CAMERA", "screenAudioReplace", "Screen audio replaceTrack succeeded"))
+        .catch((err: unknown) => voiceLog.fail("CAMERA", "screenAudioReplace", "Screen audio replaceTrack FAILED", err));
       return;
     }
     const sender = pc.addTrack(track, stream);

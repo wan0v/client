@@ -37,6 +37,7 @@ export const ServerView = () => {
     eSportsModeEnabled, setESportsModeEnabled, noiseGate, setNoiseGate,
     pinChannelsSidebar, setPinChannelsSidebar,
     pinMembersSidebar, setPinMembersSidebar,
+    setIsMuted, setIsDeafened,
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
@@ -139,7 +140,7 @@ export const ServerView = () => {
     showVoiceView, mediaAutoShownRef,
     setSelectedChannelId, setShowVoiceView, setPendingChannelId,
     setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
-    connect, applyChannelSettings,
+    connect, applyChannelSettings, setIsMuted, setIsDeafened,
   });
 
   const currentAdminActions = useMemo(() => {
@@ -302,7 +303,7 @@ export const ServerView = () => {
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
             />
-            <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative" }}>
+            <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
                 voiceWidth={voiceFocused ? (voiceMaxWidth > 0 ? `${voiceMaxWidth}px` : voiceWidth) : voiceWidth}

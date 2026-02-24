@@ -1,7 +1,8 @@
 import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, nativeImage, screen, session, shell, Tray } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
-import { readFileSync, writeFileSync } from "fs";
-import { dirname, join, resolve } from "path";
+import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import { createServer, Server } from "http";
+import { dirname, extname, join, resolve } from "path";
 import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
@@ -30,6 +31,8 @@ let isQuitting = false;
 let closeToTray = true;
 let pttDown = false;
 let startHiddenOnLaunch = false;
+let localServer: Server | null = null;
+let localServerUrl: string | null = null;
 
 // ── Deep link protocol ───────────────────────────────────────────────────
 
@@ -258,6 +261,73 @@ function initBackgroundUpdater() {
   autoUpdater.on("error", (err) => sendToMain("error", { message: friendlyUpdateError(err) }));
 }
 
+// ── Local static server (production only) ────────────────────────────────
+// Serves the Vite-built dist/ folder over HTTP so iframe embeds (YouTube,
+// Twitch, etc.) see a real HTTP origin instead of file://.
+
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html",
+  ".js": "application/javascript",
+  ".mjs": "application/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".mp3": "audio/mpeg",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".wasm": "application/wasm",
+  ".map": "application/json",
+  ".txt": "text/plain",
+};
+
+function startLocalServer(): Promise<string> {
+  const distDir = join(__dirname, "../dist");
+  const indexPath = join(distDir, "index.html");
+
+  return new Promise((resolveUrl, reject) => {
+    const server = createServer((req, res) => {
+      const pathname = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
+      const safePath = resolve(distDir, pathname.replace(/^\/+/, ""));
+
+      if (!safePath.startsWith(distDir)) {
+        res.writeHead(403);
+        res.end();
+        return;
+      }
+
+      const filePath = existsSync(safePath) && statSync(safePath).isFile() ? safePath : indexPath;
+      const ext = extname(filePath).toLowerCase();
+      const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
+
+      res.writeHead(200, { "Content-Type": contentType });
+      createReadStream(filePath).pipe(res);
+    });
+
+    server.listen(0, "127.0.0.1", () => {
+      const addr = server.address();
+      if (!addr || typeof addr === "string") {
+        reject(new Error("Failed to start local server"));
+        return;
+      }
+      localServer = server;
+      const url = `http://127.0.0.1:${addr.port}`;
+      resolveUrl(url);
+    });
+
+    server.on("error", reject);
+  });
+}
+
 // ── Main window ─────────────────────────────────────────────────────────
 
 function createMainWindow(): void {
@@ -285,11 +355,7 @@ function createMainWindow(): void {
     title: "Gryt.chat",
   });
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(join(__dirname, "../dist/index.html"));
-  }
+  mainWindow.loadURL(localServerUrl ?? process.env.VITE_DEV_SERVER_URL ?? "about:blank");
 
   if (!startHiddenOnLaunch) {
     // Safety: if splash flow hasn't shown us within 20s, show anyway
@@ -551,6 +617,10 @@ if (!gotSingleInstanceLock) {
     })();
     startHiddenOnLaunch = launchedFromAutoStart && startMinimizedOnLogin;
 
+    if (!process.env.VITE_DEV_SERVER_URL) {
+      localServerUrl = await startLocalServer();
+    }
+
     initUiohook();
     createMainWindow();
     createTray();
@@ -717,5 +787,7 @@ if (!gotSingleInstanceLock) {
 
   app.on("will-quit", () => {
     uIOhook.stop();
+    localServer?.close();
+    localServer = null;
   });
 }

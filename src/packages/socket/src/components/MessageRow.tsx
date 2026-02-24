@@ -23,6 +23,7 @@ export interface MessageMeta {
   avatarUrl: string | undefined;
   isSelf: boolean;
   isFirstEdited: boolean;
+  isSystem: boolean;
 }
 
 interface MessageRowProps {
@@ -107,7 +108,29 @@ export const MessageRow = memo(({
       {meta.showNewMessageDivider && <NewMessagesDivider />}
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
-      {meta.isFirstInGroup ? (
+      {meta.isSystem ? (
+        <Flex
+          align="center"
+          gap="2"
+          style={{
+            width: "100%",
+            padding: "4px 12px",
+            marginTop: 4,
+            marginBottom: 4,
+          }}
+        >
+          <Text size="1" style={{ color: "var(--gray-9)" }}>{"→"}</Text>
+          <Text size="1" style={{ color: "var(--gray-9)", fontStyle: "italic", wordBreak: "break-word" }}>
+            <MarkdownRenderer
+              content={m.text}
+              memberNicknames={memberNicknames}
+              mentionMembersById={memberList}
+              serverHost={serverHost}
+            />
+          </Text>
+          <MessageTimestamp date={toDate(m.created_at)} />
+        </Flex>
+      ) : meta.isFirstInGroup ? (
         <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">
           <Avatar
             radius="full"

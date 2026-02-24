@@ -121,6 +121,8 @@ export interface Settings {
   setCameraQuality: (quality: string) => void;
   cameraMirrored: boolean;
   setCameraMirrored: (mirrored: boolean) => void;
+  cameraFlipped: boolean;
+  setCameraFlipped: (flipped: boolean) => void;
 
   screenShareQuality: string;
   setScreenShareQuality: (quality: string) => void;
@@ -283,6 +285,8 @@ export const settingsInit: Settings = {
   setCameraQuality: () => {},
   cameraMirrored: localStorage.getItem("cameraMirrored") !== "false",
   setCameraMirrored: () => {},
+  cameraFlipped: localStorage.getItem("cameraFlipped") === "true",
+  setCameraFlipped: () => {},
 
   screenShareQuality: localStorage.getItem("screenShareQuality") || "native",
   setScreenShareQuality: () => {},

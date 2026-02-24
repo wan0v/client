@@ -3,6 +3,7 @@ import { toDate } from "./chatUtils";
 import type { MessageMeta } from "./MessageRow";
 
 export const GROUP_GAP_MS = 5 * 60 * 1000;
+export const SYSTEM_SENDER_ID = "system";
 
 export function getAttachmentPreview(msg: ChatMessage): string {
   const enriched = msg.enriched_attachments;
@@ -35,15 +36,17 @@ export function buildMessageMetadata(
     const needsDayBreak = dayKey !== lastDay;
     lastDay = dayKey;
 
+    const isSystem = m.sender_server_id === SYSTEM_SENDER_ID;
+
     const timeSincePrev = prev ? d.getTime() - toDate(prev.created_at).getTime() : Infinity;
-    const isFirstInGroup =
+    const isFirstInGroup = isSystem ||
       !prev || prev.sender_server_id !== m.sender_server_id || timeSincePrev > GROUP_GAP_MS || needsDayBreak;
 
     const showNewMessageDivider = !!(newMessageMarkerId && prev && prev.message_id === newMessageMarkerId);
 
-    const isSelf = !!currentUserId && m.sender_server_id === currentUserId;
-    const senderName = isSelf ? (currentUserNickname || "You") : getSenderName(m);
-    const avatarUrl = getSenderAvatarUrl(m);
+    const isSelf = !isSystem && !!currentUserId && m.sender_server_id === currentUserId;
+    const senderName = isSystem ? "System" : (isSelf ? (currentUserNickname || "You") : getSenderName(m));
+    const avatarUrl = isSystem ? undefined : getSenderAvatarUrl(m);
     const isFirstEdited = isFirstInGroup && !!m.edited_at;
 
     return {
@@ -54,6 +57,7 @@ export function buildMessageMetadata(
       avatarUrl,
       isSelf,
       isFirstEdited,
+      isSystem,
     };
   });
 }

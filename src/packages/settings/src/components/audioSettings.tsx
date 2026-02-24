@@ -14,6 +14,7 @@ import { MdRefresh, MdWarning } from "react-icons/md";
 
 import { useMicrophone } from "@/audio";
 import { useSettings } from "@/settings";
+import { useSFU } from "@/webRTC";
 
 import { SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
@@ -39,12 +40,22 @@ export function AudioSettings() {
     setCompressorEnabled,
     compressorAmount,
     setCompressorAmount,
+    isMuted,
+    setIsMuted,
     inputMode,
     screenShareAudioDelay,
     setScreenShareAudioDelay,
   } = useSettings();
 
+  const { isConnected } = useSFU();
   const { devices, microphoneBuffer, getDevices, audioContext } = useMicrophone(true);
+
+  const handleLoopbackChange = useCallback((enabled: boolean) => {
+    setLoopbackEnabled(enabled);
+    if (enabled && isConnected && !isMuted) {
+      setIsMuted(true);
+    }
+  }, [setLoopbackEnabled, isConnected, isMuted, setIsMuted]);
 
   const getRawVisualizerData = useCallback((): Uint8Array | null => {
     if (!microphoneBuffer.analyser) {
@@ -292,6 +303,13 @@ export function AudioSettings() {
         </Flex>
       </Flex>}
 
+      <ToggleSetting
+        title="Test Microphone (Playback)"
+        description="Hear yourself through speakers/headphones. Useful for verifying your audio processing settings."
+        checked={loopbackEnabled}
+        onCheckedChange={handleLoopbackChange}
+      />
+
       <SliderSetting
         title={`Microphone Volume: ${micVolume}%`}
         description="Your microphone input level (50% = normal volume, 100% = 2x boost)"
@@ -380,17 +398,6 @@ export function AudioSettings() {
         step={1}
       />
 
-      <Separator size="4" />
-
-      {/* ── Testing ── */}
-      <Text size="3" weight="bold" color="gray">Testing</Text>
-
-      <ToggleSetting
-        title="Test Microphone (Playback)"
-        description="Enable to hear yourself through speakers/headphones. Useful for verifying your audio processing settings."
-        checked={loopbackEnabled}
-        onCheckedChange={setLoopbackEnabled}
-      />
     </SettingsContainer>
   );
 }

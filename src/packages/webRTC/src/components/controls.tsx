@@ -19,6 +19,7 @@ import { useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 
 import { isElectron } from "../../../../lib/electron";
+import { voiceLog } from "../hooks/voiceLogger";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 
@@ -51,6 +52,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     experimentalScreenShare,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
+    cameraFlipped, setCameraFlipped,
   } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
@@ -65,10 +67,21 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (cameraEnabled && cameraStream) {
       const videoTrack = cameraStream.getVideoTracks()[0];
       if (videoTrack) {
+        const isReplace = prevCameraStreamRef.current !== null && prevCameraStreamRef.current !== cameraStream;
+        voiceLog.step("CAMERA", "sync", isReplace ? "Replacing camera track (quality change)" : "Adding camera track", {
+          trackId: videoTrack.id,
+          readyState: videoTrack.readyState,
+          streamId: cameraStream.id,
+          prevStreamId: prevCameraStreamRef.current?.id,
+          settings: videoTrack.getSettings(),
+        });
         addVideoTrack(videoTrack, cameraStream);
         prevCameraStreamRef.current = cameraStream;
       }
     } else if (prevCameraStreamRef.current) {
+      voiceLog.step("CAMERA", "sync", "Removing camera track", {
+        prevStreamId: prevCameraStreamRef.current.id,
+      });
       removeVideoTrack();
       prevCameraStreamRef.current = null;
     }
@@ -251,6 +264,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
         onQualityChange={setCameraQuality}
         mirrored={cameraMirrored}
         onMirroredChange={setCameraMirrored}
+        flipped={cameraFlipped}
+        onFlippedChange={setCameraFlipped}
         onStart={() => setCameraEnabled(true)}
       />
 

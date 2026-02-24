@@ -222,20 +222,32 @@ export function useServerState() {
     );
   }, [currentServerConnected, currentlyViewingServer, userVoiceWidth]);
 
+  // Stable refs so the voice-connect effect only re-fires when micID or
+  // pendingChannelId change — not when `connect` is recreated by internal
+  // state transitions (DISCONNECTED → CONNECTING → CONNECTED).
+  const connectRef = useRef(connect);
+  useEffect(() => { connectRef.current = connect; }, [connect]);
+  const currentlyViewingServerRef = useRef(currentlyViewingServer);
+  useEffect(() => { currentlyViewingServerRef.current = currentlyViewingServer; }, [currentlyViewingServer]);
+  const serverDetailsListRef = useRef(serverDetailsList);
+  useEffect(() => { serverDetailsListRef.current = serverDetailsList; }, [serverDetailsList]);
+
   // Connect to pending voice channel once mic is available
   useEffect(() => {
     if (micID && pendingChannelId) {
-      const pendingChannel = currentlyViewingServer
-        ? serverDetailsList[currentlyViewingServer.host]?.channels?.find((c) => c.id === pendingChannelId)
+      const server = currentlyViewingServerRef.current;
+      const details = serverDetailsListRef.current;
+      const pendingChannel = server
+        ? details[server.host]?.channels?.find((c) => c.id === pendingChannelId)
         : undefined;
-      connect(pendingChannelId, pendingChannel?.eSportsMode, pendingChannel?.maxBitrate)
+      connectRef.current(pendingChannelId, pendingChannel?.eSportsMode, pendingChannel?.maxBitrate)
         .then(() => setPendingChannelId(null))
         .catch((error) => {
           console.error("Failed to connect to pending channel:", error);
           setPendingChannelId(null);
         });
     }
-  }, [micID, pendingChannelId, connect, currentlyViewingServer, serverDetailsList]);
+  }, [micID, pendingChannelId]);
 
   // Speaking detection polling (50ms in eSports mode, 100ms normally)
   const clientsSpeakingRef = useRef(clientsSpeaking);
