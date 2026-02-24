@@ -2,6 +2,9 @@ import { Button, Card, Flex, Switch, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { MdAdd, MdContentCopy } from "react-icons/md";
+import type { Socket } from "socket.io-client";
+
+import { useSocketEvent } from "../hooks/useSocketEvent";
 
 export type InviteItem = {
   code: string;
@@ -57,7 +60,7 @@ export function ServerInvitesTab({
   accessToken,
 }: {
   host: string;
-  socket?: { connected: boolean; emit: (event: string, data: unknown) => void; on: (event: string, handler: (...args: unknown[]) => void) => void; off: (event: string, handler: (...args: unknown[]) => void) => void };
+  socket?: Socket;
   accessToken: string | null;
 }) {
   const [invites, setInvites] = useState<InviteItem[]>([]);
@@ -94,37 +97,26 @@ export function ServerInvitesTab({
     }
   };
 
-  useEffect(() => {
-    if (!socket) return;
+  useSocketEvent<unknown>(socket, "server:invites", (payload) => {
+    const raw = isRecord(payload) ? payload.invites : undefined;
+    const items = Array.isArray(raw) ? raw.filter(isInviteItem) : [];
+    setInvites(items);
+  });
 
-    const onInvites = (payload: unknown) => {
-      const raw = isRecord(payload) ? payload.invites : undefined;
-      const items = Array.isArray(raw) ? raw.filter(isInviteItem) : [];
-      setInvites(items);
-    };
-    const onInviteCreated = (payload: unknown) => {
-      const raw = isRecord(payload) ? payload.invite : undefined;
-      if (!isInviteItem(raw)) return;
-      setInvites((prev) => [raw, ...prev.filter((p) => p.code !== raw.code)]);
-      toast.success("Invite created");
-    };
-    const onInviteRevoked = (payload: unknown) => {
-      if (!isRecord(payload)) return;
-      const code = payload.code;
-      const revoked = payload.revoked;
-      if (typeof code !== "string" || typeof revoked !== "boolean") return;
-      setInvites((prev) => prev.map((i) => (i.code === code ? { ...i, revoked } : i)));
-    };
+  useSocketEvent<unknown>(socket, "server:invite:created", (payload) => {
+    const raw = isRecord(payload) ? payload.invite : undefined;
+    if (!isInviteItem(raw)) return;
+    setInvites((prev) => [raw, ...prev.filter((p) => p.code !== raw.code)]);
+    toast.success("Invite created");
+  });
 
-    socket.on("server:invites", onInvites);
-    socket.on("server:invite:created", onInviteCreated);
-    socket.on("server:invite:revoked", onInviteRevoked);
-    return () => {
-      socket.off("server:invites", onInvites);
-      socket.off("server:invite:created", onInviteCreated);
-      socket.off("server:invite:revoked", onInviteRevoked);
-    };
-  }, [socket]);
+  useSocketEvent<unknown>(socket, "server:invite:revoked", (payload) => {
+    if (!isRecord(payload)) return;
+    const code = payload.code;
+    const revoked = payload.revoked;
+    if (typeof code !== "string" || typeof revoked !== "boolean") return;
+    setInvites((prev) => prev.map((i) => (i.code === code ? { ...i, revoked } : i)));
+  });
 
   useEffect(() => {
     if (!host) return;

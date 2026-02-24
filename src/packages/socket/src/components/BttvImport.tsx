@@ -346,13 +346,11 @@ export function BttvImport({
     setImporting(true);
     try {
       const startedAt = Date.now();
-      console.log("[BttvImport] start", { count: toImport.length });
 
       let successCount = 0;
       let failCount = 0;
 
       const importOne = async (emote: BttvEmoteWithMeta) => {
-        console.log("[BttvImport] emote: start", { id: emote.id, name: emote.name, code: emote.code });
         setEmotes((prev) => prev.map((e) => (
           e.id === emote.id
             ? { ...e, status: "downloading", progress: 0, lastError: null }
@@ -434,14 +432,6 @@ export function BttvImport({
             }
           }
 
-          console.log("[BttvImport] emote: upload result", {
-            id: emote.id,
-            name: emote.name,
-            ok: result.ok,
-            status: result.status,
-            ms: Date.now() - uploadStartedAt,
-          });
-
           if (result.ok) {
             successCount++;
             toast.success(`:${emote.name}: queued for processing.`);
@@ -481,7 +471,6 @@ export function BttvImport({
 
       await Promise.all(Array.from({ length: concurrencyLimit }, worker));
 
-      console.log("[BttvImport] done", { successCount, failCount, ms: Date.now() - startedAt });
       if (successCount > 0) {
         toast.success(`Imported ${successCount} emoji(s)!`);
       }

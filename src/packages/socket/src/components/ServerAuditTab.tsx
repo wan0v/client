@@ -1,6 +1,9 @@
 import { Button, Card, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import type { Socket } from "socket.io-client";
+
+import { useSocketEvent } from "../hooks/useSocketEvent";
 
 type AuditItem = {
   createdAt: string | Date;
@@ -22,7 +25,7 @@ export function ServerAuditTab({
   accessToken,
 }: {
   host: string;
-  socket?: { connected: boolean; emit: (event: string, data: unknown) => void; on: (event: string, handler: (...args: unknown[]) => void) => void; off: (event: string, handler: (...args: unknown[]) => void) => void };
+  socket?: Socket;
   accessToken: string | null;
 }) {
   const [items, setItems] = useState<AuditItem[]>([]);
@@ -33,18 +36,9 @@ export function ServerAuditTab({
     socket.emit("server:audit:list", { accessToken, limit: 100 });
   };
 
-  useEffect(() => {
-    if (!socket) return;
-    const onAudit = (payload: { items: AuditItem[] }) => {
-      setItems(Array.isArray(payload?.items) ? payload.items : []);
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:audit", onAudit as any);
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:audit", onAudit as any);
-    };
-  }, [socket]);
+  useSocketEvent<{ items: AuditItem[] }>(socket, "server:audit", (payload) => {
+    setItems(Array.isArray(payload?.items) ? payload.items : []);
+  });
 
   useEffect(() => {
     if (!host) return;

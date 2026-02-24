@@ -1,7 +1,6 @@
 import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
-import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MdCloudUpload } from "react-icons/md";
-import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
 import { useSettings } from "@/settings";
@@ -34,13 +33,7 @@ function getReplyPreview(msg: ChatMessage | null | undefined, maxLen: number): s
 }
 
 const GROUP_GAP_MS = 5 * 60 * 1000;
-
-const VirtuosoScroller = forwardRef<HTMLDivElement, React.ComponentPropsWithRef<"div">>(
-  ({ style, ...props }, ref) => (
-    <div ref={ref} style={{ ...style, overflowX: "hidden" }} {...props} />
-  ),
-);
-VirtuosoScroller.displayName = "VirtuosoScroller";
+const AT_BOTTOM_THRESHOLD = 120;
 
 export const ChatView = memo(({
   chatMessages,
@@ -66,7 +59,6 @@ export const ChatView = memo(({
   onLoadOlder,
   isLoadingOlder,
   hasOlderMessages,
-  firstItemIndex,
 }: {
   chatMessages: ChatMessage[];
   conversationKey?: string;
@@ -91,11 +83,10 @@ export const ChatView = memo(({
   onLoadOlder?: () => void;
   isLoadingOlder?: boolean;
   hasOlderMessages?: boolean;
-  firstItemIndex?: number;
 }) => {
   const { chatMediaVolume, setChatMediaVolume, blurProfanity } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
   const lastMessageIdRef = useRef<string | undefined>(undefined);
   const forceScrollToBottomRef = useRef(false);
@@ -127,6 +118,83 @@ export const ChatView = memo(({
     }
   }, [chatMessages]);
 
+  // ── Scroll helpers ────────────────────────────────────────────
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
+  const checkAtBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    checkAtBottom();
+    const el = scrollRef.current;
+    if (el && el.scrollTop < 200 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
+      onLoadOlder();
+    }
+  }, [checkAtBottom, hasOlderMessages, isLoadingOlder, onLoadOlder]);
+
+  // Preserve scroll position when older messages are prepended
+  const prevFirstMsgIdRef = useRef<string | undefined>(undefined);
+  const prevScrollHeightRef = useRef(0);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const firstMsgId = chatMessages[0]?.message_id;
+    if (prevFirstMsgIdRef.current && firstMsgId && firstMsgId !== prevFirstMsgIdRef.current) {
+      const delta = el.scrollHeight - prevScrollHeightRef.current;
+      if (delta > 0) el.scrollTop += delta;
+    }
+    prevFirstMsgIdRef.current = firstMsgId;
+    prevScrollHeightRef.current = el.scrollHeight;
+  }, [chatMessages]);
+
+  // Initial scroll to bottom on conversation switch
+  useEffect(() => {
+    lastMessageIdRef.current = undefined;
+    forceScrollToBottomRef.current = false;
+    prevFirstMsgIdRef.current = undefined;
+    prevScrollHeightRef.current = 0;
+    requestAnimationFrame(() => scrollToBottom("auto"));
+  }, [conversationKey, scrollToBottom]);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    const lastId = chatMessages[chatMessages.length - 1]?.message_id;
+    if (!lastId) return;
+    const prev = lastMessageIdRef.current;
+    lastMessageIdRef.current = lastId;
+    if (!prev) return;
+    if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
+    requestAnimationFrame(() => {
+      scrollToBottom(initialLoadDoneRef.current ? "smooth" : "auto");
+    });
+    forceScrollToBottomRef.current = false;
+  }, [chatMessages, scrollToBottom]);
+
+  // Restore scroll on fullscreen exit (e.g. Twitch embed)
+  useEffect(() => {
+    let savedScrollTop = 0;
+    const onFullscreenChange = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      if (document.fullscreenElement) {
+        savedScrollTop = el.scrollTop;
+      } else {
+        const restore = savedScrollTop;
+        requestAnimationFrame(() => { el.scrollTop = restore; });
+      }
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  // ── Custom emoji ──────────────────────────────────────────────
   const [customEmojiList, setCustomEmojiList] = useState<CustomEmojiEntry[]>([]);
 
   const syncCustomEmojiList = useCallback(() => {
@@ -150,6 +218,7 @@ export const ChatView = memo(({
     return onCustomEmojisChange(syncCustomEmojiList);
   }, [syncCustomEmojiList]);
 
+  // ── Focus / blur tracking for new-message marker ──────────────
   useEffect(() => {
     const onFocus = () => {
       windowFocusedRef.current = true;
@@ -178,7 +247,6 @@ export const ChatView = memo(({
     };
   }, []);
 
-  // Track new-message marker for "new since last visit" divider
   useEffect(() => {
     const currentConvId = chatMessages[chatMessages.length - 1]?.conversation_id;
     const lastId = chatMessages[chatMessages.length - 1]?.message_id;
@@ -195,6 +263,7 @@ export const ChatView = memo(({
     prevLastIdRef.current = lastId;
   }, [chatMessages]);
 
+  // ── Drag & drop ───────────────────────────────────────────────
   const handleViewDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     dragCounterRef.current++;
@@ -225,6 +294,7 @@ export const ChatView = memo(({
     }
   }, [restoreText, clearRestoreText]);
 
+  // ── Sender helpers ────────────────────────────────────────────
   const getSenderName = useCallback((msg: ChatMessage): string => {
     if (msg.sender_nickname) return msg.sender_nickname;
     if (!memberList) return "Unknown User";
@@ -251,7 +321,7 @@ export const ChatView = memo(({
     [mentionMembers],
   );
 
-  // Per-message metadata: group boundaries, day breaks, dividers
+  // ── Message metadata ──────────────────────────────────────────
   const messageMetadata = useMemo(() => {
     let lastDay: string | null = null;
     return chatMessages.map((m, i): MessageMeta => {
@@ -275,30 +345,13 @@ export const ChatView = memo(({
     });
   }, [chatMessages, newMessageMarkerId, currentUserId, currentUserNickname, getSenderName, getSenderAvatarUrl]);
 
-  const messageIndexById = useMemo(() => {
-    const map = new Map<string, number>();
-    for (let i = 0; i < chatMessages.length; i++) {
-      map.set(chatMessages[i].message_id, i);
-    }
-    return map;
-  }, [chatMessages]);
-
-  const messageMetaById = useMemo(() => {
-    const map = new Map<string, MessageMeta>();
-    for (let i = 0; i < chatMessages.length; i++) {
-      const meta = messageMetadata[i];
-      if (meta) map.set(chatMessages[i].message_id, meta);
-    }
-    return map;
-  }, [chatMessages, messageMetadata]);
-
-  // Build a map for quick reply-preview lookups
   const messageMap = useMemo(() => {
     const map = new Map<string, ChatMessage>();
     for (const m of chatMessages) map.set(m.message_id, m);
     return map;
   }, [chatMessages]);
 
+  // ── Context menu / actions ────────────────────────────────────
   const [contextMenu, setContextMenu] = useState<{
     message: ChatMessage;
     position: { x: number; y: number };
@@ -401,17 +454,14 @@ export const ChatView = memo(({
   }, [canSend, isRateLimited, sendChat, replyingTo, editingMessage, editMessage]);
 
   const scrollToMessage = useCallback((messageId: string) => {
-    const idx = chatMessages.findIndex((m) => m.message_id === messageId);
-    if (idx === -1) return;
-    virtuosoRef.current?.scrollToIndex({ index: (firstItemIndex ?? 100_000) + idx, align: "center", behavior: "smooth" });
+    const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
     setTimeout(() => {
-      const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
-      if (el) {
-        el.style.background = "var(--accent-4)";
-        setTimeout(() => { el.style.background = "transparent"; }, 1500);
-      }
+      el.style.background = "var(--accent-4)";
+      setTimeout(() => { el.style.background = "transparent"; }, 1500);
     }, 300);
-  }, [chatMessages, firstItemIndex]);
+  }, []);
 
   const onLightboxOpen = useCallback((src: string, alt?: string) => {
     setLightboxImage({ src, alt });
@@ -432,131 +482,6 @@ export const ChatView = memo(({
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
-
-  const visibleRangeRef = useRef<{ startIndex: number; endIndex: number } | null>(null);
-
-  const handleRangeChanged = useCallback((range: { startIndex: number; endIndex: number }) => {
-    visibleRangeRef.current = range;
-    const distFromTop = range.startIndex - (firstItemIndex ?? 100_000);
-    if (distFromTop < 20 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
-      console.log("[rangeChanged] near top, loading older", { startIndex: range.startIndex, firstItemIndex, distFromTop });
-      onLoadOlder();
-    }
-  }, [firstItemIndex, hasOlderMessages, isLoadingOlder, onLoadOlder]);
-
-  useEffect(() => {
-    const onFullscreenExit = () => {
-      if (document.fullscreenElement) return;
-      const range = visibleRangeRef.current;
-      if (!range) return;
-      const mid = Math.floor((range.startIndex + range.endIndex) / 2);
-      requestAnimationFrame(() => {
-        virtuosoRef.current?.scrollToIndex({ index: mid, align: "center", behavior: "auto" });
-      });
-    };
-    document.addEventListener("fullscreenchange", onFullscreenExit);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenExit);
-  }, []);
-
-  const followOutput = useCallback((isAtBottom: boolean) => {
-    if (!isAtBottom) return false as const;
-    return initialLoadDoneRef.current ? "smooth" as const : "auto" as const;
-  }, []);
-
-  const pendingInitialScrollRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    pendingInitialScrollRef.current = conversationKey ?? null;
-  }, [conversationKey]);
-
-  useEffect(() => {
-    if (!conversationKey) return;
-    if (pendingInitialScrollRef.current !== conversationKey) return;
-    if (chatMessages.length === 0) return;
-    const lastIndex = (firstItemIndex ?? 100_000) + chatMessages.length - 1;
-    requestAnimationFrame(() => {
-      virtuosoRef.current?.scrollToIndex({ index: lastIndex, align: "end", behavior: "auto" });
-      pendingInitialScrollRef.current = null;
-    });
-  }, [conversationKey, chatMessages.length, firstItemIndex]);
-
-  useEffect(() => {
-    lastMessageIdRef.current = undefined;
-    forceScrollToBottomRef.current = false;
-  }, [conversationKey]);
-
-  useEffect(() => {
-    const lastMessageId = chatMessages[chatMessages.length - 1]?.message_id;
-    if (!lastMessageId) return;
-
-    const prev = lastMessageIdRef.current;
-    lastMessageIdRef.current = lastMessageId;
-
-    if (!prev) return;
-    if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
-    if (pendingInitialScrollRef.current === conversationKey) return;
-
-    const lastIndex = (firstItemIndex ?? 100_000) + chatMessages.length - 1;
-    requestAnimationFrame(() => {
-      virtuosoRef.current?.scrollToIndex({ index: lastIndex, align: "end", behavior: "smooth" });
-    });
-    forceScrollToBottomRef.current = false;
-  }, [chatMessages, conversationKey, firstItemIndex]);
-
-  const itemContent = useCallback((_index: number, m: ChatMessage) => {
-    const localIdx = messageIndexById.get(m.message_id);
-    const meta = messageMetaById.get(m.message_id);
-    if (localIdx === undefined || !meta) return null;
-
-    const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
-    const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
-    const isMentioned = !!(currentUserNickname && m.text && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
-
-    const isNew = !seenMessageIdsRef.current.has(m.message_id) && localIdx >= chatMessages.length - 10;
-    seenMessageIdsRef.current.add(m.message_id);
-
-    return (
-      <MessageRow
-        message={m}
-        meta={meta}
-        replyPreviewText={replyPreviewText}
-        isMentioned={isMentioned}
-        isNew={isNew}
-        customEmojiList={customEmojiList}
-        memberNicknames={memberNicknames}
-        blurProfanity={blurProfanity}
-        serverHost={serverHost}
-        currentUserId={currentUserId}
-        currentUserNickname={currentUserNickname}
-        canDeleteAny={!!canDeleteAny}
-        chatMediaVolume={chatMediaVolume}
-        isContextMenuOpen={isContextMenuOpen}
-        memberList={memberList}
-        setChatMediaVolume={setChatMediaVolume}
-        onContextMenu={handleMessageRightClick}
-        onReaction={handleReaction}
-        onReply={handleReply}
-        onDelete={requestDelete}
-        scrollToMessage={scrollToMessage}
-        onLightboxOpen={onLightboxOpen}
-      />
-    );
-  }, [
-    chatMessages.length, messageIndexById, messageMetaById, messageMap, currentUserNickname,
-    customEmojiList, memberNicknames, blurProfanity, serverHost, currentUserId,
-    canDeleteAny, chatMediaVolume, isContextMenuOpen, memberList, setChatMediaVolume,
-    handleMessageRightClick, handleReaction, handleReply, requestDelete,
-    scrollToMessage, onLightboxOpen,
-  ]);
-
-  const headerContent = useCallback(() => {
-    if (!isLoadingOlder) return null;
-    return (
-      <Flex justify="center" py="2">
-        <Text size="1" color="gray">Loading older messages...</Text>
-      </Flex>
-    );
-  }, [isLoadingOlder]);
 
   return (
     <>
@@ -627,28 +552,56 @@ export const ChatView = memo(({
               <WelcomeMessage channelName={channelName} />
             </Flex>
           ) : showMessages ? (
-            <Virtuoso
-              key={conversationKey}
-              ref={virtuosoRef}
-              style={{ flex: 1, minWidth: 0, marginBottom: 12 }}
-              data={chatMessages}
-              firstItemIndex={firstItemIndex}
-              atBottomThreshold={120}
-              atBottomStateChange={(atBottom) => {
-                isAtBottomRef.current = atBottom;
-              }}
-              initialTopMostItemIndex={{
-                index: (firstItemIndex ?? 100_000) + chatMessages.length - 1,
-                align: "end",
-              }}
-              followOutput={followOutput}
-              rangeChanged={handleRangeChanged}
-              overscan={400}
-              increaseViewportBy={{ top: 200, bottom: 200 }}
-              computeItemKey={(_, item) => item.message_id}
-              itemContent={itemContent}
-              components={{ Header: headerContent, Scroller: VirtuosoScroller }}
-            />
+            <div
+              ref={scrollRef}
+              className="chat-scroll-container"
+              onScroll={handleScroll}
+            >
+              {isLoadingOlder && (
+                <Flex justify="center" py="2">
+                  <Text size="1" color="gray">Loading older messages...</Text>
+                </Flex>
+              )}
+              {chatMessages.map((m, i) => {
+                const meta = messageMetadata[i];
+                if (!meta) return null;
+
+                const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
+                const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
+                const isMentioned = !!(currentUserNickname && m.text && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
+
+                const isNew = !seenMessageIdsRef.current.has(m.message_id) && i >= chatMessages.length - 10;
+                seenMessageIdsRef.current.add(m.message_id);
+
+                return (
+                  <MessageRow
+                    key={m.message_id}
+                    message={m}
+                    meta={meta}
+                    replyPreviewText={replyPreviewText}
+                    isMentioned={isMentioned}
+                    isNew={isNew}
+                    customEmojiList={customEmojiList}
+                    memberNicknames={memberNicknames}
+                    blurProfanity={blurProfanity}
+                    serverHost={serverHost}
+                    currentUserId={currentUserId}
+                    currentUserNickname={currentUserNickname}
+                    canDeleteAny={!!canDeleteAny}
+                    chatMediaVolume={chatMediaVolume}
+                    isContextMenuOpen={isContextMenuOpen}
+                    memberList={memberList}
+                    setChatMediaVolume={setChatMediaVolume}
+                    onContextMenu={handleMessageRightClick}
+                    onReaction={handleReaction}
+                    onReply={handleReply}
+                    onDelete={requestDelete}
+                    scrollToMessage={scrollToMessage}
+                    onLightboxOpen={onLightboxOpen}
+                  />
+                );
+              })}
+            </div>
           ) : null}
 
           {replyingTo && (

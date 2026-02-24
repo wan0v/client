@@ -2,6 +2,9 @@ import { AlertDialog, Button, Card, Flex, Select, Switch, Text, TextField } from
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { MdAdd, MdDelete } from "react-icons/md";
+import type { Socket } from "socket.io-client";
+
+import { useSocketEvent } from "../hooks/useSocketEvent";
 
 const BITRATE_PRESETS = [
   { value: "none",    label: "Default (no cap)" },
@@ -53,7 +56,7 @@ export function ServerChannelsTab({
   accessToken,
 }: {
   host: string;
-  socket?: { connected: boolean; emit: (event: string, data: unknown) => void; on: (event: string, handler: (...args: never[]) => void) => void; off: (event: string, handler: (...args: never[]) => void) => void };
+  socket?: Socket;
   accessToken: string | null;
 }) {
   const [channels, setChannels] = useState<ChannelItem[]>([]);
@@ -76,18 +79,9 @@ export function ServerChannelsTab({
     socket.emit("server:channels:list", { accessToken });
   };
 
-  useEffect(() => {
-    if (!socket) return;
-    const onChannels = (payload: { channels: ChannelItem[] }) => {
-      setChannels(Array.isArray(payload?.channels) ? payload.channels : []);
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:channels", onChannels as any);
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:channels", onChannels as any);
-    };
-  }, [socket]);
+  useSocketEvent<{ channels: ChannelItem[] }>(socket, "server:channels", (payload) => {
+    setChannels(Array.isArray(payload?.channels) ? payload.channels : []);
+  });
 
   useEffect(() => {
     if (!host) return;

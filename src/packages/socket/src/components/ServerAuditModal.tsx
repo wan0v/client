@@ -5,6 +5,7 @@ import { MdClose } from "react-icons/md";
 
 import { getServerAccessToken } from "@/common";
 
+import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
 
 type OpenDetail = { host: string };
@@ -50,18 +51,9 @@ export function ServerAuditModal() {
     socket.emit("server:audit:list", { accessToken, limit: 100 });
   };
 
-  useEffect(() => {
-    if (!socket) return;
-    const onAudit = (payload: { items: AuditItem[] }) => {
-      setItems(Array.isArray(payload?.items) ? payload.items : []);
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:audit", onAudit as any);
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:audit", onAudit as any);
-    };
-  }, [socket]);
+  useSocketEvent<{ items: AuditItem[] }>(socket, "server:audit", (payload) => {
+    setItems(Array.isArray(payload?.items) ? payload.items : []);
+  });
 
   useEffect(() => {
     if (!isOpen) return;

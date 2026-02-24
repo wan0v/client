@@ -70,7 +70,6 @@ export function handleHistoryPayload(
   setIsLoadingMessages: (v: boolean) => void,
   setHasOlderMessages?: (v: boolean) => void,
   setIsLoadingOlder?: (v: boolean) => void,
-  onPrepended?: (count: number) => void,
 ): void {
   if (!payload || !payload.conversation_id || !Array.isArray(payload.items)) return;
   const key = getCacheKey(payload.conversation_id);
@@ -101,7 +100,6 @@ export function handleHistoryPayload(
   setChatMessages((prev) => {
     const existingIds = new Set(prev.map((m) => m.message_id));
     const newItems = payload.items.filter((it) => !existingIds.has(it.message_id));
-    if (isPrepend && onPrepended) onPrepended(newItems.length);
     return isPrepend ? [...newItems, ...prev] : [...prev, ...newItems];
   });
 

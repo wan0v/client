@@ -34,8 +34,6 @@ interface UseChatParams {
   currentUserId?: string;
 }
 
-const VIRTUOSO_START_INDEX = 100_000;
-
 interface UseChatReturn {
   chatMessages: ChatMessage[];
   canSend: boolean;
@@ -52,7 +50,6 @@ interface UseChatReturn {
   fetchOlderMessages: () => void;
   isLoadingOlder: boolean;
   hasOlderMessages: boolean;
-  firstItemIndex: number;
 }
 
 export function useChat({
@@ -92,7 +89,6 @@ export function useChat({
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [hasOlderMap, setHasOlderMap] = useState<Record<string, boolean>>({});
-  const [firstItemIndex, setFirstItemIndex] = useState(VIRTUOSO_START_INDEX);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
   const rateLimitIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -259,21 +255,11 @@ export function useChat({
     };
 
     const onHistory = (payload: HistoryPayload) => {
-      console.log("[onHistory]", { convId: payload.conversation_id, itemCount: payload.items.length, hasMore: payload.hasMore, before: payload.before });
       const setHasOlder = (v: boolean) => {
-        console.log("[onHistory] setHasOlder", v);
         const key = cacheKeyFor(payload.conversation_id);
         if (key) setHasOlderMap((prev) => ({ ...prev, [key]: v }));
       };
-      const onPrepended = (count: number) => {
-        if (count > 0) {
-          setFirstItemIndex((prev) => {
-            console.log("[onHistory] shifting firstItemIndex", prev, "->", prev - count, "(actual new items)");
-            return prev - count;
-          });
-        }
-      };
-      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder, onPrepended);
+      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder);
     };
 
     const onReaction = (updatedMessage: ChatMessage) =>
@@ -335,7 +321,6 @@ export function useChat({
   // Reset chat list when conversation changes and load history
   useEffect(() => {
     setIsLoadingOlder(false);
-    setFirstItemIndex(VIRTUOSO_START_INDEX);
 
     const cachedMessages = getCachedMessages(activeConversationId);
     if (cachedMessages.length > 0) {
@@ -592,15 +577,12 @@ export function useChat({
   }, [currentConnection, currentlyViewingServer?.host, activeConversationId, cacheKeyFor, sendMessageWithToken, uploadFile]);
 
   const fetchOlderMessages = useCallback(() => {
-    console.log("[fetchOlder] called", { hasConnection: !!currentConnection, activeConversationId, isLoadingOlder, hasOlderMessages, msgCount: chatMessages.length });
     if (!currentConnection || !activeConversationId || isLoadingOlder || !hasOlderMessages) {
-      console.log("[fetchOlder] BLOCKED", { noConn: !currentConnection, noConv: !activeConversationId, isLoadingOlder, noMore: !hasOlderMessages });
       return;
     }
     const oldest = chatMessages[0];
-    if (!oldest) { console.log("[fetchOlder] no oldest message"); return; }
+    if (!oldest) return;
     const before = new Date(oldest.created_at).toISOString();
-    console.log("[fetchOlder] emitting chat:fetch", { before, oldestId: oldest.message_id });
     setIsLoadingOlder(true);
     const scopedKey = cacheKeyFor(activeConversationId);
     inFlightFetchRef.current.add(scopedKey);
@@ -631,6 +613,5 @@ export function useChat({
     fetchOlderMessages,
     isLoadingOlder,
     hasOlderMessages,
-    firstItemIndex,
   };
 }

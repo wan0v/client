@@ -5,6 +5,7 @@ import { MdAdd, MdClose, MdDelete } from "react-icons/md";
 
 import { getServerAccessToken } from "@/common";
 
+import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
 
 type OpenDetail = { host: string };
@@ -51,18 +52,9 @@ export function ServerChannelsModal() {
     socket.emit("server:channels:list", { accessToken });
   };
 
-  useEffect(() => {
-    if (!socket) return;
-    const onChannels = (payload: { channels: ChannelItem[] }) => {
-      setChannels(Array.isArray(payload?.channels) ? payload.channels : []);
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:channels", onChannels as any);
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:channels", onChannels as any);
-    };
-  }, [socket]);
+  useSocketEvent<{ channels: ChannelItem[] }>(socket, "server:channels", (payload) => {
+    setChannels(Array.isArray(payload?.channels) ? payload.channels : []);
+  });
 
   useEffect(() => {
     if (!isOpen) return;

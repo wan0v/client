@@ -77,7 +77,6 @@ interface MobileServerViewProps {
   onLoadOlder?: () => void;
   isLoadingOlder?: boolean;
   hasOlderMessages?: boolean;
-  firstItemIndex?: number;
   // VoiceView
   voiceWidth: string;
   clientsForHost: Record<string, Client>;
@@ -185,7 +184,6 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           onLoadOlder={props.onLoadOlder}
           isLoadingOlder={props.isLoadingOlder}
           hasOlderMessages={props.hasOlderMessages}
-          firstItemIndex={props.firstItemIndex}
           {...(props.isLoadingMessages !== undefined && { isLoadingMessages: props.isLoadingMessages })}
         />
       </div>

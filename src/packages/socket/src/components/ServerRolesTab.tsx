@@ -1,7 +1,9 @@
 import { Button, Card, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import type { Socket } from "socket.io-client";
 
+import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
 
 type Role = "owner" | "admin" | "mod" | "member";
@@ -12,7 +14,7 @@ export function ServerRolesTab({
   accessToken,
 }: {
   host: string;
-  socket?: { connected: boolean; emit: (event: string, data: unknown) => void; on: (event: string, handler: (...args: unknown[]) => void) => void; off: (event: string, handler: (...args: unknown[]) => void) => void };
+  socket?: Socket;
   accessToken: string | null;
 }) {
   const { memberLists, requestMemberList } = useSockets();
@@ -28,30 +30,18 @@ export function ServerRolesTab({
     requestMemberList(host);
   };
 
-  useEffect(() => {
-    if (!socket) return;
-    const onRoles = (payload: { roles: { serverUserId: string; role: Role }[] }) => {
-      const map: Record<string, Role> = {};
-      (payload?.roles || []).forEach((r) => {
-        if (r?.serverUserId) map[r.serverUserId] = r.role;
-      });
-      setRoles(map);
-    };
-    const onRoleUpdated = (payload: { serverUserId: string; role: Role }) => {
-      if (!payload?.serverUserId) return;
-      setRoles((prev) => ({ ...prev, [payload.serverUserId]: payload.role }));
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:roles", onRoles as any);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:role:updated", onRoleUpdated as any);
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:roles", onRoles as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:role:updated", onRoleUpdated as any);
-    };
-  }, [socket]);
+  useSocketEvent<{ roles: { serverUserId: string; role: Role }[] }>(socket, "server:roles", (payload) => {
+    const map: Record<string, Role> = {};
+    (payload?.roles || []).forEach((r) => {
+      if (r?.serverUserId) map[r.serverUserId] = r.role;
+    });
+    setRoles(map);
+  });
+
+  useSocketEvent<{ serverUserId: string; role: Role }>(socket, "server:role:updated", (payload) => {
+    if (!payload?.serverUserId) return;
+    setRoles((prev) => ({ ...prev, [payload.serverUserId]: payload.role }));
+  });
 
   useEffect(() => {
     if (!host) return;

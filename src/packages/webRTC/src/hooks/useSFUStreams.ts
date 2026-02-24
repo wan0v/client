@@ -249,8 +249,10 @@ export function useSFUStreams({
     setVideoStreams(prev => {
       const prevKeys = Object.keys(prev).sort().join(",");
       const nextKeys = Object.keys(nextVideo).sort().join(",");
-      if (prevKeys === nextKeys) return prev;
-      return nextVideo;
+      if (prevKeys !== nextKeys) return nextVideo;
+      const streamsChanged = Object.keys(nextVideo).some(k => prev[k] !== nextVideo[k]);
+      if (streamsChanged) return nextVideo;
+      return prev;
     });
   }, [streams, setVideoStreams]);
 }

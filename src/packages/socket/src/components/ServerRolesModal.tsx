@@ -5,6 +5,7 @@ import { MdClose } from "react-icons/md";
 
 import { getServerAccessToken } from "@/common";
 
+import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
 
 type OpenDetail = { host: string };
@@ -41,30 +42,18 @@ export function ServerRolesModal() {
     requestMemberList(host);
   };
 
-  useEffect(() => {
-    if (!socket) return;
-    const onRoles = (payload: { roles: { serverUserId: string; role: Role }[] }) => {
-      const map: Record<string, Role> = {};
-      (payload?.roles || []).forEach((r) => {
-        if (r?.serverUserId) map[r.serverUserId] = r.role;
-      });
-      setRoles(map);
-    };
-    const onRoleUpdated = (payload: { serverUserId: string; role: Role }) => {
-      if (!payload?.serverUserId) return;
-      setRoles((prev) => ({ ...prev, [payload.serverUserId]: payload.role }));
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:roles", onRoles as any);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:role:updated", onRoleUpdated as any);
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:roles", onRoles as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:role:updated", onRoleUpdated as any);
-    };
-  }, [socket]);
+  useSocketEvent<{ roles: { serverUserId: string; role: Role }[] }>(socket, "server:roles", (payload) => {
+    const map: Record<string, Role> = {};
+    (payload?.roles || []).forEach((r) => {
+      if (r?.serverUserId) map[r.serverUserId] = r.role;
+    });
+    setRoles(map);
+  });
+
+  useSocketEvent<{ serverUserId: string; role: Role }>(socket, "server:role:updated", (payload) => {
+    if (!payload?.serverUserId) return;
+    setRoles((prev) => ({ ...prev, [payload.serverUserId]: payload.role }));
+  });
 
   useEffect(() => {
     if (!isOpen) return;
