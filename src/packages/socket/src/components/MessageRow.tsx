@@ -110,25 +110,28 @@ export const MessageRow = memo(({
 
       {meta.isSystem ? (
         <Flex
-          align="center"
-          gap="2"
-          style={{
-            width: "100%",
-            padding: "4px 12px",
-            marginTop: 4,
-            marginBottom: 4,
-          }}
+          gap="3"
+          style={{ width: "100%", marginTop: 12 }}
+          align="start"
+          onContextMenu={(e) => onContextMenu(e, m)}
         >
-          <Text size="1" style={{ color: "var(--gray-9)" }}>{"→"}</Text>
-          <Text size="1" style={{ color: "var(--gray-9)", fontStyle: "italic", wordBreak: "break-word" }}>
-            <MarkdownRenderer
-              content={m.text}
-              memberNicknames={memberNicknames}
-              mentionMembersById={memberList}
-              serverHost={serverHost}
-            />
-          </Text>
-          <MessageTimestamp date={toDate(m.created_at)} />
+          <div style={{ flexShrink: 0, width: 51 }} />
+          <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
+            <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
+              <Text size="2" weight="bold" style={{ color: "var(--gray-9)" }}>
+                System
+              </Text>
+              <MessageTimestamp date={toDate(m.created_at)} />
+            </Flex>
+            <Text size="2" style={{ wordBreak: "break-word" }}>
+              <MarkdownRenderer
+                content={m.text}
+                memberNicknames={memberNicknames}
+                mentionMembersById={memberList}
+                serverHost={serverHost}
+              />
+            </Text>
+          </Flex>
         </Flex>
       ) : meta.isFirstInGroup ? (
         <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">

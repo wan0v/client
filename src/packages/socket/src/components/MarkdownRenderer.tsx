@@ -338,7 +338,6 @@ const components: Components = {
           <img
             src={src}
             alt={alt || ""}
-            title={emojiId}
             className="inline-emoji"
             style={{
               height: "1.4em",
@@ -489,7 +488,6 @@ export const MarkdownRenderer = memo(({
               <img
                 src={src}
                 alt={alt || ""}
-                title={emojiId}
                 className="inline-emoji"
                 style={{
                   height: "1.4em",

@@ -1,3 +1,4 @@
+import { Tooltip } from "@radix-ui/themes";
 import { nameToEmoji } from "gemoji";
 import { memo } from "react";
 
@@ -31,9 +32,11 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
     const unicode = nameToEmoji[code];
     if (unicode) {
       parts.push(
-        <span key={`emoji-${start}`} title={emojiId} style={{ cursor: "default" }}>
-          {unicode}
-        </span>,
+        <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
+          <span style={{ cursor: "default" }}>
+            {unicode}
+          </span>
+        </Tooltip>,
       );
     } else {
       const url = customMap.get(code);
@@ -41,22 +44,23 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
         const sz = emojiSize ?? "1.4em";
         const cssVal = typeof sz === "number" ? `${sz}px` : sz;
         parts.push(
-          <img
-            key={`emoji-${start}`}
-            src={url}
-            alt={emojiId}
-            title={emojiId}
-            data-emoji-name={code}
-            className="inline-emoji"
-            style={{
-              height: cssVal,
-              width: "auto",
-              verticalAlign: "middle",
-              display: "inline",
-              objectFit: "contain",
-              margin: "0 1px",
-            }}
-          />,
+          <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
+            <img
+              src={url}
+              alt={emojiId}
+              data-emoji-name={code}
+              className="inline-emoji"
+              style={{
+                height: cssVal,
+                width: "auto",
+                verticalAlign: "middle",
+                display: "inline",
+                objectFit: "contain",
+                margin: "0 1px",
+                cursor: "default",
+              }}
+            />
+          </Tooltip>,
         );
       } else {
         parts.push(match[0]);
