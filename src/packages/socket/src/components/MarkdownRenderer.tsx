@@ -4,6 +4,7 @@ import { MdCheck, MdContentCopy } from "react-icons/md";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
@@ -412,7 +413,7 @@ const components: Components = {
   ),
 };
 
-const baseRemarkPlugins = [remarkGfm, remarkEmoji];
+const baseRemarkPlugins = [remarkGfm, remarkBreaks, remarkEmoji];
 const rehypePlugins = [rehypeHighlight];
 
 export const MarkdownRenderer = memo(({

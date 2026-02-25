@@ -51,6 +51,7 @@
     "react-rewards": "^2.1.0",
     "react-singleton-hook": "^4.0.1",
     "rehype-highlight": "^7.0.2",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "socket.io-client": "^4.8.3",
     "uiohook-napi": "^1.5.4",
