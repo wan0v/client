@@ -131,6 +131,7 @@ function useScreenShareHook(): ScreenShareInterface {
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: videoConstraints,
           audio: withAudio,
+          systemAudio: "exclude",
         });
       }
 
