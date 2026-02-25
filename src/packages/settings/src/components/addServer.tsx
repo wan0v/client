@@ -136,6 +136,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
   }
 
   useEffect(() => {
+    setServerInfo(null);
     setHasError("");
     setInviteRequired(false);
     setInviteCode("");
