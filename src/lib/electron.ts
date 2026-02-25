@@ -35,6 +35,11 @@ export interface ElectronAPI {
   setBadgeCount(count: number): void;
   toggleAlwaysOnTop(pinned: boolean): void;
   getDesktopSources(): Promise<DesktopSource[]>;
+  isNativeAudioCaptureAvailable(): Promise<boolean>;
+  startNativeAudioCapture(): Promise<boolean>;
+  stopNativeAudioCapture(): void;
+  onNativeAudioData(callback: (pcm: ArrayBuffer) => void): () => void;
+  onNativeAudioStopped(callback: () => void): () => void;
   onWindowFocusChange(callback: (focused: boolean) => void): () => void;
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;

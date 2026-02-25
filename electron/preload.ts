@@ -92,6 +92,30 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-desktop-sources");
   },
 
+  isNativeAudioCaptureAvailable(): Promise<boolean> {
+    return ipcRenderer.invoke("native-audio-capture-available");
+  },
+
+  startNativeAudioCapture(): Promise<boolean> {
+    return ipcRenderer.invoke("start-native-audio-capture");
+  },
+
+  stopNativeAudioCapture() {
+    ipcRenderer.send("stop-native-audio-capture");
+  },
+
+  onNativeAudioData(callback: (pcm: ArrayBuffer) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, data: ArrayBuffer) => callback(data);
+    ipcRenderer.on("native-audio-data", handler);
+    return () => ipcRenderer.removeListener("native-audio-data", handler);
+  },
+
+  onNativeAudioStopped(callback: () => void) {
+    const handler = () => callback();
+    ipcRenderer.on("native-audio-stopped", handler);
+    return () => ipcRenderer.removeListener("native-audio-stopped", handler);
+  },
+
   onWindowFocusChange(callback: (focused: boolean) => void) {
     const handler = (_event: Electron.IpcRendererEvent, focused: boolean) => callback(focused);
     ipcRenderer.on("window-focus-change", handler);

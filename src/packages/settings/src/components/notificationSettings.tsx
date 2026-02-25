@@ -80,7 +80,7 @@ export function NotificationSettings() {
 
       <ToggleSetting
         title="Blur Profanity"
-        description="Blur profane words in messages when the server has profanity filtering enabled. Click a blurred word to reveal it."
+        description="Show a blur over profane words if the server has profanity filtering enabled in flag mode. Click a blurred word to reveal it."
         checked={blurProfanity}
         onCheckedChange={setBlurProfanity}
       />

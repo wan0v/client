@@ -22,11 +22,12 @@
     "typecheck": "tsc -b",
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
+    "build:native": "bash native/audio-capture/build.sh",
     "electron:dev": "cross-env ELECTRON=1 vite --host",
-    "electron:build": "cross-env ELECTRON=1 vite build && electron-builder --publish never",
-    "electron:publish": "cross-env ELECTRON=1 vite build && electron-builder --publish always",
+    "electron:build": "npm run build:native && cross-env ELECTRON=1 vite build && electron-builder --publish never",
+    "electron:publish": "npm run build:native && cross-env ELECTRON=1 vite build && electron-builder --publish always",
     "release": "bash scripts/release.sh",
-    "electron:preview": "cross-env ELECTRON=1 vite build && electron ."
+    "electron:preview": "npm run build:native && cross-env ELECTRON=1 vite build && electron ."
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

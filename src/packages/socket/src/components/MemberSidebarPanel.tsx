@@ -14,7 +14,7 @@ interface MemberSidebarPanelProps {
   hoverPx: number;
   contentRef: RefObject<HTMLDivElement>;
   isUnreachableWhileConnected: boolean;
-  onMouseEnter: () => void;
+  onMouseEnter?: () => void;
   onMouseLeave: () => void;
   members: MemberInfo[];
   currentConnectionId: string | undefined;

@@ -12,7 +12,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdRefresh, MdWarning } from "react-icons/md";
 
-import { useMicrophone, useSpeakers } from "@/audio";
+import { useMicrophone, useScreenShare, useSpeakers } from "@/audio";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
@@ -46,13 +46,12 @@ export function AudioSettings() {
     isMuted,
     setIsMuted,
     inputMode,
-    screenShareAudioDelay,
-    setScreenShareAudioDelay,
   } = useSettings();
 
   const { isConnected } = useSFU();
   const { devices, microphoneBuffer, getDevices, audioContext } = useMicrophone(true);
   const { devices: outputDevices, getOutputDevices, applyOutputDevice } = useSpeakers();
+  const { nativeAudioActive } = useScreenShare();
 
   const handleOutputDeviceChange = useCallback((id: string) => {
     setOutputDeviceID(id);
@@ -427,15 +426,13 @@ export function AudioSettings() {
       {/* ── Screen Share ── */}
       <Text size="3" weight="bold" color="gray">Screen Share</Text>
 
-      <SliderSetting
-        title={`Audio Delay Offset: ${screenShareAudioDelay} ms`}
-        description="Compensates for OS audio pipeline latency when cancelling voice echo from screen share audio. Increase if others hear echo; typical values are 10–50 ms."
-        value={screenShareAudioDelay}
-        onChange={setScreenShareAudioDelay}
-        min={0}
-        max={100}
-        step={1}
-      />
+      {nativeAudioActive && (
+        <Callout.Root size="1" color="green">
+          <Callout.Text>
+            Native audio capture is active — Gryt voices are excluded at the OS level.
+          </Callout.Text>
+        </Callout.Root>
+      )}
 
     </SettingsContainer>
   );

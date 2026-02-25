@@ -67,17 +67,16 @@ export function useChatActions({
     editorRef.current?.focus();
   }, [editorRef]);
 
-  const handleReport = useCallback(() => {
-    const targetMessage = contextMenu?.message;
-    if (!targetMessage || !socketConnection || !currentUserId) return;
+  const handleReport = useCallback((message: ChatMessage) => {
+    if (!socketConnection || !currentUserId) return;
     const accessToken = getServerAccessToken(serverHost || "");
     if (!accessToken) return;
     (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:report", {
-      conversationId: targetMessage.conversation_id,
-      messageId: targetMessage.message_id,
+      conversationId: message.conversation_id,
+      messageId: message.message_id,
       accessToken,
     });
-  }, [contextMenu, socketConnection, currentUserId, serverHost]);
+  }, [socketConnection, currentUserId, serverHost]);
 
   const requestDelete = useCallback((message: ChatMessage) => {
     if (!socketConnection || !currentUserId) return;

@@ -70,6 +70,10 @@ if [[ ! -d node_modules ]]; then
 fi
 
 echo ""
+echo "Building native audio capture binary…"
+bash native/audio-capture/build.sh
+
+echo ""
 echo "Building renderer…"
 ELECTRON=1 npx vite build
 

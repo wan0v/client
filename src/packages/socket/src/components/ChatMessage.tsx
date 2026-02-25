@@ -1,9 +1,7 @@
-import { Box, Button, Flex, Skeleton, Text } from "@radix-ui/themes";
+import { Box, Button, Flex, Separator, Skeleton, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { MdChat, MdVolumeUp } from "react-icons/md";
 
-import { getRecentReactions } from "../utils/recentReactions";
-import { EmojiPicker } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
 
 export const MessageContextMenu = ({
@@ -15,6 +13,7 @@ export const MessageContextMenu = ({
   onDelete,
   canEdit,
   canDelete,
+  messageText,
 }: {
   position: { x: number; y: number };
   onClose: () => void;
@@ -24,6 +23,7 @@ export const MessageContextMenu = ({
   onDelete?: () => void;
   canEdit?: boolean;
   canDelete?: boolean;
+  messageText?: string | null;
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -97,6 +97,20 @@ export const MessageContextMenu = ({
       }}
     >
       <Flex direction="column" gap="1">
+        {messageText && (
+          <Button
+            variant="ghost"
+            size="1"
+            onClick={() => {
+              navigator.clipboard.writeText(messageText);
+              onClose();
+            }}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Copy Message
+          </Button>
+        )}
+        {messageText && <Separator size="4" />}
         <Button
           variant="ghost"
           size="1"
@@ -151,21 +165,14 @@ export const MessageContextMenu = ({
 };
 
 export const MessageHoverToolbar = ({
-  onReaction,
   onReply,
   onDelete,
   canDelete,
-  onPickerOpenChange,
 }: {
-  onReaction: (reactionSrc: string) => void;
   onReply?: () => void;
   onDelete?: () => void;
   canDelete?: boolean;
-  onPickerOpenChange?: (open: boolean) => void;
 }) => {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const recentReactions = getRecentReactions(3);
-
   return (
     <div
       style={{
@@ -188,71 +195,6 @@ export const MessageHoverToolbar = ({
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {recentReactions.map((emoji) => (
-        <button
-          key={emoji}
-          onClick={() => onReaction(emoji)}
-          title={emoji}
-          style={{
-            background: "none",
-            border: "none",
-            padding: "4px 5px",
-            fontSize: "16px",
-            lineHeight: 1,
-            borderRadius: "var(--radius-3)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-        >
-          <EmojiText text={emoji} emojiSize={18} />
-        </button>
-      ))}
-
-      <div style={{ position: "relative", display: "inline-flex" }}>
-        <button
-          onClick={() => {
-            const next = !pickerOpen;
-            setPickerOpen(next);
-            onPickerOpenChange?.(next);
-          }}
-          title="More reactions"
-          style={{
-            background: "none",
-            border: "none",
-            padding: "4px 5px",
-            fontSize: "16px",
-            lineHeight: 1,
-            borderRadius: "var(--radius-3)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--gray-10)",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-        >
-          +
-        </button>
-        {pickerOpen && (
-          <EmojiPicker
-            onSelect={(src) => onReaction(src)}
-            onClose={() => {
-              setPickerOpen(false);
-              onPickerOpenChange?.(false);
-            }}
-          />
-        )}
-      </div>
-
-      <div style={{ width: "1px", height: "18px", background: "var(--gray-5)", margin: "0 2px", flexShrink: 0 }} />
-
       {onReply && (
         <button
           onClick={onReply}

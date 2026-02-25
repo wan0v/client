@@ -9,6 +9,7 @@ import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
 import type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
+import { EmojiPicker } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
 import { FileCard } from "./FileCard";
 import { MessageEmbeds } from "./LinkEmbed";
@@ -47,6 +48,8 @@ interface MessageRowProps {
   onContextMenu: (e: React.MouseEvent, msg: ChatMessage) => void;
   onReaction: (src: string, msg: ChatMessage) => void;
   onReply: (msg: ChatMessage) => void;
+  onEdit: (msg: ChatMessage) => void;
+  onReport: (msg: ChatMessage) => void;
   onDelete: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
   onLightboxOpen: (src: string, alt?: string) => void;
@@ -74,6 +77,8 @@ export const MessageRow = memo(({
   onContextMenu,
   onReaction,
   onReply,
+  onEdit,
+  onReport,
   onDelete,
   scrollToMessage,
   onLightboxOpen,
@@ -134,11 +139,9 @@ export const MessageRow = memo(({
         >
           {showToolbar && (
             <MessageHoverToolbar
-              onReaction={(emoji) => onReaction(emoji, m)}
               onReply={() => onReply(m)}
               canDelete={canDelete}
               onDelete={canDelete ? () => onDelete(m) : undefined}
-              onPickerOpenChange={handlePickerOpenChange}
             />
           )}
           <div style={{ flexShrink: 0, width: 51 }} />
@@ -163,6 +166,8 @@ export const MessageRow = memo(({
               currentUserNickname={currentUserNickname}
               memberList={memberList}
               onReaction={(src) => onReaction(src, m)}
+              showAddReaction={showToolbar}
+              onPickerOpenChange={handlePickerOpenChange}
             />
           </Flex>
         </Flex>
@@ -202,6 +207,7 @@ export const MessageRow = memo(({
               serverHost={serverHost}
               currentUserId={currentUserId}
               currentUserNickname={currentUserNickname}
+              canDeleteAny={canDeleteAny}
               memberList={memberList}
               chatMediaVolume={chatMediaVolume}
               setChatMediaVolume={setChatMediaVolume}
@@ -210,6 +216,8 @@ export const MessageRow = memo(({
               onContextMenu={onContextMenu}
               onReaction={onReaction}
               onReply={onReply}
+              onEdit={onEdit}
+              onReport={onReport}
               onDelete={onDelete}
               scrollToMessage={scrollToMessage}
               onLightboxOpen={onLightboxOpen}
@@ -236,6 +244,7 @@ export const MessageRow = memo(({
               serverHost={serverHost}
               currentUserId={currentUserId}
               currentUserNickname={currentUserNickname}
+              canDeleteAny={canDeleteAny}
               memberList={memberList}
               chatMediaVolume={chatMediaVolume}
               setChatMediaVolume={setChatMediaVolume}
@@ -244,6 +253,8 @@ export const MessageRow = memo(({
               onContextMenu={onContextMenu}
               onReaction={onReaction}
               onReply={onReply}
+              onEdit={onEdit}
+              onReport={onReport}
               onDelete={onDelete}
               scrollToMessage={scrollToMessage}
               onLightboxOpen={onLightboxOpen}
@@ -289,6 +300,7 @@ function MessageContent({
   serverHost,
   currentUserId,
   currentUserNickname,
+  canDeleteAny,
   memberList,
   chatMediaVolume,
   setChatMediaVolume,
@@ -297,6 +309,8 @@ function MessageContent({
   onContextMenu,
   onReaction,
   onReply,
+  onEdit,
+  onReport,
   onDelete,
   scrollToMessage,
   onLightboxOpen,
@@ -317,6 +331,7 @@ function MessageContent({
   serverHost: string | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
+  canDeleteAny: boolean;
   memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
   chatMediaVolume: number;
   setChatMediaVolume: (v: number) => void;
@@ -325,6 +340,8 @@ function MessageContent({
   onContextMenu: (e: React.MouseEvent, msg: ChatMessage) => void;
   onReaction: (src: string, msg: ChatMessage) => void;
   onReply: (msg: ChatMessage) => void;
+  onEdit: (msg: ChatMessage) => void;
+  onReport: (msg: ChatMessage) => void;
   onDelete: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
   onLightboxOpen: (src: string, alt?: string) => void;
@@ -332,6 +349,16 @@ function MessageContent({
   onMouseLeave: () => void;
   onPickerOpenChange: (open: boolean) => void;
 }) {
+  const canEdit = !!currentUserId && m.sender_server_id === currentUserId && !!m.text;
+  const mediaMessageActions = {
+    messageText: m.text,
+    onReply: () => onReply(m),
+    onEdit: canEdit ? () => onEdit(m) : undefined,
+    onReport: () => onReport(m),
+    onDelete: canDelete ? () => onDelete(m) : undefined,
+    canEdit,
+    canDelete: !!canDeleteAny || (!!currentUserId && m.sender_server_id === currentUserId),
+  };
   return (
     <Flex
       ref={rowRef}
@@ -352,11 +379,9 @@ function MessageContent({
     >
       {showToolbar && (
         <MessageHoverToolbar
-          onReaction={(emoji) => onReaction(emoji, m)}
           onReply={() => onReply(m)}
           canDelete={canDelete}
           onDelete={canDelete ? () => onDelete(m) : undefined}
-          onPickerOpenChange={onPickerOpenChange}
         />
       )}
       {m.reply_to_message_id && (
@@ -414,7 +439,7 @@ function MessageContent({
                 const w = attachMeta?.width ?? undefined;
                 const h = attachMeta?.height ?? undefined;
                 return (
-                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} isImage>
+                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} isImage messageActions={mediaMessageActions}>
                     <img
                       src={url}
                       alt={attachMeta?.original_name || "Attachment"}
@@ -429,14 +454,14 @@ function MessageContent({
               }
               if (mime.startsWith("audio/")) {
                 return (
-                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name}>
+                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} messageActions={mediaMessageActions}>
                     <ChatMediaPlayer src={url} type="audio" fileName={attachMeta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
                   </MediaContextMenu>
                 );
               }
               if (mime.startsWith("video/")) {
                 return (
-                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name}>
+                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} messageActions={mediaMessageActions}>
                     <ChatMediaPlayer src={url} type="video" poster={thumbUrl} fileName={attachMeta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
                   </MediaContextMenu>
                 );
@@ -466,6 +491,8 @@ function MessageContent({
         currentUserNickname={currentUserNickname}
         memberList={memberList}
         onReaction={(src) => onReaction(src, m)}
+        showAddReaction={showToolbar}
+        onPickerOpenChange={onPickerOpenChange}
       />
     </Flex>
   );
@@ -477,17 +504,25 @@ function ReactionBadges({
   currentUserNickname,
   memberList,
   onReaction,
+  showAddReaction,
+  onPickerOpenChange,
 }: {
   reactions: Reaction[] | null | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
   memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
   onReaction: (src: string) => void;
+  showAddReaction?: boolean;
+  onPickerOpenChange?: (open: boolean) => void;
 }) {
-  if (!reactions || reactions.length === 0) return null;
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const hasReactions = reactions && reactions.length > 0;
+  if (!hasReactions && !showAddReaction) return null;
+
   return (
-    <Flex wrap="wrap" style={{ marginTop: "4px", gap: "4px" }}>
-      {reactions.map((reaction, rIdx) => {
+    <Flex wrap="wrap" align="center" style={{ marginTop: "4px", gap: "4px" }}>
+      {reactions?.map((reaction, rIdx) => {
         const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
         const emojiId = reaction.src;
         const usersLabel = reaction.users
@@ -535,6 +570,47 @@ function ReactionBadges({
           </Tooltip>
         );
       })}
+      {(showAddReaction || pickerOpen) && (
+        <div style={{ position: "relative", display: "inline-flex" }}>
+          <button
+            onClick={() => {
+              const next = !pickerOpen;
+              setPickerOpen(next);
+              onPickerOpenChange?.(next);
+            }}
+            title="Add reaction"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "28px",
+              minHeight: "28px",
+              background: "var(--gray-3)",
+              border: "1px solid var(--gray-5)",
+              borderRadius: "var(--radius-3)",
+              cursor: "pointer",
+              transition: "background 0.15s, border-color 0.15s",
+              color: "var(--gray-10)",
+              fontSize: "16px",
+              lineHeight: 1,
+              padding: 0,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; e.currentTarget.style.borderColor = "var(--gray-6)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; e.currentTarget.style.borderColor = "var(--gray-5)"; }}
+          >
+            +
+          </button>
+          {pickerOpen && (
+            <EmojiPicker
+              onSelect={(src) => onReaction(src)}
+              onClose={() => {
+                setPickerOpen(false);
+                onPickerOpenChange?.(false);
+              }}
+            />
+          )}
+        </div>
+      )}
     </Flex>
   );
 }

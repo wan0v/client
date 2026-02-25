@@ -4,7 +4,7 @@ import { singletonHook } from "react-singleton-hook";
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { createScreenAudioCleaner, ScreenAudioCleanerResult } from "./screenAudioCleaner";
+import { useNativeAudioCapture } from "./useNativeAudioCapture";
 import { useSpeakers } from "./useSpeakers";
 
 export type ScreenShareQuality = "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p" | "144p" | "96p" | "64p";
@@ -52,26 +52,33 @@ export interface ScreenShareInterface {
   screenVideoStream: MediaStream | null;
   screenAudioStream: MediaStream | null;
   screenShareActive: boolean;
+  /** True when OS-native audio capture is active (no phase cancellation needed). */
+  nativeAudioActive: boolean;
   startScreenShare: (withAudio: boolean, sourceId?: string) => Promise<void>;
   stopScreenShare: () => void;
 }
 
 function useScreenShareHook(): ScreenShareInterface {
-  const { screenShareQuality, screenShareFps, screenShareAudioDelay } = useSettings();
-  const { audioContext, remoteBusNode } = useSpeakers();
+  const { screenShareQuality, screenShareFps } = useSettings();
+  const { audioContext } = useSpeakers();
+  const {
+    available: nativeAvailable,
+    active: nativeActive,
+    stream: nativeStream,
+    start: nativeStart,
+    stop: nativeStop,
+  } = useNativeAudioCapture();
   const [screenVideoStream, setScreenVideoStream] = useState<MediaStream | null>(null);
   const [screenAudioStream, setScreenAudioStream] = useState<MediaStream | null>(null);
   const [screenShareActive, setScreenShareActive] = useState(false);
   const rawStreamRef = useRef<MediaStream | null>(null);
-  const cleanerRef = useRef<ScreenAudioCleanerResult | null>(null);
-  const rawScreenAudioRef = useRef<MediaStream | null>(null);
+  const usingNativeAudioRef = useRef(false);
 
   const stopScreenShare = useCallback(() => {
-    if (cleanerRef.current) {
-      cleanerRef.current.dispose();
-      cleanerRef.current = null;
+    if (usingNativeAudioRef.current) {
+      nativeStop();
+      usingNativeAudioRef.current = false;
     }
-    rawScreenAudioRef.current = null;
     if (rawStreamRef.current) {
       rawStreamRef.current.getTracks().forEach((t) => t.stop());
       rawStreamRef.current = null;
@@ -79,11 +86,12 @@ function useScreenShareHook(): ScreenShareInterface {
     setScreenVideoStream(null);
     setScreenAudioStream(null);
     setScreenShareActive(false);
-  }, []);
+  }, [nativeStop]);
 
   const startScreenShare = useCallback(async (withAudio: boolean, sourceId?: string) => {
     const res = RESOLUTION_CONSTRAINTS[screenShareQuality as ScreenShareQuality] ?? RESOLUTION_CONSTRAINTS.native;
     const fps = screenShareFps || 30;
+    const useNativeAudio = withAudio && nativeAvailable;
 
     try {
       let stream: MediaStream;
@@ -109,16 +117,18 @@ function useScreenShareHook(): ScreenShareInterface {
         }
 
         const video: ChromeDesktopConstraints = { mandatory };
-        const audio: ChromeDesktopConstraints = {
-          mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId },
-        };
 
-        const constraints: MediaStreamConstraints = {
-          video,
-          audio: withAudio ? audio : false,
-        };
-
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (useNativeAudio) {
+          stream = await navigator.mediaDevices.getUserMedia({ video });
+        } else {
+          const audio: ChromeDesktopConstraints = {
+            mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId },
+          };
+          stream = await navigator.mediaDevices.getUserMedia({
+            video,
+            audio: withAudio ? audio : false,
+          });
+        }
       } else {
         const videoConstraints: MediaTrackConstraints = {
           frameRate: { ideal: fps },
@@ -151,59 +161,41 @@ function useScreenShareHook(): ScreenShareInterface {
         });
       }
 
-      const audioTracks = stream.getAudioTracks();
-      if (audioTracks.length > 0) {
-        rawScreenAudioRef.current = new MediaStream(audioTracks);
-        setScreenAudioStream(rawScreenAudioRef.current);
+      if (useNativeAudio && audioContext) {
+        const started = await nativeStart(audioContext);
+        if (started) {
+          usingNativeAudioRef.current = true;
+        } else {
+          usingNativeAudioRef.current = false;
+          extractRawAudio(stream);
+        }
       } else {
-        rawScreenAudioRef.current = null;
-        setScreenAudioStream(null);
+        extractRawAudio(stream);
       }
     } catch (error) {
       console.error("[ScreenShare] getDisplayMedia failed:", error);
       setScreenShareActive(false);
     }
-  }, [screenShareQuality, screenShareFps, stopScreenShare]);
 
-  // When screen audio + remote bus are both available, swap in a cleaned stream
-  // that has the app's own playback subtracted out.
-  useEffect(() => {
-    const rawAudio = rawScreenAudioRef.current;
-    if (!screenShareActive || !rawAudio || !audioContext || !remoteBusNode) return;
-
-    const track = rawAudio.getAudioTracks()[0];
-    if (!track || track.readyState !== "live") return;
-
-    if (cleanerRef.current) {
-      cleanerRef.current.dispose();
-      cleanerRef.current = null;
-    }
-
-    const latencySec = screenShareAudioDelay / 1000;
-    const cleaner = createScreenAudioCleaner(audioContext, track, remoteBusNode, latencySec);
-    cleanerRef.current = cleaner;
-    setScreenAudioStream(cleaner.cleanedStream);
-
-    return () => {
-      cleaner.dispose();
-      if (cleanerRef.current === cleaner) cleanerRef.current = null;
-    };
-    // screenShareAudioDelay intentionally excluded — updated live via the effect below
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screenShareActive, audioContext, remoteBusNode]);
-
-  // Live-update the delay offset without rebuilding the audio graph
-  useEffect(() => {
-    if (!cleanerRef.current) return;
-    cleanerRef.current.delayNode.delayTime.value = screenShareAudioDelay / 1000;
-  }, [screenShareAudioDelay]);
-
-  useEffect(() => {
-    return () => {
-      if (cleanerRef.current) {
-        cleanerRef.current.dispose();
-        cleanerRef.current = null;
+    function extractRawAudio(mediaStream: MediaStream) {
+      const audioTracks = mediaStream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        setScreenAudioStream(new MediaStream(audioTracks));
+      } else {
+        setScreenAudioStream(null);
       }
+    }
+  }, [screenShareQuality, screenShareFps, stopScreenShare, nativeAvailable, nativeStart, audioContext]);
+
+  // Sync native capture stream → screenAudioStream
+  useEffect(() => {
+    if (usingNativeAudioRef.current && nativeStream) {
+      setScreenAudioStream(nativeStream);
+    }
+  }, [nativeStream]);
+
+  useEffect(() => {
+    return () => {
       if (rawStreamRef.current) {
         rawStreamRef.current.getTracks().forEach((t) => t.stop());
       }
@@ -214,6 +206,7 @@ function useScreenShareHook(): ScreenShareInterface {
     screenVideoStream,
     screenAudioStream,
     screenShareActive,
+    nativeAudioActive: usingNativeAudioRef.current && nativeActive,
     startScreenShare,
     stopScreenShare,
   };
@@ -223,6 +216,7 @@ const screenShareInit: ScreenShareInterface = {
   screenVideoStream: null,
   screenAudioStream: null,
   screenShareActive: false,
+  nativeAudioActive: false,
   startScreenShare: async () => {},
   stopScreenShare: () => {},
 };

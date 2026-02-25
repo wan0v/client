@@ -6,6 +6,8 @@ import { dirname, extname, join, resolve } from "path";
 import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
+import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -743,6 +745,21 @@ if (!gotSingleInstanceLock) {
           height,
         };
       });
+    });
+
+    // ── Native audio capture ──────────────────────────────────────────
+
+    ipcMain.handle("native-audio-capture-available", () => {
+      return isNativeAudioCaptureAvailable();
+    });
+
+    ipcMain.handle("start-native-audio-capture", () => {
+      if (!mainWindow) return false;
+      return startNativeAudioCapture(mainWindow);
+    });
+
+    ipcMain.on("stop-native-audio-capture", () => {
+      stopNativeAudioCapture();
     });
 
     // ── IPC handlers ──────────────────────────────────────────────────

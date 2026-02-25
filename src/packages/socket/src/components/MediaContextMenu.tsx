@@ -1,14 +1,34 @@
 import { ContextMenu, Flex } from "@radix-ui/themes";
 import React, { type ReactNode } from "react";
-import { MdCloudDownload, MdContentCopy, MdImage, MdOpenInNew } from "react-icons/md";
+import {
+  MdCloudDownload,
+  MdContentCopy,
+  MdDelete,
+  MdEdit,
+  MdFlag,
+  MdImage,
+  MdOpenInNew,
+  MdReply,
+} from "react-icons/md";
 
 import { copyImageToClipboard } from "../utils/mediaClipboard";
+
+interface MessageActions {
+  messageText?: string | null;
+  onReply?: () => void;
+  onEdit?: () => void;
+  onReport?: () => void;
+  onDelete?: () => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
 
 interface MediaContextMenuProps {
   children: ReactNode;
   src: string;
   fileName?: string | null;
   isImage?: boolean;
+  messageActions?: MessageActions;
 }
 
 function triggerDownload(url: string, fileName?: string | null) {
@@ -36,7 +56,11 @@ async function copyToClipboard(text: string) {
   }
 }
 
-export function MediaContextMenu({ children, src, fileName, isImage }: MediaContextMenuProps) {
+export function MediaContextMenu({ children, src, fileName, isImage, messageActions }: MediaContextMenuProps) {
+  const hasMessageActions = messageActions && (
+    messageActions.onReply || messageActions.onEdit || messageActions.onReport || messageActions.onDelete
+  );
+
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger onContextMenu={(e: React.MouseEvent) => e.stopPropagation()}>
@@ -70,6 +94,52 @@ export function MediaContextMenu({ children, src, fileName, isImage }: MediaCont
             Open in Browser
           </Flex>
         </ContextMenu.Item>
+
+        {hasMessageActions && (
+          <>
+            <ContextMenu.Separator />
+            {messageActions.messageText && (
+              <ContextMenu.Item onClick={() => copyToClipboard(messageActions.messageText!)}>
+                <Flex align="center" gap="1">
+                  <MdContentCopy size={14} />
+                  Copy Message
+                </Flex>
+              </ContextMenu.Item>
+            )}
+            {messageActions.onReply && (
+              <ContextMenu.Item onClick={messageActions.onReply}>
+                <Flex align="center" gap="1">
+                  <MdReply size={14} />
+                  Reply
+                </Flex>
+              </ContextMenu.Item>
+            )}
+            {messageActions.canEdit && messageActions.onEdit && (
+              <ContextMenu.Item onClick={messageActions.onEdit}>
+                <Flex align="center" gap="1">
+                  <MdEdit size={14} />
+                  Edit Message
+                </Flex>
+              </ContextMenu.Item>
+            )}
+            {messageActions.onReport && (
+              <ContextMenu.Item onClick={messageActions.onReport} color="red">
+                <Flex align="center" gap="1">
+                  <MdFlag size={14} />
+                  Report
+                </Flex>
+              </ContextMenu.Item>
+            )}
+            {messageActions.canDelete && messageActions.onDelete && (
+              <ContextMenu.Item onClick={messageActions.onDelete} color="red">
+                <Flex align="center" gap="1">
+                  <MdDelete size={14} />
+                  Delete Message
+                </Flex>
+              </ContextMenu.Item>
+            )}
+          </>
+        )}
       </ContextMenu.Content>
     </ContextMenu.Root>
   );

@@ -266,12 +266,12 @@ export const ServerView = () => {
             }}
           >
             <ServerSidebar
-              sidebarOpen={leftSidebarOpen}
+              sidebarOpen={leftSidebarOpen && !voiceFocused}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={leftSidebarContentRef}
               isUnreachableWhileConnected={isVoiceOnThisServer && isServerUnreachable}
-              onMouseEnter={openLeftSidebar}
+              onMouseEnter={voiceFocused ? undefined : openLeftSidebar}
               onMouseLeave={closeLeftSidebar}
               serverName={serverName}
               serverRole={currentUserRole}
@@ -378,12 +378,12 @@ export const ServerView = () => {
               </div>
             </Flex>
             <MemberSidebarPanel
-              sidebarOpen={rightSidebarOpen}
+              sidebarOpen={rightSidebarOpen && !voiceFocused}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={rightSidebarContentRef}
               isUnreachableWhileConnected={isVoiceOnThisServer && isServerUnreachable}
-              onMouseEnter={openRightSidebar}
+              onMouseEnter={voiceFocused ? undefined : openRightSidebar}
               onMouseLeave={closeRightSidebar}
               members={hostMembers}
               currentConnectionId={currentConnection?.id}

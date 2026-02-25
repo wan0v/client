@@ -161,9 +161,17 @@ export const VoiceView = ({
   const gridItems = useMemo(() => {
     const items: string[] = [];
     for (const id of visibleClients) {
-      items.push(id);
       const client = clientsForHost[id];
       const isSelf = id === currentConnectionId;
+
+      const hasCamera = isSelf
+        ? !!localCameraStream
+        : !!(client.cameraEnabled && client.cameraStreamID);
+
+      if (hasCamera) {
+        items.push(id);
+      }
+
       if (isSelf && localScreenActive && localScreenStream) {
         items.push(`screen:${id}`);
       } else if (!isSelf && client.screenShareEnabled && client.screenShareVideoStreamID) {
@@ -171,7 +179,7 @@ export const VoiceView = ({
       }
     }
     return items;
-  }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream]);
+  }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream, localCameraStream]);
 
   const { poppedOutItems, popout: handlePopout, updatePopoutStream } = usePopoutStreams(gridItems);
 
@@ -214,6 +222,16 @@ export const VoiceView = ({
   useLayoutEffect(() => {
     onFocusChange?.(isFocused);
   }, [isFocused, onFocusChange]);
+
+  useEffect(() => {
+    if (!showVoiceView) setFocusedStream(null);
+  }, [showVoiceView]);
+
+  useEffect(() => {
+    if (focusedStream && !gridItems.includes(focusedStream.itemId)) {
+      setFocusedStream(null);
+    }
+  }, [focusedStream, gridItems]);
 
   const displayItems = useMemo(() => {
     let items = orderedItems;

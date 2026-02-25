@@ -1,0 +1,112 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { getElectronAPI, isElectron } from "../../../../lib/electron";
+import { getWorkletUrl, PCM_PLAYER_WORKLET_NAME } from "../processors/pcmPlayerProcessor";
+
+export interface NativeAudioCapture {
+  /** Whether the native binary is present on this platform. */
+  available: boolean;
+  /** Whether native capture is currently running. */
+  active: boolean;
+  /** The MediaStream produced by the native capture (null when inactive). */
+  stream: MediaStream | null;
+  start: (audioContext: AudioContext) => Promise<boolean>;
+  stop: () => void;
+}
+
+/**
+ * Manages a native audio capture session that excludes Gryt's own process tree
+ * from the captured system audio.  Returns a MediaStream suitable for WebRTC.
+ *
+ * On platforms without a native binary this hook is a no-op (available = false).
+ */
+export function useNativeAudioCapture(): NativeAudioCapture {
+  const [available, setAvailable] = useState(false);
+  const [active, setActive] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const cleanupIpcRef = useRef<Array<() => void>>([]);
+
+  // Probe availability once on mount
+  useEffect(() => {
+    if (!isElectron()) return;
+    const api = getElectronAPI();
+    api?.isNativeAudioCaptureAvailable().then(setAvailable).catch(() => {});
+  }, []);
+
+  const stop = useCallback(() => {
+    const api = getElectronAPI();
+    api?.stopNativeAudioCapture();
+
+    if (workletNodeRef.current) {
+      workletNodeRef.current.port.postMessage({ type: "stop" });
+      workletNodeRef.current.disconnect();
+      workletNodeRef.current = null;
+    }
+    destinationRef.current = null;
+
+    for (const unsub of cleanupIpcRef.current) unsub();
+    cleanupIpcRef.current = [];
+
+    setStream(null);
+    setActive(false);
+  }, []);
+
+  const start = useCallback(
+    async (audioContext: AudioContext): Promise<boolean> => {
+      const api = getElectronAPI();
+      if (!api) return false;
+
+      // Register the worklet module (idempotent after first call)
+      try {
+        await audioContext.audioWorklet.addModule(getWorkletUrl());
+      } catch {
+        // Already registered — that's fine
+      }
+
+      const workletNode = new AudioWorkletNode(audioContext, PCM_PLAYER_WORKLET_NAME, {
+        outputChannelCount: [2],
+      });
+      const destination = audioContext.createMediaStreamDestination();
+      workletNode.connect(destination);
+
+      workletNodeRef.current = workletNode;
+      destinationRef.current = destination;
+
+      // Wire IPC → worklet message port
+      const unsubData = api.onNativeAudioData((pcmArrayBuffer: ArrayBuffer) => {
+        const int16 = new Int16Array(pcmArrayBuffer);
+        workletNode.port.postMessage({ type: "pcm", samples: int16 }, [int16.buffer]);
+      });
+
+      const unsubStopped = api.onNativeAudioStopped(() => {
+        stop();
+      });
+
+      cleanupIpcRef.current = [unsubData, unsubStopped];
+
+      // Start the native subprocess
+      const started = await api.startNativeAudioCapture();
+      if (!started) {
+        stop();
+        return false;
+      }
+
+      setStream(destination.stream);
+      setActive(true);
+      return true;
+    },
+    [stop],
+  );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stop();
+    };
+  }, [stop]);
+
+  return { available, active, stream, start, stop };
+}

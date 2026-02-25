@@ -19,7 +19,7 @@ interface ServerSidebarProps {
   hoverPx: number;
   contentRef: RefObject<HTMLDivElement>;
   isUnreachableWhileConnected: boolean;
-  onMouseEnter: () => void;
+  onMouseEnter?: () => void;
   onMouseLeave: () => void;
   serverName: string | undefined;
   serverRole: Role | undefined;

@@ -235,10 +235,11 @@ export const ChatView = memo(({
           onClose={closeContextMenu}
           onReply={() => handleReply(contextMenu.message)}
           onEdit={() => { if (contextMenu.message.text) startEditing(contextMenu.message); }}
-          onReport={handleReport}
+          onReport={() => handleReport(contextMenu.message)}
           onDelete={() => requestDelete(contextMenu.message)}
           canEdit={!!currentUserId && contextMenu.message.sender_server_id === currentUserId && !!contextMenu.message.text}
           canDelete={!!canDeleteAny || (!!currentUserId && contextMenu.message.sender_server_id === currentUserId)}
+          messageText={contextMenu.message.text}
         />
       )}
 
@@ -342,6 +343,8 @@ export const ChatView = memo(({
                     onContextMenu={handleMessageRightClick}
                     onReaction={handleReaction}
                     onReply={handleReply}
+                    onEdit={startEditing}
+                    onReport={handleReport}
                     onDelete={requestDelete}
                     scrollToMessage={scrollToMessage}
                     onLightboxOpen={onLightboxOpen}

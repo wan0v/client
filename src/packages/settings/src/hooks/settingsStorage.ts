@@ -135,9 +135,6 @@ export interface Settings {
   setScreenShareQuality: (quality: string) => void;
   screenShareFps: number;
   setScreenShareFps: (fps: number) => void;
-  screenShareAudioDelay: number;
-  setScreenShareAudioDelay: (ms: number) => void;
-
   experimentalScreenShare: boolean;
   setExperimentalScreenShare: (enabled: boolean) => void;
 
@@ -324,9 +321,6 @@ export const settingsInit: Settings = {
   setScreenShareQuality: () => {},
   screenShareFps: readNumeric("screenShareFps", 30),
   setScreenShareFps: () => {},
-  screenShareAudioDelay: readNumeric("screenShareAudioDelay", 0),
-  setScreenShareAudioDelay: () => {},
-
   experimentalScreenShare:
     localStorage.getItem("experimentalScreenShare") === "true",
   setExperimentalScreenShare: () => {},

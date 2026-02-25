@@ -64,9 +64,6 @@ function useSettingsHook() {
   const [screenShareFps, setScreenShareFps] = useState(
     readNumeric("screenShareFps", 30)
   );
-  const [screenShareAudioDelay, setScreenShareAudioDelay] = useState(
-    readNumeric("screenShareAudioDelay", 0)
-  );
   const [experimentalScreenShare, setExperimentalScreenShare] = useState(
     localStorage.getItem("experimentalScreenShare") === "true"
   );
@@ -179,11 +176,6 @@ function useSettingsHook() {
   function updateScreenShareFps(fps: number) {
     setScreenShareFps(fps);
     localStorage.setItem("screenShareFps", fps.toString());
-  }
-
-  function updateScreenShareAudioDelay(ms: number) {
-    setScreenShareAudioDelay(ms);
-    localStorage.setItem("screenShareAudioDelay", ms.toString());
   }
 
   function updateExperimentalScreenShare(enabled: boolean) {
@@ -324,8 +316,6 @@ function useSettingsHook() {
     setScreenShareQuality: updateScreenShareQuality,
     screenShareFps,
     setScreenShareFps: updateScreenShareFps,
-    screenShareAudioDelay,
-    setScreenShareAudioDelay: updateScreenShareAudioDelay,
     experimentalScreenShare,
     setExperimentalScreenShare: updateExperimentalScreenShare,
     userVolumes,

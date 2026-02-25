@@ -202,9 +202,14 @@ fi
 
 # ── Build ────────────────────────────────────────────────────────────────
 echo ""
-info "Building Electron app…"
+info "Building native audio capture binaries…"
 
 cd "$CLIENT_DIR"
+bash native/audio-capture/build.sh
+ok "Native audio build done (may have been skipped for this platform)"
+
+info "Building Electron app…"
+
 ELECTRON=1 npx vite build
 
 ok "Vite build complete"
