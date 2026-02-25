@@ -236,26 +236,49 @@ export function setupPeerConnection(
     voiceLog.info("WEBRTC", "Negotiation needed (handled explicitly by track add/remove)");
   };
 
+  // Transceiver mid → first stream ID seen. Mids are stable across
+  // renegotiations, so this lets us keep alias entries when Chrome
+  // assigns a new MediaStream ID to an existing transceiver.
+  const midToOriginalStream = new Map<string, string>();
+
   pc.ontrack = (event) => {
     const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
-    voiceLog.ok("WEBRTC", "TRACK", `Remote track received: kind=${event.track.kind} streamId=${remoteStream.id} trackId=${event.track.id}`);
+    const mid = event.transceiver?.mid;
+    voiceLog.ok("WEBRTC", "TRACK", `Remote track received: kind=${event.track.kind} streamId=${remoteStream.id} trackId=${event.track.id} mid=${mid ?? "null"}`);
 
-    // Hint the browser to keep the jitter buffer tight for low-latency voice
     const receiver = event.receiver as RTCRtpReceiver & { playoutDelayHint?: number };
     if (event.track.kind === "audio" && "playoutDelayHint" in receiver) {
       receiver.playoutDelayHint = 0;
     }
 
-    setStreams(prev => ({
-      ...prev,
-      [remoteStream.id]: { stream: remoteStream, isLocal: false },
-    }));
+    let aliasStreamId: string | undefined;
+    if (mid) {
+      const original = midToOriginalStream.get(mid);
+      if (!original) {
+        midToOriginalStream.set(mid, remoteStream.id);
+      } else if (original !== remoteStream.id) {
+        aliasStreamId = original;
+        voiceLog.info("WEBRTC", `Stream ID changed for mid=${mid}: ${original} → ${remoteStream.id} (preserving alias)`);
+      }
+    }
+
+    setStreams(prev => {
+      const next = {
+        ...prev,
+        [remoteStream.id]: { stream: remoteStream, isLocal: false },
+      };
+      if (aliasStreamId) {
+        next[aliasStreamId] = { stream: remoteStream, isLocal: false };
+      }
+      return next;
+    });
 
     event.track.onended = () => {
       voiceLog.info("WEBRTC", `Remote track ended: streamId=${remoteStream.id} trackId=${event.track.id}`);
       setStreams(prev => {
         const next = { ...prev };
         delete next[remoteStream.id];
+        if (aliasStreamId) delete next[aliasStreamId];
         return next;
       });
     };
