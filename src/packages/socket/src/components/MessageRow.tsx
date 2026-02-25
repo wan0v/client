@@ -474,7 +474,7 @@ function ReactionBadges({
 }) {
   if (!reactions || reactions.length === 0) return null;
   return (
-    <Flex wrap="wrap" style={{ marginTop: "4px", gap: "2px" }}>
+    <Flex wrap="wrap" style={{ marginTop: "4px", gap: "4px" }}>
       {reactions.map((reaction, rIdx) => {
         const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
         const emojiId = reaction.src;
@@ -501,10 +501,10 @@ function ReactionBadges({
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "4px",
-                padding: "2px 6px",
-                minHeight: "24px",
-                fontSize: "13px",
+                gap: "5px",
+                padding: "3px 8px",
+                minHeight: "28px",
+                fontSize: "14px",
                 lineHeight: 1,
                 background: isMine ? "var(--accent-3)" : "var(--gray-3)",
                 border: `1px solid ${isMine ? "var(--accent-7)" : "var(--gray-5)"}`,
@@ -517,8 +517,8 @@ function ReactionBadges({
               onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-4)" : "var(--gray-4)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-8)" : "var(--gray-6)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-3)" : "var(--gray-3)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-7)" : "var(--gray-5)"; }}
             >
-              <EmojiText text={reaction.src} emojiSize={16} />
-              <span style={{ fontWeight: 500, fontSize: "12px" }}>{reaction.amount}</span>
+              <EmojiText text={reaction.src} emojiSize={18} />
+              <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
             </button>
           </Tooltip>
         );
