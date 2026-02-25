@@ -22,6 +22,12 @@ export function Titlebar() {
   const goBack = useCallback(() => window.history.back(), []);
   const goForward = useCallback(() => window.history.forward(), []);
 
+  useEffect(() => {
+    if (isElectron()) {
+      document.documentElement.style.setProperty("--titlebar-inset", `${TITLEBAR_HEIGHT}px`);
+    }
+  }, []);
+
   if (!isElectron()) return null;
 
   return (

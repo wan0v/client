@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
-import { type CustomEmojiEntry, preprocessCustomEmojis, remarkEmoji } from "../utils/remarkEmoji";
+import { type CustomEmojiEntry, preprocessCustomEmojis, preprocessSmileys, remarkEmoji } from "../utils/remarkEmoji";
 import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";
 import { MediaContextMenu } from "./MediaContextMenu";
@@ -454,7 +454,9 @@ export const MarkdownRenderer = memo(({
   }, [content, hasProfanity, profanityMatches]);
 
   const processed = useMemo(
-    () => markedContent ? preprocessCustomEmojis(markedContent, customEmojis ?? []) : null,
+    () => markedContent
+      ? preprocessCustomEmojis(preprocessSmileys(markedContent), customEmojis ?? [])
+      : null,
     [markedContent, customEmojis],
   );
 

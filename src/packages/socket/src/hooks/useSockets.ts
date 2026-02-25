@@ -5,7 +5,8 @@ import { io, Socket } from "socket.io-client";
 
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
-import { getServerAccessToken, getServerRefreshToken, getServerWsBase, getValidIdentityToken,removeServerAccessToken, removeServerRefreshToken } from "@/common";
+import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
+import { getServerAccessToken, getServerRefreshToken, getServerWsBase, getValidIdentityToken, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge } from "@/common";
 import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
@@ -40,6 +41,10 @@ function useSocketsHook() {
     disconnectSoundVolume,
     customConnectSoundFile,
     customDisconnectSoundFile,
+    messageSoundEnabled,
+    messageSoundVolume,
+    customMessageSoundFile,
+    notificationBadgeEnabled,
     setIsServerMuted,
     setIsServerDeafened,
   } = useSettings();
@@ -70,8 +75,17 @@ function useSocketsHook() {
     serverDetailsListRef.current = serverDetailsList;
   }, [serverDetailsList]);
 
+  const { incrementUnread } = useUnreadBadge();
+
   const connectSoundFile = customConnectSoundFile || connectMp3;
   const disconnectSoundFile = customDisconnectSoundFile || disconnectMp3;
+  const messageSoundFile = customMessageSoundFile || messageSoundMp3;
+
+  const clientsRef = useRef(clients);
+  useEffect(() => { clientsRef.current = clients; }, [clients]);
+
+  const currentlyViewingServerRef = useRef(currentlyViewingServer);
+  useEffect(() => { currentlyViewingServerRef.current = currentlyViewingServer; }, [currentlyViewingServer]);
 
   function getChannelDetails(host: string, channel: string) {
     return serverDetailsList[host]?.channels.find((c) => c.id === channel);
@@ -139,6 +153,13 @@ function useSocketsHook() {
     disconnectSoundFile,
     connectSoundVolume,
     disconnectSoundVolume,
+    messageSoundEnabled,
+    messageSoundVolume,
+    messageSoundFile,
+    notificationBadgeEnabled,
+    incrementUnread,
+    currentlyViewingServerRef,
+    clientsRef,
     serversRef,
     lastInviteJoinAttemptRef,
     setServers,

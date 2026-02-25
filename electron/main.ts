@@ -50,7 +50,16 @@ function handleDeepLink(url: string): void {
   if (!url.startsWith(`${PROTOCOL}://`)) return;
 
   if (mainWindow) {
-    mainWindow.webContents.send("auth-callback", url);
+    if (url.startsWith(`${PROTOCOL}://invite`)) {
+      const parsed = new URL(url);
+      const host = parsed.searchParams.get("host") || "";
+      const code = parsed.searchParams.get("code") || "";
+      if (host && code) {
+        mainWindow.webContents.send("deep-link-invite", { host, code });
+      }
+    } else {
+      mainWindow.webContents.send("auth-callback", url);
+    }
     if (!mainWindow.isVisible()) mainWindow.show();
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
@@ -744,7 +753,7 @@ if (!gotSingleInstanceLock) {
 
     // Send any deep link URL that arrived before the renderer was ready
     if (pendingDeepLinkUrl) {
-      mainWindow?.webContents.send("auth-callback", pendingDeepLinkUrl);
+      handleDeepLink(pendingDeepLinkUrl);
       pendingDeepLinkUrl = null;
     }
 

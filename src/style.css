@@ -14,6 +14,10 @@
   font-display: swap;
 }
 
+:root {
+  --titlebar-inset: 0px;
+}
+
 .radix-themes {
   --cursor-button: pointer;
   --cursor-checkbox: pointer;
@@ -456,8 +460,8 @@ body {
 .chat-attachment-image {
   max-width: 300px;
   max-height: 300px;
+  width: auto;
   height: auto;
-  object-fit: contain;
   border-radius: var(--radius-4);
   cursor: pointer;
   transition: opacity 0.15s ease;

@@ -39,6 +39,7 @@ export interface ElectronAPI {
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;
   onAuthCallback(callback: (url: string) => void): () => void;
+  onDeepLinkInvite(callback: (data: { host: string; code: string }) => void): () => void;
 }
 
 declare global {

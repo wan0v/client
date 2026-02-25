@@ -2,6 +2,7 @@ import Keycloak from 'keycloak-js';
 
 import { getGrytConfig } from '../../../../config';
 import { isElectron } from '../../../../lib/electron';
+import { consumePreLoginUrl } from '../utils/preLoginUrl';
 import {
   electronLogin,
   electronLogout,
@@ -285,7 +286,8 @@ export async function startLogin(redirectUri?: string): Promise<void> {
   }
 
   const { keycloak } = await initKeycloak();
-  await keycloak.login({ redirectUri: redirectUri || window.location.href });
+  const target = redirectUri || consumePreLoginUrl() || window.location.href;
+  await keycloak.login({ redirectUri: target });
 }
 
 export async function startRegister(redirectUri?: string): Promise<void> {
@@ -297,9 +299,10 @@ export async function startRegister(redirectUri?: string): Promise<void> {
   }
 
   const { keycloak } = await initKeycloak();
+  const target = redirectUri || consumePreLoginUrl() || window.location.href;
   await keycloak.login({
     action: 'register',
-    redirectUri: redirectUri || window.location.href,
+    redirectUri: target,
   });
 }
 

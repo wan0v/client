@@ -405,8 +405,6 @@ function MessageContent({
                       src={url}
                       alt={attachMeta?.original_name || "Attachment"}
                       className="chat-attachment-image"
-                      width={w}
-                      height={h}
                       loading="lazy"
                       decoding="async"
                       style={w && h ? { aspectRatio: `${w} / ${h}` } : undefined}

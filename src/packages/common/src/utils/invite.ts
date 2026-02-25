@@ -1,3 +1,5 @@
+import { savePreLoginUrl } from "./preLoginUrl";
+
 export type PendingInvite = {
   host: string;
   code: string;
@@ -34,6 +36,19 @@ export function readPendingInvite(): PendingInvite | null {
   } catch {
     return null;
   }
+}
+
+export function writePendingInvite(host: string, code: string): PendingInvite | null {
+  const h = normalizeHost(host);
+  const c = normalizeCode(code);
+  if (!h || !c) return null;
+  const pending: PendingInvite = { host: h, code: c, capturedAt: Date.now() };
+  try {
+    window.sessionStorage.setItem(PENDING_INVITE_KEY, JSON.stringify(pending));
+  } catch {
+    // ignore
+  }
+  return pending;
 }
 
 export function clearPendingInvite(): void {
@@ -86,6 +101,9 @@ export function capturePendingInviteFromUrl(opts?: { defaultLegacyHost?: string 
   } catch {
     // ignore
   }
+
+  // Save the full URL before cleaning so login/register can redirect back here.
+  savePreLoginUrl();
 
   // Clean the URL so the code doesn't remain visible longer than necessary.
   try {

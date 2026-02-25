@@ -12,6 +12,7 @@ import {
   setServerAccessToken,
   setServerRefreshToken,
   useAccount,
+  writePendingInvite,
 } from "@/common";
 import { AddNewServer, Nickname, PushToTalkModal, Settings, useSettings } from "@/settings";
 import { SignUpModal } from "@/signUp";
@@ -53,6 +54,17 @@ export function App() {
   // Capture invite links early (even before sign-in), then clean the URL.
   useEffect(() => {
     capturePendingInviteFromUrl({ defaultLegacyHost: "app.gryt.chat" });
+  }, []);
+
+  // Listen for invite deep links from the Electron main process (gryt://invite?...).
+  useEffect(() => {
+    return window.electronAPI?.onDeepLinkInvite(({ host, code }) => {
+      const pending = writePendingInvite(host, code);
+      if (pending) {
+        setPendingInvite(pending);
+        setInviteJoinState({ joining: false, error: "" });
+      }
+    });
   }, []);
 
   // After sign-in, show the invite acceptance modal instead of silently adding.

@@ -2,6 +2,13 @@ import { contextBridge, ipcRenderer } from "electron";
 
 type Callback = () => void;
 
+// Buffer invite deep links that arrive before React mounts a listener
+// (happens when the app is cold-launched via gryt://invite?...).
+let bufferedInvite: { host: string; code: string } | null = null;
+ipcRenderer.on("deep-link-invite", (_event, data: { host: string; code: string }) => {
+  bufferedInvite = data;
+});
+
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
 
@@ -100,5 +107,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
       callback(url);
     ipcRenderer.on("auth-callback", handler);
     return () => ipcRenderer.removeListener("auth-callback", handler);
+  },
+
+  onDeepLinkInvite(callback: (data: { host: string; code: string }) => void) {
+    if (bufferedInvite) {
+      const data = bufferedInvite;
+      bufferedInvite = null;
+      queueMicrotask(() => callback(data));
+    }
+    const handler = (_event: Electron.IpcRendererEvent, data: { host: string; code: string }) => {
+      bufferedInvite = null;
+      callback(data);
+    };
+    ipcRenderer.on("deep-link-invite", handler);
+    return () => ipcRenderer.removeListener("deep-link-invite", handler);
   },
 });

@@ -31,6 +31,13 @@ export interface SocketEventDeps {
   disconnectSoundFile: string;
   connectSoundVolume: number;
   disconnectSoundVolume: number;
+  messageSoundEnabled: boolean;
+  messageSoundVolume: number;
+  messageSoundFile: string;
+  notificationBadgeEnabled: boolean;
+  incrementUnread: () => void;
+  currentlyViewingServerRef: MutableRefObject<{ host: string; name: string } | null>;
+  clientsRef: MutableRefObject<{ [host: string]: Clients }>;
   serversRef: MutableRefObject<Servers>;
   lastInviteJoinAttemptRef: MutableRefObject<Record<string, string | undefined>>;
   setServers: (servers: Servers) => void;
@@ -58,6 +65,13 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     disconnectSoundFile,
     connectSoundVolume,
     disconnectSoundVolume,
+    messageSoundEnabled,
+    messageSoundVolume,
+    messageSoundFile,
+    notificationBadgeEnabled,
+    incrementUnread,
+    currentlyViewingServerRef,
+    clientsRef,
     serversRef,
     lastInviteJoinAttemptRef,
     setServers,
@@ -78,6 +92,11 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const disconnectSoundFileRef = useRef(disconnectSoundFile);
   const connectSoundVolumeRef = useRef(connectSoundVolume);
   const disconnectSoundVolumeRef = useRef(disconnectSoundVolume);
+  const messageSoundEnabledRef = useRef(messageSoundEnabled);
+  const messageSoundVolumeRef = useRef(messageSoundVolume);
+  const messageSoundFileRef = useRef(messageSoundFile);
+  const notificationBadgeEnabledRef = useRef(notificationBadgeEnabled);
+  const incrementUnreadRef = useRef(incrementUnread);
   const onTokenRefreshedRef = useRef(onTokenRefreshed);
 
   useEffect(() => { connectSoundEnabledRef.current = connectSoundEnabled; }, [connectSoundEnabled]);
@@ -86,6 +105,11 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   useEffect(() => { disconnectSoundFileRef.current = disconnectSoundFile; preloadNotificationSound(disconnectSoundFile); }, [disconnectSoundFile]);
   useEffect(() => { connectSoundVolumeRef.current = connectSoundVolume; }, [connectSoundVolume]);
   useEffect(() => { disconnectSoundVolumeRef.current = disconnectSoundVolume; }, [disconnectSoundVolume]);
+  useEffect(() => { messageSoundEnabledRef.current = messageSoundEnabled; }, [messageSoundEnabled]);
+  useEffect(() => { messageSoundVolumeRef.current = messageSoundVolume; }, [messageSoundVolume]);
+  useEffect(() => { messageSoundFileRef.current = messageSoundFile; preloadNotificationSound(messageSoundFile); }, [messageSoundFile]);
+  useEffect(() => { notificationBadgeEnabledRef.current = notificationBadgeEnabled; }, [notificationBadgeEnabled]);
+  useEffect(() => { incrementUnreadRef.current = incrementUnread; }, [incrementUnread]);
   useEffect(() => { onTokenRefreshedRef.current = onTokenRefreshed; }, [onTokenRefreshed]);
 
   useEffect(() => {
@@ -245,6 +269,20 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         const mine = myVoiceStateByHostRef.current[host];
         if (mine && (!mine.hasJoinedChannel || payload.channelId !== mine.voiceChannelId)) return;
         playNotificationSound(disconnectSoundFileRef.current, disconnectSoundVolumeRef.current);
+      });
+
+      // ---- Background chat notification (non-focused servers) ----
+
+      socket.on("chat:new", (msg: { sender_server_id: string }) => {
+        if (host === currentlyViewingServerRef.current?.host) return;
+        const myId = clientsRef.current[host]?.[socket.id]?.serverUserId;
+        if (myId && msg.sender_server_id === myId) return;
+        if (messageSoundEnabledRef.current) {
+          playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
+        }
+        if (notificationBadgeEnabledRef.current) {
+          incrementUnreadRef.current();
+        }
       });
 
       // ---- Server management events (delegated) ----
