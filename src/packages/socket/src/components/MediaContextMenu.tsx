@@ -13,7 +13,7 @@ import {
 
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 
-interface MessageActions {
+export interface MessageActions {
   messageText?: string | null;
   onReply?: () => void;
   onEdit?: () => void;
@@ -23,12 +23,17 @@ interface MessageActions {
   canDelete?: boolean;
 }
 
-interface MediaContextMenuProps {
-  children: ReactNode;
+interface MediaProps {
   src: string;
   fileName?: string | null;
   isImage?: boolean;
+}
+
+interface MessageContextMenuProps {
+  children: ReactNode;
+  media?: MediaProps;
   messageActions?: MessageActions;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function triggerDownload(url: string, fileName?: string | null) {
@@ -56,90 +61,101 @@ async function copyToClipboard(text: string) {
   }
 }
 
-export function MediaContextMenu({ children, src, fileName, isImage, messageActions }: MediaContextMenuProps) {
+function MediaItems({ media }: { media: MediaProps }) {
+  return (
+    <>
+      {media.isImage && (
+        <ContextMenu.Item onClick={() => copyImageToClipboard(media.src)}>
+          <Flex align="center" gap="1">
+            <MdImage size={14} />
+            Copy Image
+          </Flex>
+        </ContextMenu.Item>
+      )}
+      <ContextMenu.Item onClick={() => triggerDownload(media.src, media.fileName)}>
+        <Flex align="center" gap="1">
+          <MdCloudDownload size={14} />
+          Save As
+        </Flex>
+      </ContextMenu.Item>
+      <ContextMenu.Item onClick={() => copyToClipboard(media.src)}>
+        <Flex align="center" gap="1">
+          <MdContentCopy size={14} />
+          Copy Link
+        </Flex>
+      </ContextMenu.Item>
+      <ContextMenu.Separator />
+      <ContextMenu.Item onClick={() => window.open(media.src, "_blank", "noopener,noreferrer")}>
+        <Flex align="center" gap="1">
+          <MdOpenInNew size={14} />
+          Open in Browser
+        </Flex>
+      </ContextMenu.Item>
+    </>
+  );
+}
+
+function MessageActionItems({ actions }: { actions: MessageActions }) {
+  return (
+    <>
+      {actions.messageText && (
+        <ContextMenu.Item onClick={() => copyToClipboard(actions.messageText!)}>
+          <Flex align="center" gap="1">
+            <MdContentCopy size={14} />
+            Copy Message
+          </Flex>
+        </ContextMenu.Item>
+      )}
+      {actions.onReply && (
+        <ContextMenu.Item onClick={actions.onReply}>
+          <Flex align="center" gap="1">
+            <MdReply size={14} />
+            Reply
+          </Flex>
+        </ContextMenu.Item>
+      )}
+      {actions.canEdit && actions.onEdit && (
+        <ContextMenu.Item onClick={actions.onEdit}>
+          <Flex align="center" gap="1">
+            <MdEdit size={14} />
+            Edit Message
+          </Flex>
+        </ContextMenu.Item>
+      )}
+      {actions.onReport && (
+        <ContextMenu.Item onClick={actions.onReport} color="red">
+          <Flex align="center" gap="1">
+            <MdFlag size={14} />
+            Report
+          </Flex>
+        </ContextMenu.Item>
+      )}
+      {actions.canDelete && actions.onDelete && (
+        <ContextMenu.Item onClick={actions.onDelete} color="red">
+          <Flex align="center" gap="1">
+            <MdDelete size={14} />
+            Delete Message
+          </Flex>
+        </ContextMenu.Item>
+      )}
+    </>
+  );
+}
+
+export function MessageContextMenu({ children, media, messageActions, onOpenChange }: MessageContextMenuProps) {
   const hasMessageActions = messageActions && (
     messageActions.onReply || messageActions.onEdit || messageActions.onReport || messageActions.onDelete
   );
 
   return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger onContextMenu={(e: React.MouseEvent) => e.stopPropagation()}>
+    <ContextMenu.Root onOpenChange={onOpenChange}>
+      <ContextMenu.Trigger onContextMenu={media ? ((e: React.MouseEvent) => e.stopPropagation()) : undefined}>
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Content style={{ minWidth: 180 }}>
-        {isImage && (
-          <ContextMenu.Item onClick={() => copyImageToClipboard(src)}>
-            <Flex align="center" gap="1">
-              <MdImage size={14} />
-              Copy Image
-            </Flex>
-          </ContextMenu.Item>
-        )}
-        <ContextMenu.Item onClick={() => triggerDownload(src, fileName)}>
-          <Flex align="center" gap="1">
-            <MdCloudDownload size={14} />
-            Save As
-          </Flex>
-        </ContextMenu.Item>
-        <ContextMenu.Item onClick={() => copyToClipboard(src)}>
-          <Flex align="center" gap="1">
-            <MdContentCopy size={14} />
-            Copy Link
-          </Flex>
-        </ContextMenu.Item>
-        <ContextMenu.Separator />
-        <ContextMenu.Item onClick={() => window.open(src, "_blank", "noopener,noreferrer")}>
-          <Flex align="center" gap="1">
-            <MdOpenInNew size={14} />
-            Open in Browser
-          </Flex>
-        </ContextMenu.Item>
-
-        {hasMessageActions && (
-          <>
-            <ContextMenu.Separator />
-            {messageActions.messageText && (
-              <ContextMenu.Item onClick={() => copyToClipboard(messageActions.messageText!)}>
-                <Flex align="center" gap="1">
-                  <MdContentCopy size={14} />
-                  Copy Message
-                </Flex>
-              </ContextMenu.Item>
-            )}
-            {messageActions.onReply && (
-              <ContextMenu.Item onClick={messageActions.onReply}>
-                <Flex align="center" gap="1">
-                  <MdReply size={14} />
-                  Reply
-                </Flex>
-              </ContextMenu.Item>
-            )}
-            {messageActions.canEdit && messageActions.onEdit && (
-              <ContextMenu.Item onClick={messageActions.onEdit}>
-                <Flex align="center" gap="1">
-                  <MdEdit size={14} />
-                  Edit Message
-                </Flex>
-              </ContextMenu.Item>
-            )}
-            {messageActions.onReport && (
-              <ContextMenu.Item onClick={messageActions.onReport} color="red">
-                <Flex align="center" gap="1">
-                  <MdFlag size={14} />
-                  Report
-                </Flex>
-              </ContextMenu.Item>
-            )}
-            {messageActions.canDelete && messageActions.onDelete && (
-              <ContextMenu.Item onClick={messageActions.onDelete} color="red">
-                <Flex align="center" gap="1">
-                  <MdDelete size={14} />
-                  Delete Message
-                </Flex>
-              </ContextMenu.Item>
-            )}
-          </>
-        )}
+        {media && <MediaItems media={media} />}
+        {media && hasMessageActions && <ContextMenu.Separator />}
+        {hasMessageActions && <MessageActionItems actions={messageActions} />}
       </ContextMenu.Content>
     </ContextMenu.Root>
   );

@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-beta-channel", enabled);
   },
 
+  switchUpdateChannel(enabled: boolean) {
+    ipcRenderer.send("switch-update-channel", enabled);
+  },
+
   getCloseToTray(): Promise<boolean> {
     return ipcRenderer.invoke("get-close-to-tray");
   },

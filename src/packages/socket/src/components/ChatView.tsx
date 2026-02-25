@@ -1,4 +1,5 @@
 import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
+import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChat, MdCloudUpload, MdVolumeUp } from "react-icons/md";
 
@@ -11,7 +12,7 @@ import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmoj
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import type { ChatEditorHandle } from "./ChatEditor";
 import { ChatEditorBar } from "./ChatEditorBar";
-import { MessageContextMenu, MessageSkeleton, WelcomeMessage } from "./ChatMessage";
+import { MessageSkeleton, WelcomeMessage } from "./ChatMessage";
 import type { ChatMessage } from "./chatUtils";
 import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
 import { EmojiText } from "./EmojiText";
@@ -90,10 +91,7 @@ export const ChatView = memo(({
     editingMessage,
     pendingDeleteMessage,
     setPendingDeleteMessage,
-    contextMenu,
     cancelReply,
-    handleMessageRightClick,
-    closeContextMenu,
     handleReaction,
     handleReply,
     handleReport,
@@ -104,7 +102,6 @@ export const ChatView = memo(({
     handleArrowUpEmpty,
     handleEditorSend,
     scrollToMessage,
-    isContextMenuOpen,
   } = useChatActions({
     chatMessages,
     socketConnection,
@@ -229,20 +226,6 @@ export const ChatView = memo(({
 
   return (
     <>
-      {contextMenu && (
-        <MessageContextMenu
-          position={contextMenu.position}
-          onClose={closeContextMenu}
-          onReply={() => handleReply(contextMenu.message)}
-          onEdit={() => { if (contextMenu.message.text) startEditing(contextMenu.message); }}
-          onReport={() => handleReport(contextMenu.message)}
-          onDelete={() => requestDelete(contextMenu.message)}
-          canEdit={!!currentUserId && contextMenu.message.sender_server_id === currentUserId && !!contextMenu.message.text}
-          canDelete={!!canDeleteAny || (!!currentUserId && contextMenu.message.sender_server_id === currentUserId)}
-          messageText={contextMenu.message.text}
-        />
-      )}
-
       <Box
         overflow="hidden"
         flexGrow="1"
@@ -308,49 +291,49 @@ export const ChatView = memo(({
                   <Text size="1" color="gray">Loading older messages...</Text>
                 </Flex>
               )}
-              {chatMessages.map((m, i) => {
-                const meta = messageMetadata[i];
-                if (!meta) return null;
+              <AnimatePresence mode="popLayout" initial={false}>
+                {chatMessages.map((m, i) => {
+                  const meta = messageMetadata[i];
+                  if (!meta) return null;
 
-                const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
-                const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
-                const isMentioned = !!(currentUserNickname && m.text && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
+                  const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
+                  const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
+                  const isMentioned = !!(currentUserNickname && m.text && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
 
-                const isNew = !seenMessageIdsRef.current.has(m.message_id) && i >= chatMessages.length - 10;
-                seenMessageIdsRef.current.add(m.message_id);
+                  const isNew = !seenMessageIdsRef.current.has(m.message_id) && i >= chatMessages.length - 10;
+                  seenMessageIdsRef.current.add(m.message_id);
 
-                return (
-                  <MessageRow
-                    key={m.message_id}
-                    message={m}
-                    meta={meta}
-                    replyPreviewText={replyPreviewText}
-                    isMentioned={isMentioned}
-                    isNew={isNew}
-                    customEmojiList={customEmojiList}
-                    memberNicknames={memberNicknames}
-                    blurProfanity={blurProfanity}
-                    smileyConversion={smileyConversion}
-                    disabledSmileys={disabledSmileys}
-                    serverHost={serverHost}
-                    currentUserId={currentUserId}
-                    currentUserNickname={currentUserNickname}
-                    canDeleteAny={!!canDeleteAny}
-                    chatMediaVolume={chatMediaVolume}
-                    isContextMenuOpen={isContextMenuOpen}
-                    memberList={memberList}
-                    setChatMediaVolume={setChatMediaVolume}
-                    onContextMenu={handleMessageRightClick}
-                    onReaction={handleReaction}
-                    onReply={handleReply}
-                    onEdit={startEditing}
-                    onReport={handleReport}
-                    onDelete={requestDelete}
-                    scrollToMessage={scrollToMessage}
-                    onLightboxOpen={onLightboxOpen}
-                  />
-                );
-              })}
+                  return (
+                    <MessageRow
+                      key={m.message_id}
+                      message={m}
+                      meta={meta}
+                      replyPreviewText={replyPreviewText}
+                      isMentioned={isMentioned}
+                      isNew={isNew}
+                      customEmojiList={customEmojiList}
+                      memberNicknames={memberNicknames}
+                      blurProfanity={blurProfanity}
+                      smileyConversion={smileyConversion}
+                      disabledSmileys={disabledSmileys}
+                      serverHost={serverHost}
+                      currentUserId={currentUserId}
+                      currentUserNickname={currentUserNickname}
+                      canDeleteAny={!!canDeleteAny}
+                      chatMediaVolume={chatMediaVolume}
+                      memberList={memberList}
+                      setChatMediaVolume={setChatMediaVolume}
+                      onReaction={handleReaction}
+                      onReply={handleReply}
+                      onEdit={startEditing}
+                      onReport={handleReport}
+                      onDelete={requestDelete}
+                      scrollToMessage={scrollToMessage}
+                      onLightboxOpen={onLightboxOpen}
+                    />
+                  );
+                })}
+              </AnimatePresence>
             </div>
           ) : null}
 

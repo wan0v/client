@@ -1,168 +1,7 @@
-import { Box, Button, Flex, Separator, Skeleton, Text } from "@radix-ui/themes";
-import { useEffect, useRef, useState } from "react";
+import { Box, Flex, Skeleton, Text } from "@radix-ui/themes";
 import { MdChat, MdVolumeUp } from "react-icons/md";
 
 import { EmojiText } from "./EmojiText";
-
-export const MessageContextMenu = ({
-  position,
-  onClose,
-  onReply,
-  onEdit,
-  onReport,
-  onDelete,
-  canEdit,
-  canDelete,
-  messageText,
-}: {
-  position: { x: number; y: number };
-  onClose: () => void;
-  onReply: () => void;
-  onEdit?: () => void;
-  onReport: () => void;
-  onDelete?: () => void;
-  canEdit?: boolean;
-  canDelete?: boolean;
-  messageText?: string | null;
-}) => {
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [onClose]);
-
-  const [adjustedPosition, setAdjustedPosition] = useState(position);
-
-  useEffect(() => {
-    if (!menuRef.current) return;
-
-    const menu = menuRef.current;
-    const rect = menu.getBoundingClientRect();
-    const viewport = {
-      width: window.innerWidth,
-      height: window.innerHeight
-    };
-
-    let newX = position.x;
-    let newY = position.y;
-
-    if (position.x + rect.width > viewport.width) {
-      newX = viewport.width - rect.width - 10;
-    }
-    if (newX < 10) newX = 10;
-
-    if (position.y + rect.height > viewport.height) {
-      newY = position.y - rect.height - 5;
-    }
-    if (newY < 10) newY = 10;
-
-    setAdjustedPosition({ x: newX, y: newY });
-  }, [position]);
-
-  return (
-    <div
-      ref={menuRef}
-      style={{
-        position: 'fixed',
-        left: adjustedPosition.x,
-        top: adjustedPosition.y,
-        zIndex: 9999,
-        background: 'var(--color-panel-solid)',
-        border: '1px solid var(--gray-7)',
-        borderRadius: 'var(--radius-5)',
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1)',
-        padding: '12px',
-        minWidth: '220px',
-        backdropFilter: 'blur(12px)',
-        opacity: 1,
-        transform: 'translateY(-2px)',
-      }}
-    >
-      <Flex direction="column" gap="1">
-        {messageText && (
-          <Button
-            variant="ghost"
-            size="1"
-            onClick={() => {
-              navigator.clipboard.writeText(messageText);
-              onClose();
-            }}
-            style={{ justifyContent: 'flex-start' }}
-          >
-            Copy Message
-          </Button>
-        )}
-        {messageText && <Separator size="4" />}
-        <Button
-          variant="ghost"
-          size="1"
-          onClick={() => {
-            onReply();
-            onClose();
-          }}
-          style={{ justifyContent: 'flex-start' }}
-        >
-          Reply
-        </Button>
-        {canEdit && onEdit && (
-          <Button
-            variant="ghost"
-            size="1"
-            onClick={() => {
-              onEdit();
-              onClose();
-            }}
-            style={{ justifyContent: 'flex-start' }}
-          >
-            Edit Message
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="1"
-          onClick={() => {
-            onReport();
-            onClose();
-          }}
-          style={{ justifyContent: 'flex-start', color: 'var(--red-11)' }}
-        >
-          Report
-        </Button>
-        {canDelete && onDelete && (
-          <Button
-            variant="ghost"
-            size="1"
-            onClick={() => {
-              onDelete();
-              onClose();
-            }}
-            style={{ justifyContent: 'flex-start', color: 'var(--red-11)' }}
-          >
-            Delete Message
-          </Button>
-        )}
-      </Flex>
-    </div>
-  );
-};
 
 export const MessageHoverToolbar = ({
   onReply,
@@ -176,9 +15,6 @@ export const MessageHoverToolbar = ({
   return (
     <div
       style={{
-        position: "absolute",
-        top: "-16px",
-        right: "8px",
         display: "inline-flex",
         alignItems: "center",
         gap: "1px",
@@ -187,11 +23,8 @@ export const MessageHoverToolbar = ({
         borderRadius: "var(--radius-4)",
         padding: "2px 3px",
         boxShadow: "0 2px 10px rgba(0, 0, 0, 0.18)",
-        zIndex: 10,
         pointerEvents: "auto",
         whiteSpace: "nowrap",
-        width: "auto",
-        overflow: "visible",
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >

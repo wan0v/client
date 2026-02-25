@@ -37,17 +37,6 @@ export function useChatActions({
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [pendingDeleteMessage, setPendingDeleteMessage] = useState<ChatMessage | null>(null);
-  const [contextMenu, setContextMenu] = useState<{
-    message: ChatMessage;
-    position: { x: number; y: number };
-  } | null>(null);
-
-  const handleMessageRightClick = useCallback((event: React.MouseEvent, message: ChatMessage) => {
-    event.preventDefault();
-    setContextMenu({ message, position: { x: event.clientX, y: event.clientY } });
-  }, []);
-
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
   const handleReaction = useCallback((reactionSrc: string, message: ChatMessage) => {
     if (!socketConnection || !currentUserId) return;
@@ -152,10 +141,7 @@ export function useChatActions({
     editingMessage,
     pendingDeleteMessage,
     setPendingDeleteMessage,
-    contextMenu,
     cancelReply,
-    handleMessageRightClick,
-    closeContextMenu,
     handleReaction,
     handleReply,
     handleReport,
@@ -166,6 +152,5 @@ export function useChatActions({
     handleArrowUpEmpty,
     handleEditorSend,
     scrollToMessage,
-    isContextMenuOpen: !!contextMenu,
   };
 }

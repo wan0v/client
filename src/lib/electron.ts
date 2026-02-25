@@ -25,6 +25,7 @@ export interface ElectronAPI {
   installUpdate(): void;
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
+  switchUpdateChannel(enabled: boolean): void;
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;
   getStartWithWindowsSupported(): Promise<boolean>;

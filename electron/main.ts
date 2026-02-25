@@ -597,6 +597,14 @@ if (!gotSingleInstanceLock) {
       autoUpdater.allowPrerelease = enabled;
     });
 
+    ipcMain.on("switch-update-channel", (_event, enabled: boolean) => {
+      writeConfig({ betaChannel: enabled });
+      autoUpdater.allowPrerelease = enabled;
+      isQuitting = true;
+      app.relaunch();
+      app.quit();
+    });
+
     ipcMain.handle("get-close-to-tray", () => closeToTray);
     ipcMain.on("set-close-to-tray", (_event, enabled: boolean) => {
       closeToTray = enabled;

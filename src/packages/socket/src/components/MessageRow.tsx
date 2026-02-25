@@ -1,5 +1,5 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useRef, useState } from "react";
 
 import { getUploadsFileUrl } from "@/common";
@@ -14,7 +14,7 @@ import { EmojiText } from "./EmojiText";
 import { FileCard } from "./FileCard";
 import { MessageEmbeds } from "./LinkEmbed";
 import { MarkdownRenderer } from "./MarkdownRenderer";
-import { MediaContextMenu } from "./MediaContextMenu";
+import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
 
 export interface MessageMeta {
   isFirstInGroup: boolean;
@@ -42,10 +42,8 @@ interface MessageRowProps {
   currentUserNickname: string | undefined;
   canDeleteAny: boolean;
   chatMediaVolume: number;
-  isContextMenuOpen: boolean;
   memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
   setChatMediaVolume: (v: number) => void;
-  onContextMenu: (e: React.MouseEvent, msg: ChatMessage) => void;
   onReaction: (src: string, msg: ChatMessage) => void;
   onReply: (msg: ChatMessage) => void;
   onEdit: (msg: ChatMessage) => void;
@@ -71,10 +69,8 @@ export const MessageRow = memo(({
   currentUserNickname,
   canDeleteAny,
   chatMediaVolume,
-  isContextMenuOpen,
   memberList,
   setChatMediaVolume,
-  onContextMenu,
   onReaction,
   onReply,
   onEdit,
@@ -86,31 +82,43 @@ export const MessageRow = memo(({
 }: MessageRowProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
 
-  const mentionBg = isMentioned ? "var(--accent-a3)" : undefined;
   const canDelete = !!canDeleteAny || (!!currentUserId && m.sender_server_id === currentUserId);
+  const canEdit = !!currentUserId && m.sender_server_id === currentUserId && !!m.text;
+
+  const bgColor = (isHovered || isEmojiPickerOpen)
+    ? "var(--gray-4)"
+    : isMentioned ? "var(--accent-a3)" : "transparent";
+
+  const messageActions: MessageActions = {
+    messageText: m.text,
+    onReply: () => onReply(m),
+    onEdit: canEdit ? () => onEdit(m) : undefined,
+    onReport: () => onReport(m),
+    onDelete: canDelete ? () => onDelete(m) : undefined,
+    canEdit,
+    canDelete,
+  };
 
   const handleMouseEnter = useCallback(() => {
-    if (rowRef.current) rowRef.current.style.background = "var(--gray-4)";
     setIsHovered(true);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    if (!isEmojiPickerOpen && rowRef.current) {
-      rowRef.current.style.background = isMentioned ? "var(--accent-a3)" : "transparent";
-    }
     setIsHovered(false);
-  }, [isEmojiPickerOpen, isMentioned]);
+  }, []);
 
   const handlePickerOpenChange = useCallback((open: boolean) => {
     setIsEmojiPickerOpen(open);
-    if (!open && rowRef.current) {
-      rowRef.current.style.background = isMentioned ? "var(--accent-a3)" : "transparent";
-    }
-  }, [isMentioned]);
+  }, []);
 
-  const showToolbar = (isHovered || isEmojiPickerOpen) && !isContextMenuOpen;
+  const handleCtxMenuOpenChange = useCallback((open: boolean) => {
+    setIsCtxMenuOpen(open);
+  }, []);
+
+  const showToolbar = (isHovered || isEmojiPickerOpen) && !isCtxMenuOpen;
 
   const content = (
     <>
@@ -118,170 +126,181 @@ export const MessageRow = memo(({
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
       {meta.isSystem ? (
-        <Flex
-          ref={rowRef}
-          data-message-id={m.message_id}
-          gap="3"
-          align="start"
-          onContextMenu={(e) => onContextMenu(e, m)}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange}>
+        <motion.div
+          animate={{ marginBottom: m.reactions?.length ? 30 : 0, background: bgColor }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
           style={{
-            width: "100%",
-            marginTop: 12,
             borderRadius: "var(--radius-3)",
-            padding: "2px 6px",
             margin: "12px -6px 0",
-            transition: "background 0.3s ease",
-            cursor: "default",
-            position: "relative",
           }}
         >
-          {showToolbar && (
-            <MessageHoverToolbar
-              onReply={() => onReply(m)}
-              canDelete={canDelete}
-              onDelete={canDelete ? () => onDelete(m) : undefined}
-            />
-          )}
-          <div style={{ flexShrink: 0, width: 51 }} />
-          <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-            <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
-              <Text size="2" weight="bold" style={{ color: "var(--gray-9)" }}>
-                System
-              </Text>
-              <MessageTimestamp date={toDate(m.created_at)} />
-            </Flex>
-            <Text size="2" style={{ wordBreak: "break-word" }}>
-              <MarkdownRenderer
-                content={m.text}
-                memberNicknames={memberNicknames}
-                mentionMembersById={memberList}
-                serverHost={serverHost}
-              />
-            </Text>
-            <ReactionBadges
-              reactions={m.reactions}
-              currentUserId={currentUserId}
-              currentUserNickname={currentUserNickname}
-              memberList={memberList}
-              onReaction={(src) => onReaction(src, m)}
-              showAddReaction={showToolbar}
-              onPickerOpenChange={handlePickerOpenChange}
-            />
-          </Flex>
-        </Flex>
-      ) : meta.isFirstInGroup ? (
-        <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">
-          <Avatar
-            radius="full"
-            fallback={meta.senderName[0]}
-            src={meta.avatarUrl}
-            style={{ flexShrink: 0, marginTop: 2, width: 51, height: 51 }}
-          />
-          <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-            <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
-              <Text size="2" weight="bold" style={{ color: meta.isSelf ? "var(--accent-11)" : "var(--gray-12)" }}>
-                {meta.senderName}
-              </Text>
-              <MessageTimestamp date={toDate(m.created_at)} />
-              {meta.isFirstEdited && (
-                <Tooltip content={`Edited ${new Date(m.edited_at!).toLocaleString()}`} delayDuration={200}>
-                  <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
-                    (edited)
+            <Flex
+              ref={rowRef}
+              data-message-id={m.message_id}
+              gap="3"
+              align="start"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              style={{
+                width: "100%",
+                padding: "2px 6px",
+                cursor: "default",
+                position: "relative",
+              }}
+            >
+              <AnimatePresence>
+                {showToolbar && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                    style={{ position: "absolute", top: -16, right: 8, zIndex: 10 }}
+                  >
+                    <MessageHoverToolbar
+                      onReply={() => onReply(m)}
+                      canDelete={canDelete}
+                      onDelete={canDelete ? () => onDelete(m) : undefined}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <div style={{ flexShrink: 0, width: 51 }} />
+              <Flex direction="column" style={{ flex: 1, minWidth: 0, position: "relative" }}>
+                <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
+                  <Text size="2" weight="bold" style={{ color: "var(--gray-9)" }}>
+                    System
                   </Text>
-                </Tooltip>
-              )}
+                  <MessageTimestamp date={toDate(m.created_at)} />
+                </Flex>
+                <Text size="2" style={{ wordBreak: "break-word" }}>
+                  <MarkdownRenderer
+                    content={m.text}
+                    memberNicknames={memberNicknames}
+                    mentionMembersById={memberList}
+                    serverHost={serverHost}
+                  />
+                </Text>
+                <ReactionBadges
+                  reactions={m.reactions}
+                  currentUserId={currentUserId}
+                  currentUserNickname={currentUserNickname}
+                  memberList={memberList}
+                  onReaction={(src) => onReaction(src, m)}
+                  showAddReaction={showToolbar}
+                  onPickerOpenChange={handlePickerOpenChange}
+                />
+              </Flex>
             </Flex>
-            <MessageContent
-              m={m}
-              rowRef={rowRef}
-              mentionBg={mentionBg}
-              showToolbar={showToolbar}
-              canDelete={canDelete}
-              customEmojiList={customEmojiList}
-              memberNicknames={memberNicknames}
-              blurProfanity={blurProfanity}
-              smileyConversion={smileyConversion}
-              disabledSmileys={disabledSmileys}
-              serverHost={serverHost}
-              currentUserId={currentUserId}
-              currentUserNickname={currentUserNickname}
-              canDeleteAny={canDeleteAny}
-              memberList={memberList}
-              chatMediaVolume={chatMediaVolume}
-              setChatMediaVolume={setChatMediaVolume}
-              replyPreviewText={replyPreviewText}
-              isFirstInGroup
-              onContextMenu={onContextMenu}
-              onReaction={onReaction}
-              onReply={onReply}
-              onEdit={onEdit}
-              onReport={onReport}
-              onDelete={onDelete}
-              scrollToMessage={scrollToMessage}
-              onLightboxOpen={onLightboxOpen}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              onPickerOpenChange={handlePickerOpenChange}
+          </motion.div>
+        </MessageContextMenu>
+      ) : meta.isFirstInGroup ? (
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange}>
+          <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">
+            <Avatar
+              radius="full"
+              fallback={meta.senderName[0]}
+              src={meta.avatarUrl}
+              style={{ flexShrink: 0, marginTop: 2, width: 51, height: 51 }}
             />
+            <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
+              <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
+                <Text size="2" weight="bold" style={{ color: meta.isSelf ? "var(--accent-11)" : "var(--gray-12)" }}>
+                  {meta.senderName}
+                </Text>
+                <MessageTimestamp date={toDate(m.created_at)} />
+                {meta.isFirstEdited && (
+                  <Tooltip content={`Edited ${new Date(m.edited_at!).toLocaleString()}`} delayDuration={200}>
+                    <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
+                      (edited)
+                    </Text>
+                  </Tooltip>
+                )}
+              </Flex>
+              <MessageContent
+                m={m}
+                rowRef={rowRef}
+                bgColor={bgColor}
+                showToolbar={showToolbar}
+                canDelete={canDelete}
+                customEmojiList={customEmojiList}
+                memberNicknames={memberNicknames}
+                blurProfanity={blurProfanity}
+                smileyConversion={smileyConversion}
+                disabledSmileys={disabledSmileys}
+                serverHost={serverHost}
+                currentUserId={currentUserId}
+                currentUserNickname={currentUserNickname}
+                memberList={memberList}
+                chatMediaVolume={chatMediaVolume}
+                setChatMediaVolume={setChatMediaVolume}
+                replyPreviewText={replyPreviewText}
+                isFirstInGroup
+                messageActions={messageActions}
+                onReaction={onReaction}
+                onReply={onReply}
+                onDelete={onDelete}
+                scrollToMessage={scrollToMessage}
+                onLightboxOpen={onLightboxOpen}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onPickerOpenChange={handlePickerOpenChange}
+              />
+            </Flex>
           </Flex>
-        </Flex>
+        </MessageContextMenu>
       ) : (
-        <Flex style={{ width: "100%", paddingLeft: 63 }}>
-          <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-            <MessageContent
-              m={m}
-              rowRef={rowRef}
-              mentionBg={mentionBg}
-              showToolbar={showToolbar}
-              canDelete={canDelete}
-              customEmojiList={customEmojiList}
-              memberNicknames={memberNicknames}
-              blurProfanity={blurProfanity}
-              smileyConversion={smileyConversion}
-              disabledSmileys={disabledSmileys}
-              serverHost={serverHost}
-              currentUserId={currentUserId}
-              currentUserNickname={currentUserNickname}
-              canDeleteAny={canDeleteAny}
-              memberList={memberList}
-              chatMediaVolume={chatMediaVolume}
-              setChatMediaVolume={setChatMediaVolume}
-              replyPreviewText={replyPreviewText}
-              isFirstInGroup={false}
-              onContextMenu={onContextMenu}
-              onReaction={onReaction}
-              onReply={onReply}
-              onEdit={onEdit}
-              onReport={onReport}
-              onDelete={onDelete}
-              scrollToMessage={scrollToMessage}
-              onLightboxOpen={onLightboxOpen}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              onPickerOpenChange={handlePickerOpenChange}
-            />
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange}>
+          <Flex style={{ width: "100%", paddingLeft: 63 }}>
+            <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
+              <MessageContent
+                m={m}
+                rowRef={rowRef}
+                bgColor={bgColor}
+                showToolbar={showToolbar}
+                canDelete={canDelete}
+                customEmojiList={customEmojiList}
+                memberNicknames={memberNicknames}
+                blurProfanity={blurProfanity}
+                smileyConversion={smileyConversion}
+                disabledSmileys={disabledSmileys}
+                serverHost={serverHost}
+                currentUserId={currentUserId}
+                currentUserNickname={currentUserNickname}
+                memberList={memberList}
+                chatMediaVolume={chatMediaVolume}
+                setChatMediaVolume={setChatMediaVolume}
+                replyPreviewText={replyPreviewText}
+                isFirstInGroup={false}
+                messageActions={messageActions}
+                onReaction={onReaction}
+                onReply={onReply}
+                onDelete={onDelete}
+                scrollToMessage={scrollToMessage}
+                onLightboxOpen={onLightboxOpen}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onPickerOpenChange={handlePickerOpenChange}
+              />
+            </Flex>
           </Flex>
-        </Flex>
+        </MessageContextMenu>
       )}
     </>
   );
 
-  if (isNew) {
-    return (
-      <motion.div
-        style={{ width: "100%" }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-      >
-        {content}
-      </motion.div>
-    );
-  }
-
-  return <div style={{ width: "100%" }}>{content}</div>;
+  return (
+    <motion.div
+      layout
+      style={{ width: "100%" }}
+      initial={isNew ? { opacity: 0, y: 8 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+    >
+      {content}
+    </motion.div>
+  );
 });
 
 MessageRow.displayName = "MessageRow";
@@ -289,7 +308,7 @@ MessageRow.displayName = "MessageRow";
 function MessageContent({
   m,
   rowRef,
-  mentionBg,
+  bgColor,
   showToolbar,
   canDelete,
   customEmojiList,
@@ -300,17 +319,14 @@ function MessageContent({
   serverHost,
   currentUserId,
   currentUserNickname,
-  canDeleteAny,
   memberList,
   chatMediaVolume,
   setChatMediaVolume,
   replyPreviewText,
   isFirstInGroup,
-  onContextMenu,
+  messageActions,
   onReaction,
   onReply,
-  onEdit,
-  onReport,
   onDelete,
   scrollToMessage,
   onLightboxOpen,
@@ -320,7 +336,7 @@ function MessageContent({
 }: {
   m: ChatMessage;
   rowRef: React.RefObject<HTMLDivElement>;
-  mentionBg: string | undefined;
+  bgColor: string;
   showToolbar: boolean;
   canDelete: boolean;
   customEmojiList: CustomEmojiEntry[];
@@ -331,17 +347,14 @@ function MessageContent({
   serverHost: string | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
-  canDeleteAny: boolean;
   memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
   chatMediaVolume: number;
   setChatMediaVolume: (v: number) => void;
   replyPreviewText: string | null;
   isFirstInGroup: boolean;
-  onContextMenu: (e: React.MouseEvent, msg: ChatMessage) => void;
+  messageActions: MessageActions;
   onReaction: (src: string, msg: ChatMessage) => void;
   onReply: (msg: ChatMessage) => void;
-  onEdit: (msg: ChatMessage) => void;
-  onReport: (msg: ChatMessage) => void;
   onDelete: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
   onLightboxOpen: (src: string, alt?: string) => void;
@@ -349,41 +362,45 @@ function MessageContent({
   onMouseLeave: () => void;
   onPickerOpenChange: (open: boolean) => void;
 }) {
-  const canEdit = !!currentUserId && m.sender_server_id === currentUserId && !!m.text;
-  const mediaMessageActions = {
-    messageText: m.text,
-    onReply: () => onReply(m),
-    onEdit: canEdit ? () => onEdit(m) : undefined,
-    onReport: () => onReport(m),
-    onDelete: canDelete ? () => onDelete(m) : undefined,
-    canEdit,
-    canDelete: !!canDeleteAny || (!!currentUserId && m.sender_server_id === currentUserId),
-  };
+  const hasReactions = !!(m.reactions && m.reactions.length > 0);
   return (
+    <motion.div
+      animate={{ marginBottom: hasReactions ? 30 : 0, background: bgColor }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      style={{
+        borderRadius: "var(--radius-3)",
+        margin: "0 -6px",
+      }}
+    >
     <Flex
       ref={rowRef}
       data-message-id={m.message_id}
       direction="column"
-      onContextMenu={(e) => onContextMenu(e, m)}
       style={{
-        borderRadius: "var(--radius-3)",
         padding: "2px 6px",
-        margin: "0 -6px",
-        transition: "background 0.3s ease",
         cursor: "default",
         position: "relative",
-        background: mentionBg,
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      {showToolbar && (
-        <MessageHoverToolbar
-          onReply={() => onReply(m)}
-          canDelete={canDelete}
-          onDelete={canDelete ? () => onDelete(m) : undefined}
-        />
-      )}
+      <AnimatePresence>
+        {showToolbar && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 4 }}
+            transition={{ type: "spring", stiffness: 500, damping: 25 }}
+            style={{ position: "absolute", top: -16, right: 8, zIndex: 10 }}
+          >
+            <MessageHoverToolbar
+              onReply={() => onReply(m)}
+              canDelete={canDelete}
+              onDelete={canDelete ? () => onDelete(m) : undefined}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {m.reply_to_message_id && (
         <div
           onClick={() => scrollToMessage(m.reply_to_message_id!)}
@@ -405,7 +422,11 @@ function MessageContent({
           <Text size="1">{replyPreviewText ?? "Original message"}</Text>
         </div>
       )}
-      <div style={{ opacity: m.pending ? 0.6 : m.failed ? 0.5 : 1, wordBreak: "break-word" }}>
+      <motion.div
+        animate={{ opacity: m.pending ? 0.6 : m.failed ? 0.5 : 1 }}
+        transition={{ duration: 0.2 }}
+        style={{ wordBreak: "break-word" }}
+      >
         <MarkdownRenderer
           content={m.text}
           customEmojis={customEmojiList}
@@ -439,7 +460,7 @@ function MessageContent({
                 const w = attachMeta?.width ?? undefined;
                 const h = attachMeta?.height ?? undefined;
                 return (
-                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} isImage messageActions={mediaMessageActions}>
+                  <MessageContextMenu key={fileId} media={{ src: url, fileName: attachMeta?.original_name, isImage: true }} messageActions={messageActions}>
                     <img
                       src={url}
                       alt={attachMeta?.original_name || "Attachment"}
@@ -449,21 +470,21 @@ function MessageContent({
                       style={w && h ? { aspectRatio: `${w} / ${h}` } : undefined}
                       onClick={() => onLightboxOpen(url, attachMeta?.original_name || "Attachment")}
                     />
-                  </MediaContextMenu>
+                  </MessageContextMenu>
                 );
               }
               if (mime.startsWith("audio/")) {
                 return (
-                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} messageActions={mediaMessageActions}>
+                  <MessageContextMenu key={fileId} media={{ src: url, fileName: attachMeta?.original_name }} messageActions={messageActions}>
                     <ChatMediaPlayer src={url} type="audio" fileName={attachMeta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
-                  </MediaContextMenu>
+                  </MessageContextMenu>
                 );
               }
               if (mime.startsWith("video/")) {
                 return (
-                  <MediaContextMenu key={fileId} src={url} fileName={attachMeta?.original_name} messageActions={mediaMessageActions}>
+                  <MessageContextMenu key={fileId} media={{ src: url, fileName: attachMeta?.original_name }} messageActions={messageActions}>
                     <ChatMediaPlayer src={url} type="video" poster={thumbUrl} fileName={attachMeta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
-                  </MediaContextMenu>
+                  </MessageContextMenu>
                 );
               }
               return (
@@ -484,7 +505,7 @@ function MessageContent({
             Failed to send
           </Text>
         )}
-      </div>
+      </motion.div>
       <ReactionBadges
         reactions={m.reactions}
         currentUserId={currentUserId}
@@ -495,6 +516,7 @@ function MessageContent({
         onPickerOpenChange={onPickerOpenChange}
       />
     </Flex>
+    </motion.div>
   );
 }
 
@@ -521,57 +543,79 @@ function ReactionBadges({
   if (!hasReactions && !showAddReaction) return null;
 
   return (
-    <Flex wrap="wrap" align="center" style={{ marginTop: "4px", gap: "4px" }}>
-      {reactions?.map((reaction, rIdx) => {
-        const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
-        const emojiId = reaction.src;
-        const usersLabel = reaction.users
-          .map((uid) => {
-            if (currentUserId && uid === currentUserId) return currentUserNickname || "You";
-            const member = memberList && Object.values(memberList).find((mb) => mb.serverUserId === uid);
-            return member?.nickname || uid;
-          })
-          .join(", ");
-        return (
-          <Tooltip
-            key={`${reaction.src}-${rIdx}`}
-            content={(
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ fontWeight: 600 }}>{emojiId}</div>
-                <div style={{ opacity: 0.9 }}>{usersLabel}</div>
-              </div>
-            )}
-            delayDuration={200}
-          >
-            <button
-              onClick={() => onReaction(reaction.src)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
-                padding: "3px 8px",
-                minHeight: "28px",
-                fontSize: "14px",
-                lineHeight: 1,
-                background: isMine ? "var(--accent-3)" : "var(--gray-3)",
-                border: `1px solid ${isMine ? "var(--accent-7)" : "var(--gray-5)"}`,
-                borderRadius: "var(--radius-3)",
-                cursor: "pointer",
-                transition: "background 0.15s, border-color 0.15s",
-                whiteSpace: "nowrap",
-                color: isMine ? "var(--accent-11)" : "var(--gray-12)",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-4)" : "var(--gray-4)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-8)" : "var(--gray-6)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-3)" : "var(--gray-3)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-7)" : "var(--gray-5)"; }}
+    <Flex wrap="wrap" align="center" style={{
+      position: "absolute",
+      bottom: 0,
+      left: "6px",
+      transform: "translateY(100%)",
+      gap: "4px",
+      zIndex: 1,
+    }}>
+      <AnimatePresence mode="popLayout">
+        {reactions?.map((reaction, rIdx) => {
+          const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
+          const emojiId = reaction.src;
+          const usersLabel = reaction.users
+            .map((uid) => {
+              if (currentUserId && uid === currentUserId) return currentUserNickname || "You";
+              const member = memberList && Object.values(memberList).find((mb) => mb.serverUserId === uid);
+              return member?.nickname || uid;
+            })
+            .join(", ");
+          return (
+            <motion.div
+              key={`${reaction.src}-${rIdx}`}
+              layout
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              transition={{ type: "spring", stiffness: 500, damping: 25 }}
             >
-              <EmojiText text={reaction.src} emojiSize={18} />
-              <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
-            </button>
-          </Tooltip>
-        );
-      })}
+              <Tooltip
+                content={(
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ fontWeight: 600 }}>{emojiId}</div>
+                    <div style={{ opacity: 0.9 }}>{usersLabel}</div>
+                  </div>
+                )}
+                delayDuration={200}
+              >
+                <button
+                  onClick={() => onReaction(reaction.src)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "3px 8px",
+                    minHeight: "28px",
+                    fontSize: "14px",
+                    lineHeight: 1,
+                    background: isMine ? "var(--accent-3)" : "var(--gray-3)",
+                    border: `1px solid ${isMine ? "var(--accent-7)" : "var(--gray-5)"}`,
+                    borderRadius: "var(--radius-3)",
+                    cursor: "pointer",
+                    transition: "background 0.15s, border-color 0.15s",
+                    whiteSpace: "nowrap",
+                    color: isMine ? "var(--accent-11)" : "var(--gray-12)",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-4)" : "var(--gray-4)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-8)" : "var(--gray-6)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-3)" : "var(--gray-3)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-7)" : "var(--gray-5)"; }}
+                >
+                  <EmojiText text={reaction.src} emojiSize={18} />
+                  <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
+                </button>
+              </Tooltip>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
       {(showAddReaction || pickerOpen) && (
-        <div style={{ position: "relative", display: "inline-flex" }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 500, damping: 25 }}
+          style={{ position: "relative", display: "inline-flex" }}
+        >
           <button
             onClick={() => {
               const next = !pickerOpen;
@@ -609,7 +653,7 @@ function ReactionBadges({
               }}
             />
           )}
-        </div>
+        </motion.div>
       )}
     </Flex>
   );

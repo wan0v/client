@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Card, Flex, Heading, Link, Progress, Separator, Switch, Text } from "@radix-ui/themes";
+import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Progress, Separator, Switch, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import {
@@ -22,6 +22,7 @@ function UpdateControls() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [appVersion, setAppVersion] = useState<string>("…");
   const [betaChannel, setBetaChannel] = useState(false);
+  const [pendingSwitch, setPendingSwitch] = useState<boolean | null>(null);
 
   useEffect(() => {
     const api = getElectronAPI();
@@ -40,13 +41,12 @@ function UpdateControls() {
     getElectronAPI()?.installUpdate();
   }, []);
 
-  const handleBetaToggle = useCallback((enabled: boolean) => {
-    const api = getElectronAPI();
-    if (!api) return;
-    setBetaChannel(enabled);
-    api.setBetaChannel(enabled);
-    api.checkForUpdates();
-  }, []);
+  const confirmChannelSwitch = useCallback(() => {
+    if (pendingSwitch === null) return;
+    getElectronAPI()?.switchUpdateChannel(pendingSwitch);
+  }, [pendingSwitch]);
+
+  const switchingToBeta = pendingSwitch === true;
 
   const statusText = (() => {
     if (!status) return null;
@@ -100,15 +100,19 @@ function UpdateControls() {
           {betaChannel && <Badge variant="soft" color="orange">Beta</Badge>}
         </Flex>
 
-        <Box>
-          <Flex align="center" gap="3">
-            <Text size="2" weight="medium">Beta updates</Text>
-            <Switch checked={betaChannel} onCheckedChange={handleBetaToggle} />
+        <Flex align="center" justify="between">
+          <Flex direction="column" gap="1">
+            <Text size="2" weight="medium">
+              {betaChannel ? "Beta channel" : "Stable channel"}
+            </Text>
+            <Text size="1" color="gray">
+              {betaChannel
+                ? "You are receiving early beta releases. Toggle to switch back to stable."
+                : "Toggle to switch to the beta channel for early releases."}
+            </Text>
           </Flex>
-          <Text size="1" color="gray" mt="1">
-            Receive early beta releases. Beta builds may be less stable.
-          </Text>
-        </Box>
+          <Switch checked={betaChannel} onCheckedChange={(enabled) => setPendingSwitch(enabled)} />
+        </Flex>
 
         {statusText && (
           <Flex direction="column" gap="1">
@@ -153,6 +157,33 @@ function UpdateControls() {
           )}
         </Flex>
       </Flex>
+
+      <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
+        <AlertDialog.Content maxWidth="480px">
+          <AlertDialog.Title>
+            Switch to {switchingToBeta ? "beta" : "stable"} channel?
+          </AlertDialog.Title>
+          <AlertDialog.Description size="2">
+            {switchingToBeta
+              ? "The app will restart and download the latest beta release. Beta builds may contain bugs or incomplete features."
+              : "The app will restart and download the latest stable release. You will no longer receive beta updates."}
+          </AlertDialog.Description>
+          <Flex gap="3" mt="4" justify="end">
+            <AlertDialog.Cancel>
+              <Button variant="soft" color="gray">Cancel</Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action>
+              <Button
+                variant="solid"
+                color={switchingToBeta ? "orange" : "blue"}
+                onClick={confirmChannelSwitch}
+              >
+                Switch & Restart
+              </Button>
+            </AlertDialog.Action>
+          </Flex>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
     </>
   );
 }

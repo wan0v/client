@@ -11,7 +11,7 @@ import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 import { type CustomEmojiEntry, preprocessCustomEmojis, preprocessSmileys, remarkEmoji } from "../utils/remarkEmoji";
 import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";
-import { MediaContextMenu } from "./MediaContextMenu";
+import { MessageContextMenu } from "./MediaContextMenu";
 import { BlurredWord } from "./ProfanityBlur";
 
 type MarkdownImgProps = React.ImgHTMLAttributes<HTMLImageElement> & {
@@ -74,7 +74,7 @@ const RemoteMarkdownImage = memo(({
   }, [serverHost, size, cacheKey, src]);
 
   return (
-    <MediaContextMenu src={src} isImage>
+    <MessageContextMenu media={{ src, isImage: true }}>
       <div className="markdown-image-wrap">
         <img
           src={src}
@@ -94,7 +94,7 @@ const RemoteMarkdownImage = memo(({
           onClick={() => window.open(src, "_blank")}
         />
       </div>
-    </MediaContextMenu>
+    </MessageContextMenu>
   );
 });
 
@@ -356,7 +356,7 @@ const components: Components = {
     const cached = cacheKey ? markdownImageSizeCache.get(cacheKey) : undefined;
 
     return (
-      <MediaContextMenu src={src || ""} isImage>
+      <MessageContextMenu media={{ src: src || "", isImage: true }}>
         <div className="markdown-image-wrap">
           <img
             src={src}
@@ -375,7 +375,7 @@ const components: Components = {
             onClick={() => src && window.open(src, "_blank")}
           />
         </div>
-      </MediaContextMenu>
+      </MessageContextMenu>
     );
   },
   hr: () => (
