@@ -88,7 +88,7 @@ export const MessageRow = memo(({
   const canDelete = !!canDeleteAny || (!!currentUserId && m.sender_server_id === currentUserId);
   const canEdit = !!currentUserId && m.sender_server_id === currentUserId && !!m.text;
 
-  const bgColor = (isHovered || isEmojiPickerOpen)
+  const bgColor = (isHovered || isEmojiPickerOpen || isCtxMenuOpen)
     ? "var(--gray-4)"
     : isMentioned ? "var(--accent-a3)" : "transparent";
 
