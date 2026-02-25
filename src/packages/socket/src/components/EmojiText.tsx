@@ -1,8 +1,8 @@
 import { Tooltip } from "@radix-ui/themes";
 import { nameToEmoji } from "gemoji";
-import { memo } from "react";
+import { memo, useSyncExternalStore } from "react";
 
-import { getCustomEmojis } from "../utils/emojiData";
+import { getCustomEmojis, onCustomEmojisChange } from "../utils/emojiData";
 
 interface EmojiTextProps {
   text: string;
@@ -16,7 +16,8 @@ interface EmojiTextProps {
  * contexts where full MarkdownRenderer is overkill.
  */
 export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
-  const customMap = new Map(getCustomEmojis().map((e) => [e.name, e.url]));
+  const customEmojis = useSyncExternalStore(onCustomEmojisChange, getCustomEmojis);
+  const customMap = new Map(customEmojis.map((e) => [e.name, e.url]));
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
 
