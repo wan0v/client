@@ -423,6 +423,8 @@ export const MarkdownRenderer = memo(({
   serverHost,
   profanityMatches,
   blurProfanity,
+  smileyConversion = true,
+  disabledSmileys,
 }: {
   content: string | null;
   customEmojis?: CustomEmojiEntry[];
@@ -431,6 +433,8 @@ export const MarkdownRenderer = memo(({
   serverHost?: string | null;
   profanityMatches?: ProfanityMatchRange[];
   blurProfanity?: boolean;
+  smileyConversion?: boolean;
+  disabledSmileys?: ReadonlySet<string>;
 }) => {
   const { emojiSize } = useTheme();
   const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
@@ -451,12 +455,13 @@ export const MarkdownRenderer = memo(({
     return content;
   }, [content, hasProfanity, profanityMatches]);
 
-  const processed = useMemo(
-    () => markedContent
-      ? preprocessCustomEmojis(preprocessSmileys(markedContent), customEmojis ?? [])
-      : null,
-    [markedContent, customEmojis],
-  );
+  const processed = useMemo(() => {
+    if (!markedContent) return null;
+    const withSmileys = smileyConversion
+      ? preprocessSmileys(markedContent, disabledSmileys)
+      : markedContent;
+    return preprocessCustomEmojis(withSmileys, customEmojis ?? []);
+  }, [markedContent, customEmojis, smileyConversion, disabledSmileys]);
 
   const remarkPlugins = useMemo(() => {
     if (mentionMembersById) {

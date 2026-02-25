@@ -117,6 +117,11 @@ export interface Settings {
   blurProfanity: boolean;
   setBlurProfanity: (enabled: boolean) => void;
 
+  smileyConversion: boolean;
+  setSmileyConversion: (enabled: boolean) => void;
+  disabledSmileys: ReadonlySet<string>;
+  setDisabledSmileys: (shortcodes: ReadonlySet<string>) => void;
+
   cameraID: string;
   setCameraID: (id: string) => void;
   cameraQuality: string;
@@ -298,6 +303,13 @@ export const settingsInit: Settings = {
 
   blurProfanity: localStorage.getItem("blurProfanity") !== "false",
   setBlurProfanity: () => {},
+
+  smileyConversion: localStorage.getItem("smileyConversion") !== "false",
+  setSmileyConversion: () => {},
+  disabledSmileys: new Set<string>(
+    JSON.parse(localStorage.getItem("disabledSmileys") || "[]") as string[],
+  ),
+  setDisabledSmileys: () => {},
 
   cameraID: localStorage.getItem("cameraID") || "",
   setCameraID: () => {},

@@ -34,6 +34,8 @@ interface MessageRowProps {
   customEmojiList: CustomEmojiEntry[];
   memberNicknames: string[];
   blurProfanity: boolean;
+  smileyConversion: boolean;
+  disabledSmileys: ReadonlySet<string>;
   serverHost: string | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
@@ -59,6 +61,8 @@ export const MessageRow = memo(({
   customEmojiList,
   memberNicknames,
   blurProfanity,
+  smileyConversion,
+  disabledSmileys,
   serverHost,
   currentUserId,
   currentUserNickname,
@@ -193,6 +197,8 @@ export const MessageRow = memo(({
               customEmojiList={customEmojiList}
               memberNicknames={memberNicknames}
               blurProfanity={blurProfanity}
+              smileyConversion={smileyConversion}
+              disabledSmileys={disabledSmileys}
               serverHost={serverHost}
               currentUserId={currentUserId}
               currentUserNickname={currentUserNickname}
@@ -225,6 +231,8 @@ export const MessageRow = memo(({
               customEmojiList={customEmojiList}
               memberNicknames={memberNicknames}
               blurProfanity={blurProfanity}
+              smileyConversion={smileyConversion}
+              disabledSmileys={disabledSmileys}
               serverHost={serverHost}
               currentUserId={currentUserId}
               currentUserNickname={currentUserNickname}
@@ -276,6 +284,8 @@ function MessageContent({
   customEmojiList,
   memberNicknames,
   blurProfanity,
+  smileyConversion,
+  disabledSmileys,
   serverHost,
   currentUserId,
   currentUserNickname,
@@ -302,6 +312,8 @@ function MessageContent({
   customEmojiList: CustomEmojiEntry[];
   memberNicknames: string[];
   blurProfanity: boolean;
+  smileyConversion: boolean;
+  disabledSmileys: ReadonlySet<string>;
   serverHost: string | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
@@ -377,6 +389,8 @@ function MessageContent({
           serverHost={serverHost}
           profanityMatches={m.profanity_matches}
           blurProfanity={blurProfanity}
+          smileyConversion={smileyConversion}
+          disabledSmileys={disabledSmileys}
         />
         {m.edited_at && !isFirstInGroup && (
           <Tooltip content={`Edited ${new Date(m.edited_at).toLocaleString()}`} delayDuration={200}>

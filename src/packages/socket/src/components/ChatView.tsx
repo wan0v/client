@@ -71,7 +71,7 @@ export const ChatView = memo(({
   isLoadingOlder?: boolean;
   hasOlderMessages?: boolean;
 }) => {
-  const { chatMediaVolume, setChatMediaVolume, blurProfanity } = useSettings();
+  const { chatMediaVolume, setChatMediaVolume, blurProfanity, smileyConversion, disabledSmileys } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
@@ -329,6 +329,8 @@ export const ChatView = memo(({
                     customEmojiList={customEmojiList}
                     memberNicknames={memberNicknames}
                     blurProfanity={blurProfanity}
+                    smileyConversion={smileyConversion}
+                    disabledSmileys={disabledSmileys}
                     serverHost={serverHost}
                     currentUserId={currentUserId}
                     currentUserNickname={currentUserNickname}

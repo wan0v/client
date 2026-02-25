@@ -38,6 +38,13 @@ function useSettingsHook() {
     localStorage.getItem("blurProfanity") !== "false"
   );
 
+  const [smileyConversion, setSmileyConversionState] = useState(
+    localStorage.getItem("smileyConversion") !== "false"
+  );
+  const [disabledSmileys, setDisabledSmileysState] = useState<ReadonlySet<string>>(
+    () => new Set(JSON.parse(localStorage.getItem("disabledSmileys") || "[]") as string[]),
+  );
+
   const [cameraID, setCameraID] = useState(
     localStorage.getItem("cameraID") || ""
   );
@@ -132,6 +139,16 @@ function useSettingsHook() {
   function updateBlurProfanity(enabled: boolean) {
     setBlurProfanityState(enabled);
     localStorage.setItem("blurProfanity", enabled.toString());
+  }
+
+  function updateSmileyConversion(enabled: boolean) {
+    setSmileyConversionState(enabled);
+    localStorage.setItem("smileyConversion", enabled.toString());
+  }
+
+  function updateDisabledSmileys(shortcodes: ReadonlySet<string>) {
+    setDisabledSmileysState(shortcodes);
+    localStorage.setItem("disabledSmileys", JSON.stringify([...shortcodes]));
   }
 
   function updateCameraID(id: string) {
@@ -291,6 +308,10 @@ function useSettingsHook() {
     setChatMediaVolume: updateChatMediaVolume,
     blurProfanity,
     setBlurProfanity: updateBlurProfanity,
+    smileyConversion,
+    setSmileyConversion: updateSmileyConversion,
+    disabledSmileys,
+    setDisabledSmileys: updateDisabledSmileys,
     cameraID,
     setCameraID: updateCameraID,
     cameraQuality,

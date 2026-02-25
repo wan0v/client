@@ -163,6 +163,18 @@ const SMILEY_MAP = new Map<string, string>([
   ["o/", "wave"],
 ]);
 
+export type SmileyEntry = { shortcode: string; smileys: string[] };
+
+export const SMILEY_ENTRIES: SmileyEntry[] = (() => {
+  const byCode = new Map<string, string[]>();
+  for (const [smiley, code] of SMILEY_MAP) {
+    let arr = byCode.get(code);
+    if (!arr) { arr = []; byCode.set(code, arr); }
+    if (!arr.includes(smiley)) arr.push(smiley);
+  }
+  return [...byCode.entries()].map(([shortcode, smileys]) => ({ shortcode, smileys }));
+})();
+
 function escapeForRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -173,31 +185,20 @@ const sortedSmileys = [...SMILEY_MAP.keys()].sort(
 
 const smileyRegex = new RegExp(sortedSmileys.map(escapeForRegex).join("|"), "g");
 
-const STARTS_WITH_WORD = new Set(sortedSmileys.filter((s) => /^\w/.test(s)));
-const ENDS_WITH_WORD = new Set(sortedSmileys.filter((s) => /\w$/.test(s)));
+function isWhitespaceOrEdge(text: string, index: number): boolean {
+  return index < 0 || index >= text.length || /\s/.test(text[index]);
+}
 
-function convertSmileys(text: string): string {
+function convertSmileys(text: string, disabled?: ReadonlySet<string>): string {
   return text.replace(smileyRegex, (match, offset) => {
-    const end = offset + match.length;
-
-    // :/ :\ =/ =\ inside URLs or paths (e.g. http://, C:\)
-    if (
-      /^[=:][-]?[/\\]$/.test(match) &&
-      (offset > 0 && /\w/.test(text[offset - 1]) || end < text.length && text[end] === "/")
-    ) {
-      return match;
-    }
-
-    if (STARTS_WITH_WORD.has(match) && offset > 0 && /\w/.test(text[offset - 1])) {
-      return match;
-    }
-
-    if (ENDS_WITH_WORD.has(match) && end < text.length && /\w/.test(text[end])) {
+    if (!isWhitespaceOrEdge(text, offset - 1) || !isWhitespaceOrEdge(text, offset + match.length)) {
       return match;
     }
 
     const shortcode = SMILEY_MAP.get(match);
-    return shortcode ? `:${shortcode}:` : match;
+    if (!shortcode) return match;
+    if (disabled?.has(shortcode)) return match;
+    return `:${shortcode}:`;
   });
 }
 
@@ -206,9 +207,14 @@ function convertSmileys(text: string): string {
  * so the existing emoji pipeline can render them. Skips code fences and inline
  * code spans to avoid mangling code snippets.
  */
-export function preprocessSmileys(content: string): string {
+export function preprocessSmileys(
+  content: string,
+  disabledShortcodes?: ReadonlySet<string>,
+): string {
   const parts = content.split(/(```[\s\S]*?```|`[^`\n]+`)/g);
-  return parts.map((part, i) => (i % 2 === 0 ? convertSmileys(part) : part)).join("");
+  return parts
+    .map((part, i) => (i % 2 === 0 ? convertSmileys(part, disabledShortcodes) : part))
+    .join("");
 }
 
 /**

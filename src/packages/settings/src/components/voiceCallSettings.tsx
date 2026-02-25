@@ -12,6 +12,7 @@ import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
 import { SettingsContainer, SliderSetting } from "./settingsComponents";
+import { SmileySettings } from "./SmileySettings";
 import { SoundSettings } from "./SoundSettings";
 
 export function VoiceCallSettings() {
@@ -96,6 +97,11 @@ export function VoiceCallSettings() {
         min={1}
         max={30}
       />
+
+      <Separator size="4" />
+
+      <SmileySettings />
+
       {alertDialog.open && (
         <AlertDialog.Root
           open={alertDialog.open}
