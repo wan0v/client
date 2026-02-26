@@ -7,6 +7,7 @@ import { getCustomEmojis, onCustomEmojisChange } from "../utils/emojiData";
 interface EmojiTextProps {
   text: string;
   emojiSize?: number | string;
+  disableTooltip?: boolean;
 }
 
 /**
@@ -15,7 +16,7 @@ interface EmojiTextProps {
  * channel names, separator labels, reactions, and other non-markdown
  * contexts where full MarkdownRenderer is overkill.
  */
-export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
+export const EmojiText = memo(({ text, emojiSize, disableTooltip }: EmojiTextProps) => {
   const customEmojis = useSyncExternalStore(onCustomEmojisChange, getCustomEmojis);
   const customMap = new Map(customEmojis.map((e) => [e.name, e.url]));
   const parts: React.ReactNode[] = [];
@@ -32,36 +33,47 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
 
     const unicode = nameToEmoji[code];
     if (unicode) {
+      const span = (
+        <span key={`emoji-${start}`} style={{ cursor: "inherit" }}>
+          {unicode}
+        </span>
+      );
       parts.push(
-        <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
-          <span style={{ cursor: "inherit" }}>
-            {unicode}
-          </span>
-        </Tooltip>,
+        disableTooltip ? span : (
+          <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
+            {span}
+          </Tooltip>
+        ),
       );
     } else {
       const url = customMap.get(code);
       if (url) {
         const sz = emojiSize ?? "1.4em";
         const cssVal = typeof sz === "number" ? `${sz}px` : sz;
+        const img = (
+          <img
+            key={`emoji-${start}`}
+            src={url}
+            alt={emojiId}
+            data-emoji-name={code}
+            className="inline-emoji"
+            style={{
+              height: cssVal,
+              width: "auto",
+              verticalAlign: "middle",
+              display: "inline",
+              objectFit: "contain",
+              margin: "0 1px",
+              cursor: "inherit",
+            }}
+          />
+        );
         parts.push(
-          <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
-            <img
-              src={url}
-              alt={emojiId}
-              data-emoji-name={code}
-              className="inline-emoji"
-              style={{
-                height: cssVal,
-                width: "auto",
-                verticalAlign: "middle",
-                display: "inline",
-                objectFit: "contain",
-                margin: "0 1px",
-                cursor: "inherit",
-              }}
-            />
-          </Tooltip>,
+          disableTooltip ? img : (
+            <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
+              {img}
+            </Tooltip>
+          ),
         );
       } else {
         parts.push(match[0]);

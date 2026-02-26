@@ -131,7 +131,7 @@ function QuickReactions({
               flex: "0 0 auto",
             }}
           >
-            <EmojiText text={src} emojiSize={22} />
+            <EmojiText text={src} emojiSize={22} disableTooltip />
           </ContextMenu.Item>
         ))}
         <ContextMenu.Item

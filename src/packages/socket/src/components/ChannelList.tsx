@@ -289,7 +289,7 @@ export const ChannelList = ({
         <ContextMenu.Trigger>{content}</ContextMenu.Trigger>
         <ContextMenu.Content>
           <ContextMenu.Label style={{ fontWeight: "bold" }}>
-            <EmojiText text={label} />
+            <EmojiText text={label} disableTooltip />
           </ContextMenu.Label>
           <ContextMenu.Item onClick={() => onEditItem?.(item)}>
             Edit
