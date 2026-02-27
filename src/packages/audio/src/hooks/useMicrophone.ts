@@ -31,7 +31,7 @@ function useCreateMicrophoneHook() {
   } = useSettings();
   const effectiveMuted = isMuted || isServerMuted;
   
-  const audioContext = useSharedAudioContext();
+  const { audioContext, activate: activateAudioContext } = useSharedAudioContext();
   const [devices, setDevices] = useState<InputDeviceInfo[]>([]);
   const [micStream, setMicStream] = useState<MediaStream | undefined>(undefined);
   const [currentDeviceId, setCurrentDeviceId] = useState<string | undefined>(micID);
@@ -256,6 +256,7 @@ function useCreateMicrophoneHook() {
     }
 
     if (handles.length > 0) {
+      activateAudioContext();
       voiceLog.info("MIC", `Active handles: ${handles.length} — initializing device`);
       initializeDevice(currentDeviceId);
     } else {

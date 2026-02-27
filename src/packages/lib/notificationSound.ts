@@ -14,6 +14,7 @@ interface AudioContextWithSink extends AudioContext {
 
 let ctx: AudioContext | null = null;
 const bufferCache = new Map<string, AudioBuffer>();
+const rawCache = new Map<string, ArrayBuffer>();
 
 function getContext(): AudioContext {
   if (!ctx) {
@@ -25,13 +26,23 @@ function getContext(): AudioContext {
   return ctx;
 }
 
+async function fetchRaw(url: string): Promise<ArrayBuffer> {
+  const cached = rawCache.get(url);
+  if (cached) return cached;
+
+  const res = await fetch(url);
+  const raw = await res.arrayBuffer();
+  rawCache.set(url, raw);
+  return raw;
+}
+
 async function fetchBuffer(url: string): Promise<AudioBuffer> {
   const cached = bufferCache.get(url);
   if (cached) return cached;
 
   const actx = getContext();
-  const res = await fetch(url);
-  const raw = await res.arrayBuffer();
+  const raw = await fetchRaw(url);
+  rawCache.delete(url);
   const buf = await actx.decodeAudioData(raw);
   bufferCache.set(url, buf);
   return buf;
@@ -69,25 +80,29 @@ export function playNotificationSound(url: string, sliderValue: number): void {
 }
 
 /**
- * Pre-decode a sound so that the first real playback is instant.
- * Call once per sound URL (e.g. on component mount).
+ * Pre-fetch a sound's raw data so the first real playback is fast.
+ * Does NOT create an AudioContext — decoding happens on first play.
  */
 export function preloadNotificationSound(url: string): void {
-  fetchBuffer(url).catch(() => {});
+  fetchRaw(url).catch(() => {});
 }
 
 /**
  * Ensure the AudioContext is in the "running" state.
  * Call this from any user-gesture handler (click, keydown, etc.)
  * so that later programmatic playback is allowed by the browser.
+ * No-op if no sound has been played yet (context doesn't exist).
  */
 export function warmNotificationContext(): void {
-  const actx = getContext();
+  if (!ctx) return;
+  if (ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
+  }
   const saved = localStorage.getItem("outputDeviceID");
   if (saved) {
-    const ctx = actx as AudioContextWithSink;
-    if (typeof ctx.setSinkId === "function") {
-      ctx.setSinkId(saved).catch(() => {});
+    const c = ctx as AudioContextWithSink;
+    if (typeof c.setSinkId === "function") {
+      c.setSinkId(saved).catch(() => {});
     }
   }
 }

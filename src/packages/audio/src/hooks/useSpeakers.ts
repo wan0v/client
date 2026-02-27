@@ -16,7 +16,7 @@ interface Speakers {
 }
 
 function useSpeakersHook(): Speakers {
-  const audioContext = useSharedAudioContext();
+  const { audioContext } = useSharedAudioContext();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   const remoteBusNode = useMemo(() => {
