@@ -6,6 +6,7 @@ import { consumePreLoginUrl } from '../utils/preLoginUrl';
 import {
   electronLogin,
   electronLogout,
+  electronPasskeySetup,
   electronRegister,
   getStoredTokens,
   getValidElectronToken,
@@ -302,6 +303,22 @@ export async function startRegister(redirectUri?: string): Promise<void> {
   const target = redirectUri || consumePreLoginUrl() || window.location.href;
   await keycloak.login({
     action: 'register',
+    redirectUri: target,
+  });
+}
+
+export async function startPasskeySetup(redirectUri?: string): Promise<void> {
+  if (isElectron()) {
+    await electronPasskeySetup();
+    resetKeycloakInit();
+    await initKeycloak();
+    return;
+  }
+
+  const { keycloak } = await initKeycloak();
+  const target = redirectUri || window.location.href;
+  await keycloak.login({
+    action: 'webauthn-register-passwordless',
     redirectUri: target,
   });
 }

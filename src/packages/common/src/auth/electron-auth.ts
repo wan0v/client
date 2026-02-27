@@ -236,6 +236,32 @@ export async function electronLogin(): Promise<ElectronTokens> {
   });
 }
 
+export async function electronPasskeySetup(): Promise<ElectronTokens> {
+  const api = getElectronAPI();
+  if (!api) throw new Error("Not running in Electron");
+
+  const cfg = getGrytConfig();
+  const { codeVerifier, codeChallenge } = await generatePKCE();
+  const state = generateRandomString(32);
+
+  const authUrl = new URL(
+    `${cfg.GRYT_OIDC_ISSUER}/protocol/openid-connect/auth`,
+  );
+  authUrl.searchParams.set("client_id", cfg.GRYT_OIDC_CLIENT_ID);
+  authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", "openid profile email offline_access");
+  authUrl.searchParams.set("state", state);
+  authUrl.searchParams.set("code_challenge", codeChallenge);
+  authUrl.searchParams.set("code_challenge_method", "S256");
+  authUrl.searchParams.set("kc_action", "webauthn-register-passwordless");
+
+  return new Promise<ElectronTokens>((resolve, reject) => {
+    pendingLogin = { codeVerifier, state, resolve, reject };
+    api.openExternal(authUrl.toString());
+  });
+}
+
 export async function electronRegister(): Promise<ElectronTokens> {
   const api = getElectronAPI();
   if (!api) throw new Error("Not running in Electron");

@@ -1,5 +1,5 @@
 import { Box, Dialog, Flex, IconButton, Tabs } from "@radix-ui/themes";
-import { MdClose, MdInfoOutline, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
+import { MdClose, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
@@ -10,6 +10,7 @@ import { CameraSettings } from "./cameraSettings";
 import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
 import { ProfileSettings } from "./profileSettings";
+import { SecuritySettings } from "./securitySettings";
 import { AppearanceSettings } from "./theme/appearanceSettings";
 import { VoiceCallSettings } from "./voiceCallSettings";
 
@@ -19,6 +20,12 @@ const TAB_CONFIG = [
     label: "Profile",
     icon: MdPerson,
     content: <ProfileSettings />,
+  },
+  {
+    value: "security",
+    label: "Security",
+    icon: MdKey,
+    content: <SecuritySettings />,
   },
   {
     value: "appearance",

@@ -1,3 +1,4 @@
+export * from "./src/auth/account-api";
 export * from "./src/auth/identity-certificate";
 export * from "./src/auth/identity-keys";
 export * from "./src/auth/keycloak";
