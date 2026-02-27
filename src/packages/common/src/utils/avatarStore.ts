@@ -7,7 +7,10 @@ type StoredAvatarV1 = {
 const DB_NAME = "gryt";
 const DB_VERSION = 1;
 const STORE_NAME = "kv";
-const AVATAR_KEY = "avatar:v1";
+
+function avatarKey(userId: string): string {
+  return `avatar:v1:${userId}`;
+}
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -61,21 +64,31 @@ async function idbDel(key: string): Promise<void> {
   });
 }
 
-export async function getStoredAvatar(): Promise<StoredAvatarV1 | null> {
-  return await idbGet<StoredAvatarV1>(AVATAR_KEY);
+export async function getStoredAvatar(userId: string): Promise<StoredAvatarV1 | null> {
+  // Try user-scoped key first, fall back to legacy global key for migration
+  const result = await idbGet<StoredAvatarV1>(avatarKey(userId));
+  if (result) return result;
+
+  const legacy = await idbGet<StoredAvatarV1>("avatar:v1");
+  if (legacy) {
+    await idbSet(avatarKey(userId), legacy);
+    await idbDel("avatar:v1").catch(() => {});
+    return legacy;
+  }
+  return null;
 }
 
-export async function setStoredAvatar(blob: Blob, mime?: string | null): Promise<void> {
+export async function setStoredAvatar(userId: string, blob: Blob, mime?: string | null): Promise<void> {
   const rec: StoredAvatarV1 = {
     blob,
     mime: typeof mime === "string" ? mime : (blob.type || null),
     updatedAt: Date.now(),
   };
-  await idbSet(AVATAR_KEY, rec);
+  await idbSet(avatarKey(userId), rec);
 }
 
-export async function clearStoredAvatar(): Promise<void> {
-  await idbDel(AVATAR_KEY);
+export async function clearStoredAvatar(userId: string): Promise<void> {
+  await idbDel(avatarKey(userId));
 }
 
 export async function getAvatarHash(blob: Blob): Promise<string> {
@@ -85,4 +98,3 @@ export async function getAvatarHash(blob: Blob): Promise<string> {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
-

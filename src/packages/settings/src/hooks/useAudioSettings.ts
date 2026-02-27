@@ -1,12 +1,96 @@
 import { useState } from "react";
 
-import {
-  readInitialMicID,
-  readInitialMicVolume,
-  readNumeric,
-  updateRnnoiseEnabled,
-  updateStorage,
-} from "./settingsStorage";
+import { getUserValue, setUserValue } from "./userStorage";
+
+export interface AudioSettingsData {
+  micID?: string;
+  outputDeviceID: string;
+  micVolume: number;
+  outputVolume: number;
+  noiseGate: number;
+  rnnoiseEnabled: boolean;
+  autoGainEnabled: boolean;
+  autoGainTargetDb: number;
+  compressorEnabled: boolean;
+  compressorAmount: number;
+  eSportsModeEnabled: boolean;
+  inputMode: "voice_activity" | "push_to_talk";
+  pushToTalkKey: string;
+  muteHotkey: string;
+  deafenHotkey: string;
+  disconnectHotkey: string;
+  connectSoundEnabled: boolean;
+  disconnectSoundEnabled: boolean;
+  connectSoundVolume: number;
+  disconnectSoundVolume: number;
+  customConnectSoundFile: string | null;
+  customDisconnectSoundFile: string | null;
+  messageSoundEnabled: boolean;
+  messageSoundVolume: number;
+  customMessageSoundFile: string | null;
+  notificationBadgeEnabled: boolean;
+}
+
+export const AUDIO_DEFAULTS: AudioSettingsData = {
+  micID: undefined,
+  outputDeviceID: "",
+  micVolume: 50,
+  outputVolume: 50,
+  noiseGate: 1,
+  rnnoiseEnabled: true,
+  autoGainEnabled: true,
+  autoGainTargetDb: -20,
+  compressorEnabled: true,
+  compressorAmount: 50,
+  eSportsModeEnabled: false,
+  inputMode: "voice_activity",
+  pushToTalkKey: "",
+  muteHotkey: "",
+  deafenHotkey: "",
+  disconnectHotkey: "",
+  connectSoundEnabled: true,
+  disconnectSoundEnabled: true,
+  connectSoundVolume: 30,
+  disconnectSoundVolume: 30,
+  customConnectSoundFile: null,
+  customDisconnectSoundFile: null,
+  messageSoundEnabled: true,
+  messageSoundVolume: 30,
+  customMessageSoundFile: null,
+  notificationBadgeEnabled: true,
+};
+
+export function loadAudioFromCache(): AudioSettingsData {
+  const micId = getUserValue<string | undefined>("micID", undefined);
+  return {
+    micID: micId && micId !== "undefined" && micId.trim() !== "" ? micId : undefined,
+    outputDeviceID: getUserValue("outputDeviceID", AUDIO_DEFAULTS.outputDeviceID),
+    micVolume: getUserValue("micVolume", AUDIO_DEFAULTS.micVolume),
+    outputVolume: getUserValue("outputVolume", AUDIO_DEFAULTS.outputVolume),
+    noiseGate: getUserValue("noiseGate", AUDIO_DEFAULTS.noiseGate),
+    rnnoiseEnabled: getUserValue("rnnoiseEnabled", AUDIO_DEFAULTS.rnnoiseEnabled),
+    autoGainEnabled: getUserValue("autoGainEnabled", AUDIO_DEFAULTS.autoGainEnabled),
+    autoGainTargetDb: getUserValue("autoGainTargetDb", AUDIO_DEFAULTS.autoGainTargetDb),
+    compressorEnabled: getUserValue("compressorEnabled", AUDIO_DEFAULTS.compressorEnabled),
+    compressorAmount: getUserValue("compressorAmount", AUDIO_DEFAULTS.compressorAmount),
+    eSportsModeEnabled: getUserValue("eSportsModeEnabled", AUDIO_DEFAULTS.eSportsModeEnabled),
+    inputMode: getUserValue("inputMode", AUDIO_DEFAULTS.inputMode),
+    pushToTalkKey: getUserValue("pushToTalkKey", AUDIO_DEFAULTS.pushToTalkKey),
+    muteHotkey: getUserValue("muteHotkey", AUDIO_DEFAULTS.muteHotkey),
+    deafenHotkey: getUserValue("deafenHotkey", AUDIO_DEFAULTS.deafenHotkey),
+    disconnectHotkey: getUserValue("disconnectHotkey", AUDIO_DEFAULTS.disconnectHotkey),
+    connectSoundEnabled: getUserValue("connectSoundEnabled", AUDIO_DEFAULTS.connectSoundEnabled),
+    disconnectSoundEnabled: getUserValue("disconnectSoundEnabled", AUDIO_DEFAULTS.disconnectSoundEnabled),
+    connectSoundVolume: getUserValue("connectSoundVolume", AUDIO_DEFAULTS.connectSoundVolume),
+    disconnectSoundVolume: getUserValue("disconnectSoundVolume", AUDIO_DEFAULTS.disconnectSoundVolume),
+    customConnectSoundFile: getUserValue("customConnectSoundFile", AUDIO_DEFAULTS.customConnectSoundFile),
+    customDisconnectSoundFile: getUserValue("customDisconnectSoundFile", AUDIO_DEFAULTS.customDisconnectSoundFile),
+    messageSoundEnabled: getUserValue("messageSoundEnabled", AUDIO_DEFAULTS.messageSoundEnabled),
+    messageSoundVolume: getUserValue("messageSoundVolume", AUDIO_DEFAULTS.messageSoundVolume),
+    customMessageSoundFile: getUserValue("customMessageSoundFile", AUDIO_DEFAULTS.customMessageSoundFile),
+    notificationBadgeEnabled: getUserValue("notificationBadgeEnabled", AUDIO_DEFAULTS.notificationBadgeEnabled),
+  };
+}
 
 export function useAudioSettings() {
   const [loopbackEnabled, setLoopbackEnabled] = useState(false);
@@ -16,246 +100,233 @@ export function useAudioSettings() {
   const [isServerMuted, setIsServerMuted] = useState(false);
   const [isServerDeafened, setIsServerDeafened] = useState(false);
 
-  const [rnnoiseEnabled, setRnnoiseEnabled] = useState(
-    localStorage.getItem("rnnoiseEnabled") !== "false"
-  );
-  const [autoGainEnabled, setAutoGainEnabled] = useState(
-    localStorage.getItem("autoGainEnabled") !== "false"
-  );
-  const [autoGainTargetDb, setAutoGainTargetDb] = useState(
-    readNumeric("autoGainTargetDb", -20)
-  );
-  const [compressorEnabled, setCompressorEnabled] = useState(
-    localStorage.getItem("compressorEnabled") !== "false"
-  );
-  const [compressorAmount, setCompressorAmount] = useState(
-    readNumeric("compressorAmount", 50)
-  );
+  const [rnnoiseEnabled, setRnnoiseEnabled] = useState(AUDIO_DEFAULTS.rnnoiseEnabled);
+  const [autoGainEnabled, setAutoGainEnabled] = useState(AUDIO_DEFAULTS.autoGainEnabled);
+  const [autoGainTargetDb, setAutoGainTargetDb] = useState(AUDIO_DEFAULTS.autoGainTargetDb);
+  const [compressorEnabled, setCompressorEnabled] = useState(AUDIO_DEFAULTS.compressorEnabled);
+  const [compressorAmount, setCompressorAmount] = useState(AUDIO_DEFAULTS.compressorAmount);
 
-  const [micID, setMicID] = useState<string | undefined>(readInitialMicID);
-  const [outputDeviceID, setOutputDeviceID] = useState(
-    localStorage.getItem("outputDeviceID") || ""
-  );
-  const [micVolume, setMicVolume] = useState(readInitialMicVolume);
-  const [outputVolume, setOutputVolume] = useState(
-    readNumeric("outputVolume", 50)
-  );
-  const [noiseGate, setNoiseGate] = useState(
-    readNumeric("noiseGate", 1)
-  );
+  const [micID, setMicID] = useState<string | undefined>(AUDIO_DEFAULTS.micID);
+  const [outputDeviceID, setOutputDeviceID] = useState(AUDIO_DEFAULTS.outputDeviceID);
+  const [micVolume, setMicVolume] = useState(AUDIO_DEFAULTS.micVolume);
+  const [outputVolume, setOutputVolume] = useState(AUDIO_DEFAULTS.outputVolume);
+  const [noiseGate, setNoiseGate] = useState(AUDIO_DEFAULTS.noiseGate);
 
-  const [eSportsModeEnabled, setESportsModeEnabled] = useState(
-    localStorage.getItem("eSportsModeEnabled") === "true"
-  );
-  const [inputMode, setInputMode] = useState<"voice_activity" | "push_to_talk">(
-    (localStorage.getItem("inputMode") as "voice_activity" | "push_to_talk") || "voice_activity"
-  );
-  const [pushToTalkKey, setPushToTalkKey] = useState(
-    localStorage.getItem("pushToTalkKey") || ""
-  );
-  const [muteHotkey, setMuteHotkey] = useState(
-    localStorage.getItem("muteHotkey") || ""
-  );
-  const [deafenHotkey, setDeafenHotkey] = useState(
-    localStorage.getItem("deafenHotkey") || ""
-  );
-  const [disconnectHotkey, setDisconnectHotkey] = useState(
-    localStorage.getItem("disconnectHotkey") || ""
-  );
+  const [eSportsModeEnabled, setESportsModeEnabled] = useState(AUDIO_DEFAULTS.eSportsModeEnabled);
+  const [inputMode, setInputMode] = useState<"voice_activity" | "push_to_talk">(AUDIO_DEFAULTS.inputMode);
+  const [pushToTalkKey, setPushToTalkKey] = useState(AUDIO_DEFAULTS.pushToTalkKey);
+  const [muteHotkey, setMuteHotkey] = useState(AUDIO_DEFAULTS.muteHotkey);
+  const [deafenHotkey, setDeafenHotkey] = useState(AUDIO_DEFAULTS.deafenHotkey);
+  const [disconnectHotkey, setDisconnectHotkey] = useState(AUDIO_DEFAULTS.disconnectHotkey);
 
-  const [connectSoundEnabled, setConnectSoundEnabled] = useState(
-    localStorage.getItem("connectSoundEnabled") !== "false"
-  );
-  const [disconnectSoundEnabled, setDisconnectSoundEnabled] = useState(
-    localStorage.getItem("disconnectSoundEnabled") !== "false"
-  );
-  const [connectSoundVolume, setConnectSoundVolume] = useState(
-    readNumeric("connectSoundVolume", 30)
-  );
-  const [disconnectSoundVolume, setDisconnectSoundVolume] = useState(
-    readNumeric("disconnectSoundVolume", 30)
-  );
-  const [customConnectSoundFile, setCustomConnectSoundFile] = useState<string | null>(
-    localStorage.getItem("customConnectSoundFile") || null
-  );
-  const [customDisconnectSoundFile, setCustomDisconnectSoundFile] = useState<string | null>(
-    localStorage.getItem("customDisconnectSoundFile") || null
-  );
+  const [connectSoundEnabled, setConnectSoundEnabled] = useState(AUDIO_DEFAULTS.connectSoundEnabled);
+  const [disconnectSoundEnabled, setDisconnectSoundEnabled] = useState(AUDIO_DEFAULTS.disconnectSoundEnabled);
+  const [connectSoundVolume, setConnectSoundVolume] = useState(AUDIO_DEFAULTS.connectSoundVolume);
+  const [disconnectSoundVolume, setDisconnectSoundVolume] = useState(AUDIO_DEFAULTS.disconnectSoundVolume);
+  const [customConnectSoundFile, setCustomConnectSoundFile] = useState<string | null>(AUDIO_DEFAULTS.customConnectSoundFile);
+  const [customDisconnectSoundFile, setCustomDisconnectSoundFile] = useState<string | null>(AUDIO_DEFAULTS.customDisconnectSoundFile);
 
-  const [messageSoundEnabled, setMessageSoundEnabled] = useState(
-    localStorage.getItem("messageSoundEnabled") !== "false"
-  );
-  const [messageSoundVolume, setMessageSoundVolume] = useState(
-    readNumeric("messageSoundVolume", 30)
-  );
-  const [customMessageSoundFile, setCustomMessageSoundFile] = useState<string | null>(
-    localStorage.getItem("customMessageSoundFile") || null
-  );
+  const [messageSoundEnabled, setMessageSoundEnabled] = useState(AUDIO_DEFAULTS.messageSoundEnabled);
+  const [messageSoundVolume, setMessageSoundVolume] = useState(AUDIO_DEFAULTS.messageSoundVolume);
+  const [customMessageSoundFile, setCustomMessageSoundFile] = useState<string | null>(AUDIO_DEFAULTS.customMessageSoundFile);
 
-  const [notificationBadgeEnabled, setNotificationBadgeEnabled] = useState(
-    localStorage.getItem("notificationBadgeEnabled") !== "false"
-  );
+  const [notificationBadgeEnabled, setNotificationBadgeEnabled] = useState(AUDIO_DEFAULTS.notificationBadgeEnabled);
+
+  function applyAudioData(d: AudioSettingsData) {
+    setMicID(d.micID);
+    setOutputDeviceID(d.outputDeviceID);
+    setMicVolume(d.micVolume);
+    setOutputVolume(d.outputVolume);
+    setNoiseGate(d.noiseGate);
+    setRnnoiseEnabled(d.rnnoiseEnabled);
+    setAutoGainEnabled(d.autoGainEnabled);
+    setAutoGainTargetDb(d.autoGainTargetDb);
+    setCompressorEnabled(d.compressorEnabled);
+    setCompressorAmount(d.compressorAmount);
+    setESportsModeEnabled(d.eSportsModeEnabled);
+    setInputMode(d.inputMode);
+    setPushToTalkKey(d.pushToTalkKey);
+    setMuteHotkey(d.muteHotkey);
+    setDeafenHotkey(d.deafenHotkey);
+    setDisconnectHotkey(d.disconnectHotkey);
+    setConnectSoundEnabled(d.connectSoundEnabled);
+    setDisconnectSoundEnabled(d.disconnectSoundEnabled);
+    setConnectSoundVolume(d.connectSoundVolume);
+    setDisconnectSoundVolume(d.disconnectSoundVolume);
+    setCustomConnectSoundFile(d.customConnectSoundFile);
+    setCustomDisconnectSoundFile(d.customDisconnectSoundFile);
+    setMessageSoundEnabled(d.messageSoundEnabled);
+    setMessageSoundVolume(d.messageSoundVolume);
+    setCustomMessageSoundFile(d.customMessageSoundFile);
+    setNotificationBadgeEnabled(d.notificationBadgeEnabled);
+  }
 
   function updateMicID(newID: string) {
     if (!newID || newID.trim() === "") return;
-    updateStorage("micID", newID, setMicID);
+    setMicID(newID);
+    setUserValue("micID", newID);
   }
 
   function updateOutputDeviceID(id: string) {
     setOutputDeviceID(id);
     if (id) {
-      localStorage.setItem("outputDeviceID", id);
+      setUserValue("outputDeviceID", id);
     } else {
-      localStorage.removeItem("outputDeviceID");
+      setUserValue("outputDeviceID", "");
     }
   }
 
   function updateMicVolume(newVol: number) {
     setMicVolume(newVol);
-    localStorage.setItem("micVolume", newVol.toString());
+    setUserValue("micVolume", newVol);
   }
 
   function updateOutputVolume(newVol: number) {
     setOutputVolume(newVol);
-    localStorage.setItem("outputVolume", newVol.toString());
+    setUserValue("outputVolume", newVol);
   }
 
   function updateNoiseGate(newGate: number) {
     setNoiseGate(newGate);
-    localStorage.setItem("noiseGate", newGate.toString());
+    setUserValue("noiseGate", newGate);
+  }
+
+  function updateRnnoiseEnabled(value: boolean) {
+    setRnnoiseEnabled(value);
+    setUserValue("rnnoiseEnabled", value);
   }
 
   function updateAutoGainEnabled(enabled: boolean) {
     setAutoGainEnabled(enabled);
-    localStorage.setItem("autoGainEnabled", enabled.toString());
+    setUserValue("autoGainEnabled", enabled);
   }
 
   function updateAutoGainTargetDb(value: number) {
     setAutoGainTargetDb(value);
-    localStorage.setItem("autoGainTargetDb", value.toString());
+    setUserValue("autoGainTargetDb", value);
   }
 
   function updateCompressorEnabled(enabled: boolean) {
     setCompressorEnabled(enabled);
-    localStorage.setItem("compressorEnabled", enabled.toString());
+    setUserValue("compressorEnabled", enabled);
   }
 
   function updateCompressorAmount(value: number) {
     setCompressorAmount(value);
-    localStorage.setItem("compressorAmount", value.toString());
+    setUserValue("compressorAmount", value);
   }
 
   function updateInputMode(mode: "voice_activity" | "push_to_talk") {
     setInputMode(mode);
-    localStorage.setItem("inputMode", mode);
+    setUserValue("inputMode", mode);
   }
 
   function updatePushToTalkKey(key: string) {
     setPushToTalkKey(key);
-    localStorage.setItem("pushToTalkKey", key);
+    setUserValue("pushToTalkKey", key);
   }
 
   function updateMuteHotkey(key: string) {
     setMuteHotkey(key);
-    localStorage.setItem("muteHotkey", key);
+    setUserValue("muteHotkey", key);
   }
 
   function updateDeafenHotkey(key: string) {
     setDeafenHotkey(key);
-    localStorage.setItem("deafenHotkey", key);
+    setUserValue("deafenHotkey", key);
   }
 
   function updateDisconnectHotkey(key: string) {
     setDisconnectHotkey(key);
-    localStorage.setItem("disconnectHotkey", key);
+    setUserValue("disconnectHotkey", key);
   }
 
   function updateESportsModeEnabled(enabled: boolean) {
     setESportsModeEnabled(enabled);
-    localStorage.setItem("eSportsModeEnabled", enabled.toString());
+    setUserValue("eSportsModeEnabled", enabled);
     if (enabled) {
-      localStorage.setItem("preEsportsSettings", JSON.stringify({
+      setUserValue("preEsportsSettings", JSON.stringify({
         inputMode,
         rnnoiseEnabled,
         noiseGate,
       }));
       updateInputMode("push_to_talk");
-      updateRnnoiseEnabled(false, setRnnoiseEnabled);
+      updateRnnoiseEnabled(false);
       updateNoiseGate(0);
     } else {
-      const saved = localStorage.getItem("preEsportsSettings");
+      const saved = getUserValue<string | null>("preEsportsSettings", null);
       if (saved) {
         try {
-          const prev = JSON.parse(saved);
-          if (prev.inputMode) updateInputMode(prev.inputMode);
-          if (typeof prev.rnnoiseEnabled === "boolean") updateRnnoiseEnabled(prev.rnnoiseEnabled, setRnnoiseEnabled);
+          const prev = JSON.parse(saved) as Record<string, unknown>;
+          if (prev.inputMode) updateInputMode(prev.inputMode as "voice_activity" | "push_to_talk");
+          if (typeof prev.rnnoiseEnabled === "boolean") updateRnnoiseEnabled(prev.rnnoiseEnabled);
           if (typeof prev.noiseGate === "number") updateNoiseGate(prev.noiseGate);
         } catch { /* ignore corrupt data */ }
-        localStorage.removeItem("preEsportsSettings");
+        setUserValue("preEsportsSettings", null);
       }
     }
   }
 
   function updateConnectSoundEnabled(enabled: boolean) {
     setConnectSoundEnabled(enabled);
-    localStorage.setItem("connectSoundEnabled", enabled.toString());
+    setUserValue("connectSoundEnabled", enabled);
   }
 
   function updateDisconnectSoundEnabled(enabled: boolean) {
     setDisconnectSoundEnabled(enabled);
-    localStorage.setItem("disconnectSoundEnabled", enabled.toString());
+    setUserValue("disconnectSoundEnabled", enabled);
   }
 
   function updateConnectSoundVolume(volume: number) {
     setConnectSoundVolume(volume);
-    localStorage.setItem("connectSoundVolume", volume.toString());
+    setUserValue("connectSoundVolume", volume);
   }
 
   function updateDisconnectSoundVolume(volume: number) {
     setDisconnectSoundVolume(volume);
-    localStorage.setItem("disconnectSoundVolume", volume.toString());
+    setUserValue("disconnectSoundVolume", volume);
   }
 
   function updateCustomConnectSoundFile(file: string | null) {
+    setCustomConnectSoundFile(file);
     if (file) {
-      updateStorage("customConnectSoundFile", file, setCustomConnectSoundFile);
+      setUserValue("customConnectSoundFile", file);
     } else {
-      localStorage.removeItem("customConnectSoundFile");
-      setCustomConnectSoundFile(null);
+      setUserValue("customConnectSoundFile", null);
     }
   }
 
   function updateCustomDisconnectSoundFile(file: string | null) {
+    setCustomDisconnectSoundFile(file);
     if (file) {
-      updateStorage("customDisconnectSoundFile", file, setCustomDisconnectSoundFile);
+      setUserValue("customDisconnectSoundFile", file);
     } else {
-      localStorage.removeItem("customDisconnectSoundFile");
-      setCustomDisconnectSoundFile(null);
+      setUserValue("customDisconnectSoundFile", null);
     }
   }
 
   function updateMessageSoundEnabled(enabled: boolean) {
     setMessageSoundEnabled(enabled);
-    localStorage.setItem("messageSoundEnabled", enabled.toString());
+    setUserValue("messageSoundEnabled", enabled);
   }
 
   function updateMessageSoundVolume(volume: number) {
     setMessageSoundVolume(volume);
-    localStorage.setItem("messageSoundVolume", volume.toString());
+    setUserValue("messageSoundVolume", volume);
   }
 
   function updateCustomMessageSoundFile(file: string | null) {
+    setCustomMessageSoundFile(file);
     if (file) {
-      updateStorage("customMessageSoundFile", file, setCustomMessageSoundFile);
+      setUserValue("customMessageSoundFile", file);
     } else {
-      localStorage.removeItem("customMessageSoundFile");
-      setCustomMessageSoundFile(null);
+      setUserValue("customMessageSoundFile", null);
     }
   }
 
   function updateNotificationBadgeEnabled(value: boolean) {
     setNotificationBadgeEnabled(value);
-    localStorage.setItem("notificationBadgeEnabled", value.toString());
+    setUserValue("notificationBadgeEnabled", value);
     if (!value) window.electronAPI?.setBadgeCount(0);
   }
 
@@ -282,6 +353,7 @@ export function useAudioSettings() {
   }
 
   return {
+    applyAudioData,
     micID,
     setMicID: updateMicID,
     outputDeviceID,
@@ -295,7 +367,7 @@ export function useAudioSettings() {
     loopbackEnabled,
     setLoopbackEnabled,
     rnnoiseEnabled,
-    setRnnoiseEnabled: (value: boolean) => updateRnnoiseEnabled(value, setRnnoiseEnabled),
+    setRnnoiseEnabled: updateRnnoiseEnabled,
     autoGainEnabled,
     setAutoGainEnabled: updateAutoGainEnabled,
     autoGainTargetDb,

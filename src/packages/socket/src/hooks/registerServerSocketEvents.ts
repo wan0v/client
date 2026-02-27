@@ -37,6 +37,7 @@ function canAttemptTokenHeal(host: string): boolean {
 
 export interface ServerEventContext {
   nickname: string;
+  userId: string | null;
   servers: Servers;
   serversRef: MutableRefObject<Servers>;
   lastInviteJoinAttemptRef: MutableRefObject<Record<string, string | undefined>>;
@@ -53,7 +54,7 @@ export interface ServerEventContext {
 }
 
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
-  const { nickname, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
+  const { nickname, userId, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
   const { setServers, setNewServerInfo, setServerDetailsList, setFailedServerDetails } = ctx;
   const { setClients, setMemberLists, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
 
@@ -153,8 +154,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     socket.emit("server:details");
     socket.emit("members:fetch");
 
-    if (joinInfo.accessToken) {
-      syncAvatarToHost(host, joinInfo.accessToken, joinInfo.avatarFileId, socket, setServerProfiles)
+    if (joinInfo.accessToken && userId) {
+      syncAvatarToHost(host, joinInfo.accessToken, joinInfo.avatarFileId, socket, setServerProfiles, userId)
         .catch(() => {});
     }
   });

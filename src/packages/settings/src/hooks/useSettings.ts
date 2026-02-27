@@ -1,255 +1,101 @@
 import { useEffect, useRef, useState } from "react";
 import { singletonHook } from "react-singleton-hook";
 
-import { clearStoredAvatar, getStoredAvatar, setStoredAvatar } from "@/common";
+import {
+  clearStoredAvatar,
+  getStoredAvatar,
+  setStoredAvatar,
+  useUserId,
+} from "@/common";
 
-import { readNumeric, settingsInit, updateStorage } from "./settingsStorage";
-import { useAudioSettings } from "./useAudioSettings";
-
+import { settingsInit } from "./settingsStorage";
+import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
+import { getUserValue, loadForUser, setUserValue } from "./userStorage";
 
 function useSettingsHook() {
+  const userId = useUserId();
   const audio = useAudioSettings();
 
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState("profile");
   const [showNickname, setShowNickname] = useState(false);
-  const [hasSeenWelcome, setHasSeenWelcome] = useState(true);
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
 
   const avatarObjectUrlRef = useRef<string | null>(null);
   const [avatarDataUrl, setAvatarDataUrlState] = useState<string | null>(null);
 
-  const [showDebugOverlay, setShowDebugOverlay] = useState(
-    localStorage.getItem("showDebugOverlay") === "true"
-  );
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const [nickname, setNickname] = useState("Unknown");
+  const [showPeerLatency, setShowPeerLatency] = useState(true);
+  const [chatMediaVolume, setChatMediaVolume] = useState(50);
+  const [blurProfanity, setBlurProfanityState] = useState(true);
+  const [smileyConversion, setSmileyConversionState] = useState(true);
+  const [disabledSmileys, setDisabledSmileysState] = useState<ReadonlySet<string>>(new Set());
 
-  const [nickname, setNickname] = useState(
-    localStorage.getItem("nickname") || "Unknown"
-  );
+  const [cameraID, setCameraID] = useState("");
+  const [cameraQuality, setCameraQuality] = useState("native");
+  const [cameraMirrored, setCameraMirrored] = useState(true);
+  const [cameraFlipped, setCameraFlipped] = useState(false);
 
-  const [showPeerLatency, setShowPeerLatency] = useState(
-    localStorage.getItem("showPeerLatency") !== "false"
-  );
+  const [screenShareQuality, setScreenShareQuality] = useState("native");
+  const [screenShareFps, setScreenShareFps] = useState(30);
+  const [experimentalScreenShare, setExperimentalScreenShare] = useState(false);
 
-  const [chatMediaVolume, setChatMediaVolume] = useState(
-    readNumeric("chatMediaVolume", 50)
-  );
-
-  const [blurProfanity, setBlurProfanityState] = useState(
-    localStorage.getItem("blurProfanity") !== "false"
-  );
-
-  const [smileyConversion, setSmileyConversionState] = useState(
-    localStorage.getItem("smileyConversion") !== "false"
-  );
-  const [disabledSmileys, setDisabledSmileysState] = useState<ReadonlySet<string>>(
-    () => new Set(JSON.parse(localStorage.getItem("disabledSmileys") || "[]") as string[]),
-  );
-
-  const [cameraID, setCameraID] = useState(
-    localStorage.getItem("cameraID") || ""
-  );
-  const [cameraQuality, setCameraQuality] = useState(
-    localStorage.getItem("cameraQuality") || "native"
-  );
-  const [cameraMirrored, setCameraMirrored] = useState(
-    localStorage.getItem("cameraMirrored") !== "false"
-  );
-  const [cameraFlipped, setCameraFlipped] = useState(
-    localStorage.getItem("cameraFlipped") === "true"
-  );
-
-  const [screenShareQuality, setScreenShareQuality] = useState(
-    localStorage.getItem("screenShareQuality") || "native"
-  );
-  const [screenShareFps, setScreenShareFps] = useState(
-    readNumeric("screenShareFps", 30)
-  );
-  const [experimentalScreenShare, setExperimentalScreenShare] = useState(
-    localStorage.getItem("experimentalScreenShare") === "true"
-  );
-
-  const [userVolumes, setUserVolumes] = useState<Record<string, number>>(
-    () => JSON.parse(localStorage.getItem("userVolumes") || "{}")
-  );
-
+  const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
   const [showVoiceView, setShowVoiceView] = useState(true);
 
-  const [pinChannelsSidebar, setPinChannelsSidebarState] = useState(
-    localStorage.getItem("pinChannelsSidebar") !== "false"
-  );
-  const [pinMembersSidebar, setPinMembersSidebarState] = useState(
-    localStorage.getItem("pinMembersSidebar") !== "false"
-  );
+  const [pinChannelsSidebar, setPinChannelsSidebarState] = useState(true);
+  const [pinMembersSidebar, setPinMembersSidebarState] = useState(true);
 
   const [isAFK, setIsAFK] = useState(false);
-  const [afkTimeoutMinutes, setAfkTimeoutMinutes] = useState(
-    readNumeric("afkTimeoutMinutes", 5)
-  );
+  const [afkTimeoutMinutes, setAfkTimeoutMinutes] = useState(5);
 
-  function updateAvatarDataUrl(dataUrl: string | null) {
-    setAvatarDataUrlState(dataUrl);
-  }
+  const applyAudioRef = useRef(audio.applyAudioData);
+  applyAudioRef.current = audio.applyAudioData;
 
-  async function setAvatarFile(file: File | null) {
-    if (!file) {
-      await clearStoredAvatar().catch(() => {});
-      localStorage.removeItem("avatarDataUrl");
-      if (avatarObjectUrlRef.current) {
-        URL.revokeObjectURL(avatarObjectUrlRef.current);
-        avatarObjectUrlRef.current = null;
-      }
-      setAvatarDataUrlState(null);
-      return;
-    }
-
-    await setStoredAvatar(file, file.type || null).catch(() => {});
-    if (avatarObjectUrlRef.current) URL.revokeObjectURL(avatarObjectUrlRef.current);
-    const url = URL.createObjectURL(file);
-    avatarObjectUrlRef.current = url;
-    setAvatarDataUrlState(url);
-  }
-
-  function updateNickname(newName: string) {
-    updateStorage("nickname", newName, setNickname);
-  }
-
-  function updateAfkTimeoutMinutes(newTimeout: number) {
-    setAfkTimeoutMinutes(newTimeout);
-    localStorage.setItem("afkTimeoutMinutes", newTimeout.toString());
-  }
-
-  function updateShowDebugOverlay(show: boolean) {
-    setShowDebugOverlay(show);
-    localStorage.setItem("showDebugOverlay", show.toString());
-  }
-
-  function updateShowPeerLatency(value: boolean) {
-    setShowPeerLatency(value);
-    localStorage.setItem("showPeerLatency", value.toString());
-  }
-
-  function updateChatMediaVolume(volume: number) {
-    setChatMediaVolume(volume);
-    localStorage.setItem("chatMediaVolume", volume.toString());
-  }
-
-  function updateBlurProfanity(enabled: boolean) {
-    setBlurProfanityState(enabled);
-    localStorage.setItem("blurProfanity", enabled.toString());
-  }
-
-  function updateSmileyConversion(enabled: boolean) {
-    setSmileyConversionState(enabled);
-    localStorage.setItem("smileyConversion", enabled.toString());
-  }
-
-  function updateDisabledSmileys(shortcodes: ReadonlySet<string>) {
-    setDisabledSmileysState(shortcodes);
-    localStorage.setItem("disabledSmileys", JSON.stringify([...shortcodes]));
-  }
-
-  function updateCameraID(id: string) {
-    setCameraID(id);
-    localStorage.setItem("cameraID", id);
-  }
-
-  function updateCameraQuality(quality: string) {
-    setCameraQuality(quality);
-    localStorage.setItem("cameraQuality", quality);
-  }
-
-  function updateCameraMirrored(mirrored: boolean) {
-    setCameraMirrored(mirrored);
-    localStorage.setItem("cameraMirrored", mirrored.toString());
-  }
-
-  function updateCameraFlipped(flipped: boolean) {
-    setCameraFlipped(flipped);
-    localStorage.setItem("cameraFlipped", flipped.toString());
-  }
-
-  function updateScreenShareQuality(quality: string) {
-    setScreenShareQuality(quality);
-    localStorage.setItem("screenShareQuality", quality);
-  }
-
-  function updateScreenShareFps(fps: number) {
-    setScreenShareFps(fps);
-    localStorage.setItem("screenShareFps", fps.toString());
-  }
-
-  function updateExperimentalScreenShare(enabled: boolean) {
-    setExperimentalScreenShare(enabled);
-    localStorage.setItem("experimentalScreenShare", enabled.toString());
-  }
-
-  function updateUserVolume(serverUserId: string, volume: number) {
-    setUserVolumes((prev) => {
-      const next = { ...prev, [serverUserId]: volume };
-      localStorage.setItem("userVolumes", JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function resetUserVolume(serverUserId: string) {
-    setUserVolumes((prev) => {
-      const next = { ...prev };
-      delete next[serverUserId];
-      localStorage.setItem("userVolumes", JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function updateHasSeenWelcome() {
-    updateStorage("hasSeenWelcome", "true", () => setHasSeenWelcome(true));
-    if (!localStorage.getItem("nickname")) {
-      setSettingsTab("profile");
-      setShowSettings(true);
-    }
-  }
-
-  function openSettings(tab: string = "appearance") {
-    setSettingsTab(tab);
-    setShowSettings(true);
-  }
-
-  function updatePinChannelsSidebar(pinned: boolean) {
-    setPinChannelsSidebarState(pinned);
-    localStorage.setItem("pinChannelsSidebar", pinned.toString());
-  }
-
-  function updatePinMembersSidebar(pinned: boolean) {
-    setPinMembersSidebarState(pinned);
-    localStorage.setItem("pinMembersSidebar", pinned.toString());
-  }
-
+  // Load user-specific settings when userId changes
   useEffect(() => {
-    if (localStorage.getItem("hasSeenWelcome")) {
-      setHasSeenWelcome(true);
-      if (!localStorage.getItem("nickname")) {
-        setSettingsTab("profile");
-        setShowSettings(true);
-      }
-    } else {
-      setHasSeenWelcome(false);
-    }
-  }, []);
-
-  useEffect(() => {
+    if (!userId) return;
     let cancelled = false;
+
     (async () => {
-      const legacy = localStorage.getItem("avatarDataUrl");
-      if (legacy && legacy.startsWith("data:")) {
-        try {
-          const b = await (await fetch(legacy)).blob();
-          await setStoredAvatar(b, b.type || null);
-          localStorage.removeItem("avatarDataUrl");
-        } catch {
-          // ignore
+      await loadForUser(userId);
+      if (cancelled) return;
+
+      applyAudioRef.current(loadAudioFromCache());
+
+      setNickname(getUserValue("nickname", "Unknown"));
+      setHasSeenWelcome(getUserValue("hasSeenWelcome", false));
+      setShowDebugOverlay(getUserValue("showDebugOverlay", false));
+      setShowPeerLatency(getUserValue("showPeerLatency", true));
+      setChatMediaVolume(getUserValue("chatMediaVolume", 50));
+      setBlurProfanityState(getUserValue("blurProfanity", true));
+      setSmileyConversionState(getUserValue("smileyConversion", true));
+      setDisabledSmileysState(new Set(getUserValue<string[]>("disabledSmileys", [])));
+      setCameraID(getUserValue("cameraID", ""));
+      setCameraQuality(getUserValue("cameraQuality", "native"));
+      setCameraMirrored(getUserValue("cameraMirrored", true));
+      setCameraFlipped(getUserValue("cameraFlipped", false));
+      setScreenShareQuality(getUserValue("screenShareQuality", "native"));
+      setScreenShareFps(getUserValue("screenShareFps", 30));
+      setExperimentalScreenShare(getUserValue("experimentalScreenShare", false));
+      setUserVolumes(getUserValue("userVolumes", {}));
+      setPinChannelsSidebarState(getUserValue("pinChannelsSidebar", true));
+      setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
+      setAfkTimeoutMinutes(getUserValue("afkTimeoutMinutes", 5));
+
+      const seen = getUserValue<boolean>("hasSeenWelcome", false);
+      if (seen) {
+        setHasSeenWelcome(true);
+        if (!getUserValue<string>("nickname", "")) {
+          setSettingsTab("profile");
+          setShowSettings(true);
         }
+      } else {
+        setHasSeenWelcome(false);
       }
 
-      const rec = await getStoredAvatar().catch(() => null);
+      const rec = await getStoredAvatar(userId).catch(() => null);
       if (cancelled || !rec?.blob) return;
       if (avatarObjectUrlRef.current) URL.revokeObjectURL(avatarObjectUrlRef.current);
       const url = URL.createObjectURL(rec.blob);
@@ -263,8 +109,147 @@ function useSettingsHook() {
         URL.revokeObjectURL(avatarObjectUrlRef.current);
         avatarObjectUrlRef.current = null;
       }
+      setAvatarDataUrlState(null);
     };
-  }, []);
+  }, [userId]);
+
+  function updateAvatarDataUrl(dataUrl: string | null) {
+    setAvatarDataUrlState(dataUrl);
+  }
+
+  async function setAvatarFile(file: File | null) {
+    if (!file) {
+      if (userId) await clearStoredAvatar(userId).catch(() => {});
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+      setAvatarDataUrlState(null);
+      return;
+    }
+
+    if (userId) await setStoredAvatar(userId, file, file.type || null).catch(() => {});
+    if (avatarObjectUrlRef.current) URL.revokeObjectURL(avatarObjectUrlRef.current);
+    const url = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = url;
+    setAvatarDataUrlState(url);
+  }
+
+  function updateNickname(newName: string) {
+    setNickname(newName);
+    setUserValue("nickname", newName);
+  }
+
+  function updateAfkTimeoutMinutes(newTimeout: number) {
+    setAfkTimeoutMinutes(newTimeout);
+    setUserValue("afkTimeoutMinutes", newTimeout);
+  }
+
+  function updateShowDebugOverlay(show: boolean) {
+    setShowDebugOverlay(show);
+    setUserValue("showDebugOverlay", show);
+  }
+
+  function updateShowPeerLatency(value: boolean) {
+    setShowPeerLatency(value);
+    setUserValue("showPeerLatency", value);
+  }
+
+  function updateChatMediaVolume(volume: number) {
+    setChatMediaVolume(volume);
+    setUserValue("chatMediaVolume", volume);
+  }
+
+  function updateBlurProfanity(enabled: boolean) {
+    setBlurProfanityState(enabled);
+    setUserValue("blurProfanity", enabled);
+  }
+
+  function updateSmileyConversion(enabled: boolean) {
+    setSmileyConversionState(enabled);
+    setUserValue("smileyConversion", enabled);
+  }
+
+  function updateDisabledSmileys(shortcodes: ReadonlySet<string>) {
+    setDisabledSmileysState(shortcodes);
+    setUserValue("disabledSmileys", [...shortcodes]);
+  }
+
+  function updateCameraID(id: string) {
+    setCameraID(id);
+    setUserValue("cameraID", id);
+  }
+
+  function updateCameraQuality(quality: string) {
+    setCameraQuality(quality);
+    setUserValue("cameraQuality", quality);
+  }
+
+  function updateCameraMirrored(mirrored: boolean) {
+    setCameraMirrored(mirrored);
+    setUserValue("cameraMirrored", mirrored);
+  }
+
+  function updateCameraFlipped(flipped: boolean) {
+    setCameraFlipped(flipped);
+    setUserValue("cameraFlipped", flipped);
+  }
+
+  function updateScreenShareQuality(quality: string) {
+    setScreenShareQuality(quality);
+    setUserValue("screenShareQuality", quality);
+  }
+
+  function updateScreenShareFps(fps: number) {
+    setScreenShareFps(fps);
+    setUserValue("screenShareFps", fps);
+  }
+
+  function updateExperimentalScreenShare(enabled: boolean) {
+    setExperimentalScreenShare(enabled);
+    setUserValue("experimentalScreenShare", enabled);
+  }
+
+  function updateUserVolume(serverUserId: string, volume: number) {
+    setUserVolumes((prev) => {
+      const next = { ...prev, [serverUserId]: volume };
+      setUserValue("userVolumes", next);
+      return next;
+    });
+  }
+
+  function resetUserVolume(serverUserId: string) {
+    setUserVolumes((prev) => {
+      const next = { ...prev };
+      delete next[serverUserId];
+      setUserValue("userVolumes", next);
+      return next;
+    });
+  }
+
+  function updateHasSeenWelcome() {
+    setHasSeenWelcome(true);
+    setUserValue("hasSeenWelcome", true);
+    if (!getUserValue<string>("nickname", "")) {
+      setSettingsTab("profile");
+      setShowSettings(true);
+    }
+  }
+
+  function openSettings(tab: string = "appearance") {
+    setSettingsTab(tab);
+    setShowSettings(true);
+  }
+
+  function updatePinChannelsSidebar(pinned: boolean) {
+    setPinChannelsSidebarState(pinned);
+    setUserValue("pinChannelsSidebar", pinned);
+  }
+
+  function updatePinMembersSidebar(pinned: boolean) {
+    setPinMembersSidebarState(pinned);
+    setUserValue("pinMembersSidebar", pinned);
+  }
 
   return {
     ...audio,

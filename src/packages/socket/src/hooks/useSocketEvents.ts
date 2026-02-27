@@ -28,6 +28,7 @@ type Sockets = { [host: string]: Socket };
 export interface SocketEventDeps {
   servers: Servers;
   nickname: string;
+  userId: string | null;
   connectSoundEnabled: boolean;
   disconnectSoundEnabled: boolean;
   connectSoundFile: string;
@@ -62,6 +63,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const {
     servers,
     nickname,
+    userId,
     connectSoundEnabled,
     disconnectSoundEnabled,
     connectSoundFile,
@@ -288,6 +290,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       registerServerSocketEvents(socket, host, {
         nickname,
+        userId,
         servers,
         serversRef,
         lastInviteJoinAttemptRef,

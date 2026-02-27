@@ -9,6 +9,11 @@ export interface KeycloakCredential {
   credentialData?: string;
 }
 
+interface KeycloakCredentialContainer {
+  type: string;
+  userCredentialMetadatas: { credential: KeycloakCredential }[];
+}
+
 function getAccountApiBase(): string {
   const cfg = getGrytConfig();
   return `${cfg.GRYT_OIDC_ISSUER}/account`;
@@ -42,7 +47,10 @@ async function accountFetch(
 
 export async function fetchCredentials(): Promise<KeycloakCredential[]> {
   const res = await accountFetch("/credentials");
-  return res.json();
+  const containers: KeycloakCredentialContainer[] = await res.json();
+  return containers.flatMap((c) =>
+    c.userCredentialMetadatas.map((m) => m.credential),
+  );
 }
 
 export async function deleteCredential(id: string): Promise<void> {

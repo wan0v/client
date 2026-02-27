@@ -52,8 +52,9 @@ export async function syncAvatarToHost(
   currentAvatarFileId: string | null | undefined,
   socket: Socket,
   setServerProfiles: Dispatch<SetStateAction<Record<string, ServerProfile>>>,
+  userId: string,
 ): Promise<void> {
-  const stored = await getStoredAvatar().catch(() => null);
+  const stored = await getStoredAvatar(userId).catch(() => null);
   if (!stored?.blob) return;
 
   const localHash = await getAvatarHash(stored.blob);

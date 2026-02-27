@@ -37,6 +37,10 @@ function UpdateControls() {
     getElectronAPI()?.checkForUpdates();
   }, []);
 
+  const handleDownloadUpdate = useCallback(() => {
+    getElectronAPI()?.downloadUpdate();
+  }, []);
+
   const handleInstallUpdate = useCallback(() => {
     getElectronAPI()?.installUpdate();
   }, []);
@@ -84,6 +88,7 @@ function UpdateControls() {
   })();
 
   const isChecking = status?.status === "checking";
+  const isAvailable = status?.status === "available";
   const isDownloading = status?.status === "downloading";
   const isReady = status?.status === "downloaded";
 
@@ -134,14 +139,25 @@ function UpdateControls() {
         )}
 
         <Flex gap="3">
-          {!isReady && (
+          {!isAvailable && !isDownloading && !isReady && (
             <Button
               variant="soft"
               onClick={handleCheckForUpdates}
-              disabled={isChecking || isDownloading}
+              disabled={isChecking}
             >
               <MdRefresh size={16} />
               {isChecking ? "Checking…" : "Check for Updates"}
+            </Button>
+          )}
+
+          {isAvailable && (
+            <Button
+              variant="solid"
+              color="blue"
+              onClick={handleDownloadUpdate}
+            >
+              <MdDownload size={16} />
+              Download & Install
             </Button>
           )}
 

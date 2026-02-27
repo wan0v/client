@@ -1,3 +1,5 @@
+import { AUDIO_DEFAULTS } from "./useAudioSettings";
+
 export interface Settings {
   micID?: string;
   setMicID: (id: string) => void;
@@ -143,189 +145,138 @@ export interface Settings {
   resetUserVolume: (serverUserId: string) => void;
 }
 
-// ── localStorage helpers ────────────────────────────────────────────
+// ── Singleton init value (defaults before user data is loaded) ──────
 
-export function readNumeric(key: string, fallback: number): number {
-  const raw = localStorage.getItem(key);
-  if (raw === null) return fallback;
-  const n = Number(raw);
-  return Number.isNaN(n) ? fallback : n;
-}
-
-export function updateStorage(
-  key: string,
-  value: string,
-  state: (d: string) => void,
-) {
-  state(value);
-  localStorage.setItem(key, value);
-}
-
-export function updateRnnoiseEnabled(
-  value: boolean,
-  setter: (value: boolean) => void,
-) {
-  setter(value);
-  localStorage.setItem("rnnoiseEnabled", value.toString());
-}
-
-export function readInitialMicID(): string | undefined {
-  const stored = localStorage.getItem("micID");
-  return stored && stored !== "undefined" && stored.trim() !== ""
-    ? stored
-    : undefined;
-}
-
-export function readInitialMicVolume(): number {
-  const stored = localStorage.getItem("micVolume");
-  const value = stored ? Number(stored) : 50;
-  if (value === 100) {
-    localStorage.setItem("micVolume", "50");
-    return 50;
-  }
-  return value;
-}
-
-// ── Singleton init value ────────────────────────────────────────────
+const noop = () => {};
 
 export const settingsInit: Settings = {
-  micID: readInitialMicID(),
-  setMicID: () => {},
-  outputDeviceID: localStorage.getItem("outputDeviceID") || "",
-  setOutputDeviceID: () => {},
-  micVolume: readNumeric("micVolume", 50),
-  setMicVolume: () => {},
-  outputVolume: readNumeric("outputVolume", 50),
-  setOutputVolume: () => {},
-  noiseGate: readNumeric("noiseGate", 1),
-  setNoiseGate: () => {},
+  micID: AUDIO_DEFAULTS.micID,
+  setMicID: noop,
+  outputDeviceID: AUDIO_DEFAULTS.outputDeviceID,
+  setOutputDeviceID: noop,
+  micVolume: AUDIO_DEFAULTS.micVolume,
+  setMicVolume: noop,
+  outputVolume: AUDIO_DEFAULTS.outputVolume,
+  setOutputVolume: noop,
+  noiseGate: AUDIO_DEFAULTS.noiseGate,
+  setNoiseGate: noop,
   loopbackEnabled: false,
-  setLoopbackEnabled: () => {},
-  rnnoiseEnabled: localStorage.getItem("rnnoiseEnabled") !== "false",
-  setRnnoiseEnabled: () => {},
-  autoGainEnabled: localStorage.getItem("autoGainEnabled") !== "false",
-  setAutoGainEnabled: () => {},
-  autoGainTargetDb: readNumeric("autoGainTargetDb", -20),
-  setAutoGainTargetDb: () => {},
-  compressorEnabled: localStorage.getItem("compressorEnabled") !== "false",
-  setCompressorEnabled: () => {},
-  compressorAmount: readNumeric("compressorAmount", 50),
-  setCompressorAmount: () => {},
+  setLoopbackEnabled: noop,
+  rnnoiseEnabled: AUDIO_DEFAULTS.rnnoiseEnabled,
+  setRnnoiseEnabled: noop,
+  autoGainEnabled: AUDIO_DEFAULTS.autoGainEnabled,
+  setAutoGainEnabled: noop,
+  autoGainTargetDb: AUDIO_DEFAULTS.autoGainTargetDb,
+  setAutoGainTargetDb: noop,
+  compressorEnabled: AUDIO_DEFAULTS.compressorEnabled,
+  setCompressorEnabled: noop,
+  compressorAmount: AUDIO_DEFAULTS.compressorAmount,
+  setCompressorAmount: noop,
   isMuted: false,
-  setIsMuted: () => {},
+  setIsMuted: noop,
   isDeafened: false,
-  setIsDeafened: () => {},
+  setIsDeafened: noop,
   isServerMuted: false,
-  setIsServerMuted: () => {},
+  setIsServerMuted: noop,
   isServerDeafened: false,
-  setIsServerDeafened: () => {},
+  setIsServerDeafened: noop,
   showSettings: false,
-  setShowSettings: () => {},
+  setShowSettings: noop,
   showNickname: false,
-  setShowNickname: () => {},
-  nickname: localStorage.getItem("nickname") || "Unknown",
-  setNickname: () => {},
+  setShowNickname: noop,
+  nickname: "Unknown",
+  setNickname: noop,
   avatarDataUrl: null,
-  setAvatarDataUrl: () => {},
+  setAvatarDataUrl: noop,
   setAvatarFile: async () => {},
-  hasSeenWelcome: !!localStorage.getItem("hasSeenWelcome"),
-  updateHasSeenWelcome: () => {},
+  hasSeenWelcome: false,
+  updateHasSeenWelcome: noop,
   showVoiceView: true,
-  setShowVoiceView: () => {},
+  setShowVoiceView: noop,
 
-  pinChannelsSidebar: localStorage.getItem("pinChannelsSidebar") !== "false",
-  setPinChannelsSidebar: () => {},
-  pinMembersSidebar: localStorage.getItem("pinMembersSidebar") !== "false",
-  setPinMembersSidebar: () => {},
+  pinChannelsSidebar: true,
+  setPinChannelsSidebar: noop,
+  pinMembersSidebar: true,
+  setPinMembersSidebar: noop,
 
-  connectSoundEnabled: localStorage.getItem("connectSoundEnabled") !== "false",
-  setConnectSoundEnabled: () => {},
-  disconnectSoundEnabled:
-    localStorage.getItem("disconnectSoundEnabled") !== "false",
-  setDisconnectSoundEnabled: () => {},
-  connectSoundVolume: readNumeric("connectSoundVolume", 30),
-  setConnectSoundVolume: () => {},
-  disconnectSoundVolume: readNumeric("disconnectSoundVolume", 30),
-  setDisconnectSoundVolume: () => {},
-  customConnectSoundFile:
-    localStorage.getItem("customConnectSoundFile") || null,
-  setCustomConnectSoundFile: () => {},
-  customDisconnectSoundFile:
-    localStorage.getItem("customDisconnectSoundFile") || null,
-  setCustomDisconnectSoundFile: () => {},
+  connectSoundEnabled: AUDIO_DEFAULTS.connectSoundEnabled,
+  setConnectSoundEnabled: noop,
+  disconnectSoundEnabled: AUDIO_DEFAULTS.disconnectSoundEnabled,
+  setDisconnectSoundEnabled: noop,
+  connectSoundVolume: AUDIO_DEFAULTS.connectSoundVolume,
+  setConnectSoundVolume: noop,
+  disconnectSoundVolume: AUDIO_DEFAULTS.disconnectSoundVolume,
+  setDisconnectSoundVolume: noop,
+  customConnectSoundFile: AUDIO_DEFAULTS.customConnectSoundFile,
+  setCustomConnectSoundFile: noop,
+  customDisconnectSoundFile: AUDIO_DEFAULTS.customDisconnectSoundFile,
+  setCustomDisconnectSoundFile: noop,
   settingsTab: "profile",
-  setSettingsTab: () => {},
-  openSettings: () => {},
+  setSettingsTab: noop,
+  openSettings: noop,
   isAFK: false,
-  setIsAFK: () => {},
+  setIsAFK: noop,
   afkTimeoutMinutes: 5,
-  setAfkTimeoutMinutes: () => {},
-  showDebugOverlay: localStorage.getItem("showDebugOverlay") === "true",
-  setShowDebugOverlay: () => {},
+  setAfkTimeoutMinutes: noop,
+  showDebugOverlay: false,
+  setShowDebugOverlay: noop,
 
-  eSportsModeEnabled: localStorage.getItem("eSportsModeEnabled") === "true",
-  setESportsModeEnabled: () => {},
+  eSportsModeEnabled: AUDIO_DEFAULTS.eSportsModeEnabled,
+  setESportsModeEnabled: noop,
 
-  inputMode:
-    (localStorage.getItem("inputMode") as "voice_activity" | "push_to_talk") ||
-    "voice_activity",
-  setInputMode: () => {},
+  inputMode: AUDIO_DEFAULTS.inputMode,
+  setInputMode: noop,
 
-  pushToTalkKey: localStorage.getItem("pushToTalkKey") || "",
-  setPushToTalkKey: () => {},
-  muteHotkey: localStorage.getItem("muteHotkey") || "",
-  setMuteHotkey: () => {},
-  deafenHotkey: localStorage.getItem("deafenHotkey") || "",
-  setDeafenHotkey: () => {},
-  disconnectHotkey: localStorage.getItem("disconnectHotkey") || "",
-  setDisconnectHotkey: () => {},
+  pushToTalkKey: AUDIO_DEFAULTS.pushToTalkKey,
+  setPushToTalkKey: noop,
+  muteHotkey: AUDIO_DEFAULTS.muteHotkey,
+  setMuteHotkey: noop,
+  deafenHotkey: AUDIO_DEFAULTS.deafenHotkey,
+  setDeafenHotkey: noop,
+  disconnectHotkey: AUDIO_DEFAULTS.disconnectHotkey,
+  setDisconnectHotkey: noop,
 
-  showPeerLatency: localStorage.getItem("showPeerLatency") !== "false",
-  setShowPeerLatency: () => {},
+  showPeerLatency: true,
+  setShowPeerLatency: noop,
 
-  notificationBadgeEnabled:
-    localStorage.getItem("notificationBadgeEnabled") !== "false",
-  setNotificationBadgeEnabled: () => {},
+  notificationBadgeEnabled: AUDIO_DEFAULTS.notificationBadgeEnabled,
+  setNotificationBadgeEnabled: noop,
 
-  messageSoundEnabled: localStorage.getItem("messageSoundEnabled") !== "false",
-  setMessageSoundEnabled: () => {},
-  messageSoundVolume: readNumeric("messageSoundVolume", 30),
-  setMessageSoundVolume: () => {},
-  customMessageSoundFile:
-    localStorage.getItem("customMessageSoundFile") || null,
-  setCustomMessageSoundFile: () => {},
+  messageSoundEnabled: AUDIO_DEFAULTS.messageSoundEnabled,
+  setMessageSoundEnabled: noop,
+  messageSoundVolume: AUDIO_DEFAULTS.messageSoundVolume,
+  setMessageSoundVolume: noop,
+  customMessageSoundFile: AUDIO_DEFAULTS.customMessageSoundFile,
+  setCustomMessageSoundFile: noop,
 
-  chatMediaVolume: readNumeric("chatMediaVolume", 50),
-  setChatMediaVolume: () => {},
+  chatMediaVolume: 50,
+  setChatMediaVolume: noop,
 
-  blurProfanity: localStorage.getItem("blurProfanity") !== "false",
-  setBlurProfanity: () => {},
+  blurProfanity: true,
+  setBlurProfanity: noop,
 
-  smileyConversion: localStorage.getItem("smileyConversion") !== "false",
-  setSmileyConversion: () => {},
-  disabledSmileys: new Set<string>(
-    JSON.parse(localStorage.getItem("disabledSmileys") || "[]") as string[],
-  ),
-  setDisabledSmileys: () => {},
+  smileyConversion: true,
+  setSmileyConversion: noop,
+  disabledSmileys: new Set<string>(),
+  setDisabledSmileys: noop,
 
-  cameraID: localStorage.getItem("cameraID") || "",
-  setCameraID: () => {},
-  cameraQuality: localStorage.getItem("cameraQuality") || "native",
-  setCameraQuality: () => {},
-  cameraMirrored: localStorage.getItem("cameraMirrored") !== "false",
-  setCameraMirrored: () => {},
-  cameraFlipped: localStorage.getItem("cameraFlipped") === "true",
-  setCameraFlipped: () => {},
+  cameraID: "",
+  setCameraID: noop,
+  cameraQuality: "native",
+  setCameraQuality: noop,
+  cameraMirrored: true,
+  setCameraMirrored: noop,
+  cameraFlipped: false,
+  setCameraFlipped: noop,
 
-  screenShareQuality: localStorage.getItem("screenShareQuality") || "native",
-  setScreenShareQuality: () => {},
-  screenShareFps: readNumeric("screenShareFps", 30),
-  setScreenShareFps: () => {},
-  experimentalScreenShare:
-    localStorage.getItem("experimentalScreenShare") === "true",
-  setExperimentalScreenShare: () => {},
+  screenShareQuality: "native",
+  setScreenShareQuality: noop,
+  screenShareFps: 30,
+  setScreenShareFps: noop,
+  experimentalScreenShare: false,
+  setExperimentalScreenShare: noop,
 
-  userVolumes: JSON.parse(localStorage.getItem("userVolumes") || "{}"),
-  updateUserVolume: () => {},
-  resetUserVolume: () => {},
+  userVolumes: {},
+  updateUserVolume: noop,
+  resetUserVolume: noop,
 };

@@ -454,7 +454,7 @@ export function ProfileSettings() {
         }));
       });
 
-      const stored = await getStoredAvatar().catch(() => null);
+      const stored = userId ? await getStoredAvatar(userId).catch(() => null) : null;
       if (stored?.blob) {
         const minMax = getAvatarMaxBytes(hosts);
         let uploadFile: Blob = stored.blob;

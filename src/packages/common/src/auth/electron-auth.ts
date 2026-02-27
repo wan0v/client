@@ -1,7 +1,7 @@
 import { getGrytConfig } from "../../../../config";
 import { getElectronAPI } from "../../../../lib/electron";
 
-const REDIRECT_URI = "gryt://auth/callback";
+const REDIRECT_URI = "https://gryt.chat/auth/callback";
 const STORAGE_KEY = "gryt_electron_tokens";
 
 export interface ElectronTokens {

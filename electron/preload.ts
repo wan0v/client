@@ -34,6 +34,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("check-for-updates");
   },
 
+  downloadUpdate() {
+    ipcRenderer.send("download-update");
+  },
+
   installUpdate() {
     ipcRenderer.send("install-update");
   },
@@ -135,6 +139,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
       callback(url);
     ipcRenderer.on("auth-callback", handler);
     return () => ipcRenderer.removeListener("auth-callback", handler);
+  },
+
+  loadUserData(userId: string): Promise<Record<string, unknown>> {
+    return ipcRenderer.invoke("user-store:load", userId);
+  },
+
+  saveUserData(userId: string, data: Record<string, unknown>) {
+    ipcRenderer.send("user-store:save", userId, data);
+  },
+
+  setUserData(userId: string, key: string, value: unknown) {
+    ipcRenderer.send("user-store:set", userId, key, value);
   },
 
   onDeepLinkInvite(callback: (data: { host: string; code: string }) => void) {

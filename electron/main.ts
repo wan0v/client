@@ -7,6 +7,7 @@ import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
+import { initUserStore, loadUser, patchUser, saveUser } from "./userStore";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -73,6 +74,7 @@ function handleDeepLink(url: string): void {
 // ── Persistent config (userData/gryt-config.json) ───────────────────────
 
 const configPath = join(app.getPath("userData"), "gryt-config.json");
+initUserStore(app.getPath("userData"));
 
 function readConfig(): Record<string, unknown> {
   try { return JSON.parse(readFileSync(configPath, "utf8")); }
@@ -625,6 +627,15 @@ if (!gotSingleInstanceLock) {
       writeConfig({ startMinimizedOnLogin });
     });
 
+    // ── Per-user file store ───────────────────────────────────────────
+    ipcMain.handle("user-store:load", (_event, userId: string) => loadUser(userId));
+    ipcMain.on("user-store:set", (_event, userId: string, key: string, value: unknown) => {
+      patchUser(userId, key, value);
+    });
+    ipcMain.on("user-store:save", (_event, userId: string, data: Record<string, unknown>) => {
+      saveUser(userId, data);
+    });
+
     // Apply at startup (default enabled on Windows).
     applyStartWithWindowsSetting(startWithWindows);
 
@@ -658,6 +669,9 @@ if (!gotSingleInstanceLock) {
       closeSplashAndShowMain();
       initBackgroundUpdater();
     }
+
+    // Manual checks from Settings should only check, not auto-download.
+    autoUpdater.autoDownload = false;
 
     // ── Embed origin fix ────────────────────────────────────────────
     // Third-party embed players (YouTube, Vimeo, Spotify, etc.) reject
@@ -785,6 +799,12 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on("check-for-updates", () => {
       autoUpdater.checkForUpdates().catch((err) => {
+        sendToMain("error", { message: friendlyUpdateError(err) });
+      });
+    });
+
+    ipcMain.on("download-update", () => {
+      autoUpdater.downloadUpdate().catch((err) => {
         sendToMain("error", { message: friendlyUpdateError(err) });
       });
     });

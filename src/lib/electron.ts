@@ -22,6 +22,7 @@ export interface ElectronAPI {
   onPttUp(callback: () => void): () => void;
   setPttKey(pttKey: string): void;
   checkForUpdates(): void;
+  downloadUpdate(): void;
   installUpdate(): void;
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
@@ -44,6 +45,9 @@ export interface ElectronAPI {
   onWindowFocusChange(callback: (focused: boolean) => void): () => void;
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;
+  loadUserData(userId: string): Promise<Record<string, unknown>>;
+  saveUserData(userId: string, data: Record<string, unknown>): void;
+  setUserData(userId: string, key: string, value: unknown): void;
   onAuthCallback(callback: (url: string) => void): () => void;
   onDeepLinkInvite(callback: (data: { host: string; code: string }) => void): () => void;
 }

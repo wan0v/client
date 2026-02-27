@@ -3,6 +3,7 @@ import { singletonHook } from "react-singleton-hook";
 
 import type { Account } from "@/common";
 import { signOut } from "@/common";
+import { clearUserCache } from "@/settings/src/hooks/userStorage";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { handleAuthCallback } from "../auth/electron-auth";
@@ -132,6 +133,7 @@ function useAccountHook(): Account {
   async function logout() {
     console.log("[Auth:Hook] logout() called", new Error().stack);
     signOut();
+    clearUserCache();
     setIsSignedIn(false);
     try {
       await doLogout();

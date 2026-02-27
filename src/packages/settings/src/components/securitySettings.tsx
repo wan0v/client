@@ -219,12 +219,15 @@ export function SecuritySettings() {
     setAdding(true);
     try {
       await startPasskeySetup();
+      await loadCredentials();
+      toast.success("Passkey added");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Passkey setup failed";
       toast.error(msg);
+    } finally {
       setAdding(false);
     }
-  }, []);
+  }, [loadCredentials]);
 
   const handleDelete = useCallback(
     async (id: string) => {

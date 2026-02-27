@@ -6,7 +6,7 @@ import { io, Socket } from "socket.io-client";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
-import { getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge, useUserId } from "@/common";
 import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
@@ -24,6 +24,7 @@ import { useSocketEvents } from "./useSocketEvents";
 type Sockets = { [host: string]: Socket };
 
 function useSocketsHook() {
+  const userId = useUserId();
   const [sockets, setSockets] = useState<Sockets>({});
   const [tokenRevision, setTokenRevision] = useState(0);
   const [identityReady, setIdentityReady] = useState(false);
@@ -147,6 +148,7 @@ function useSocketsHook() {
   useSocketEvents(sockets, {
     servers,
     nickname,
+    userId,
     connectSoundEnabled,
     disconnectSoundEnabled,
     connectSoundFile,
@@ -249,8 +251,10 @@ function useSocketsHook() {
             socket.emit("server:details");
             socket.emit("members:fetch");
             const existingAvatarFileId = localStorage.getItem(`avatarFileId:${host}`);
-            syncAvatarToHost(host, existingAccessToken, existingAvatarFileId, socket, setServerProfiles)
-              .catch(() => {});
+            if (userId) {
+              syncAvatarToHost(host, existingAccessToken, existingAvatarFileId, socket, setServerProfiles, userId)
+                .catch(() => {});
+            }
           }, 1000);
         } else {
           socket.emit("server:join", {

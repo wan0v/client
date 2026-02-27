@@ -1,9 +1,8 @@
 import { Avatar, Button, Callout, Dialog, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MdClose, MdGroup, MdMail, MdWarning } from "react-icons/md";
-import { io, Socket } from "socket.io-client";
 
-import { getServerHttpBase, getServerWsBase, type PendingInvite } from "@/common";
+import { getServerHttpBase, type PendingInvite } from "@/common";
 
 type ServerPreview = {
   name: string;
@@ -32,66 +31,40 @@ export function InviteAcceptModal({
 }: InviteAcceptModalProps) {
   const [preview, setPreview] = useState<ServerPreview | null>(null);
   const [loading, setLoading] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
-
-  const cleanup = useCallback(() => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-  }, []);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!invite) {
       setPreview(null);
-      cleanup();
+      abortRef.current?.abort();
+      abortRef.current = null;
       return;
     }
 
     setLoading(true);
     setPreview(null);
 
-    const wsBase = getServerWsBase(invite.host);
-    console.log(`[InvitePreview] Connecting to ${invite.host} (${wsBase})…`);
-    const sock = io(wsBase, {
-      reconnection: false,
-      timeout: 8000,
-    });
-    socketRef.current = sock;
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
 
-    sock.on("connect", () => {
-      console.log(`[InvitePreview] Connected to ${invite.host}`);
-      sock.emit("server:info");
-    });
-
-    sock.on("server:info", (data: { name?: string; description?: string; members?: string }) => {
-      setPreview({
-        name: data.name || invite.host,
-        description: data.description,
-        members: data.members,
-      });
-      setLoading(false);
-    });
-
-    sock.on("connect_error", (err) => {
-      console.warn(`[InvitePreview] connect_error for ${invite.host}:`, err?.message || err);
-      setPreview({ name: invite.host });
-      setLoading(false);
-    });
-
-    const fallbackTimeout = setTimeout(() => {
-      if (!preview) {
+    const httpBase = getServerHttpBase(invite.host);
+    fetch(`${httpBase}/info`, { signal: ac.signal })
+      .then((r) => (r.ok ? (r.json() as Promise<ServerPreview>) : Promise.reject()))
+      .then((data) => {
+        setPreview({
+          name: data.name || invite.host,
+          description: data.description,
+          members: data.members,
+        });
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setPreview({ name: invite.host });
-        setLoading(false);
-      }
-    }, 5000);
+      })
+      .finally(() => setLoading(false));
 
-    return () => {
-      clearTimeout(fallbackTimeout);
-      cleanup();
-    };
-    // Only re-run when the invite changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => ac.abort();
   }, [invite?.host, invite?.code]);
 
   const isOpen = invite !== null;
@@ -163,7 +136,7 @@ export function InviteAcceptModal({
                 <Flex align="center" gap="1">
                   <MdGroup size={14} style={{ color: "var(--gray-9)" }} />
                   <Text size="2" color="gray">
-                    {preview.members} online
+                    {preview.members} members
                   </Text>
                 </Flex>
               )}

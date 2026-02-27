@@ -4,59 +4,19 @@ import { singletonHook } from "react-singleton-hook";
 import { useUserId } from "@/common";
 
 import { Server, Servers } from "../types/server";
+import {
+  getUserValue,
+  loadForUser,
+  setUserValue,
+} from "./userStorage";
 
 interface ServerSettings {
   servers: Servers;
   setServers: (newServers: Servers) => void;
   currentlyViewingServer: Server | null;
   setCurrentlyViewingServer: (host: string | null) => void;
-  lastSelectedChannels: Record<string, string>; // host -> channelId
+  lastSelectedChannels: Record<string, string>;
   setLastSelectedChannel: (host: string, channelId: string) => void;
-}
-
-function serversKey(userId: string): string {
-  return `servers:${userId}`;
-}
-
-function channelsKey(userId: string): string {
-  return `lastSelectedChannels:${userId}`;
-}
-
-/**
- * Migrate legacy global keys to per-user keys on first sign-in after upgrade.
- * Only migrates if the per-user key doesn't already exist.
- */
-function migrateGlobalToUser(userId: string): void {
-  const GLOBAL_SERVERS = "servers";
-  const GLOBAL_CHANNELS = "lastSelectedChannels";
-
-  if (!localStorage.getItem(serversKey(userId))) {
-    const global = localStorage.getItem(GLOBAL_SERVERS);
-    if (global) {
-      localStorage.setItem(serversKey(userId), global);
-      localStorage.removeItem(GLOBAL_SERVERS);
-    }
-  }
-
-  if (!localStorage.getItem(channelsKey(userId))) {
-    const global = localStorage.getItem(GLOBAL_CHANNELS);
-    if (global) {
-      localStorage.setItem(channelsKey(userId), global);
-      localStorage.removeItem(GLOBAL_CHANNELS);
-    }
-  }
-}
-
-function loadServersForUser(userId: string | null): Servers {
-  if (!userId) return {};
-  const raw = localStorage.getItem(serversKey(userId));
-  return raw ? (JSON.parse(raw) as Servers) : {};
-}
-
-function loadChannelsForUser(userId: string | null): Record<string, string> {
-  if (!userId) return {};
-  const raw = localStorage.getItem(channelsKey(userId));
-  return raw ? (JSON.parse(raw) as Record<string, string>) : {};
 }
 
 function useServerSettingsHook(): ServerSettings {
@@ -69,21 +29,26 @@ function useServerSettingsHook(): ServerSettings {
 
   useEffect(() => {
     if (!userId) return;
+    let cancelled = false;
 
-    migrateGlobalToUser(userId);
     userIdRef.current = userId;
     hasAutoFocused.current = false;
 
-    const loadedServers = loadServersForUser(userId);
-    const loadedChannels = loadChannelsForUser(userId);
-    setServersRaw(loadedServers);
-    setLastSelectedChannelsRaw(loadedChannels);
+    (async () => {
+      await loadForUser(userId);
+      if (cancelled) return;
+
+      setServersRaw(getUserValue<Servers>("servers", {}));
+      setLastSelectedChannelsRaw(getUserValue<Record<string, string>>("lastSelectedChannels", {}));
+    })();
+
+    return () => { cancelled = true; };
   }, [userId]);
 
   const updateServers = useCallback((newServers: Servers) => {
     setServersRaw(newServers);
     if (userIdRef.current) {
-      localStorage.setItem(serversKey(userIdRef.current), JSON.stringify(newServers));
+      setUserValue("servers", newServers);
     }
   }, []);
 
@@ -107,7 +72,7 @@ function useServerSettingsHook(): ServerSettings {
     setLastSelectedChannelsRaw(prev => {
       const newChannels = { ...prev, [host]: channelId };
       if (userIdRef.current) {
-        localStorage.setItem(channelsKey(userIdRef.current), JSON.stringify(newChannels));
+        setUserValue("lastSelectedChannels", newChannels);
       }
       return newChannels;
     });
