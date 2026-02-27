@@ -1,6 +1,6 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
-import { MdClose, MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings } from "react-icons/md";
+import { MdClose, MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings, MdSwapHoriz } from "react-icons/md";
 
 import { getServerAccessToken } from "@/common";
 
@@ -10,6 +10,7 @@ import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
 import { type ServerOverviewInitialSettings,ServerOverviewTab } from "./ServerOverviewTab";
 import { ServerRolesTab } from "./ServerRolesTab";
+import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 
 type SetupRequiredDetail = {
   host: string;
@@ -82,6 +83,8 @@ export function ServerSettingsModal() {
     return () => window.removeEventListener("server_setup_required", handler as EventListener);
   }, []);
 
+  const isOwner = role === "owner";
+
   const TAB_CONFIG = [
     {
       value: "overview",
@@ -121,7 +124,17 @@ export function ServerSettingsModal() {
       icon: MdFactCheck,
       content: <ServerAuditTab host={host} socket={socket} accessToken={accessToken} />,
     },
-  ] as const;
+    ...(isOwner
+      ? [
+          {
+            value: "replace-user" as const,
+            label: "Replace User",
+            icon: MdSwapHoriz,
+            content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
+          },
+        ]
+      : []),
+  ];
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
