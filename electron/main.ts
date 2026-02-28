@@ -1,6 +1,6 @@
-import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, nativeImage, screen, session, shell, Tray } from "electron";
+import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, nativeImage, screen, session, shell, Tray } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
-import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import { appendFileSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "fs";
 import { createServer, Server } from "http";
 import { dirname, extname, join, resolve } from "path";
 import { uIOhook, UiohookKey } from "uiohook-napi";
@@ -11,6 +11,26 @@ import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// ── Startup logging ──────────────────────────────────────────────────────
+
+const LOG_PATH = join(app.getPath("userData"), "gryt-startup.log");
+const LOG_MAX_BYTES = 50 * 1024;
+
+function startupLog(msg: string): void {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try {
+    if (existsSync(LOG_PATH) && statSync(LOG_PATH).size > LOG_MAX_BYTES) {
+      writeFileSync(LOG_PATH, line);
+    } else {
+      appendFileSync(LOG_PATH, line);
+    }
+  } catch {
+    // Best-effort — never block startup
+  }
+}
+
+startupLog(`App starting (v${app.getVersion()}, ${process.platform} ${process.arch})`);
 
 /** Test a URL against an Electron URL-filter pattern (e.g. "https://*.foo.com/*"). */
 function matchUrlPattern(pattern: string, url: string): boolean {
@@ -36,6 +56,30 @@ let pttDown = false;
 let startHiddenOnLaunch = false;
 let localServer: Server | null = null;
 let localServerUrl: string | null = null;
+
+// ── Global error handlers ────────────────────────────────────────────────
+
+process.on("uncaughtException", (err) => {
+  startupLog(`FATAL uncaughtException: ${err.stack ?? err.message}`);
+  dialog.showErrorBox(
+    "Gryt — Unexpected Error",
+    `${err.message}\n\nThe app will now quit. Check gryt-startup.log in the app data folder for details.`,
+  );
+  app.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const msg = reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
+  startupLog(`unhandledRejection: ${msg}`);
+  if (!mainWindow) {
+    const short = reason instanceof Error ? reason.message : String(reason);
+    dialog.showErrorBox(
+      "Gryt — Startup Error",
+      `${short}\n\nThe app will now quit. Check gryt-startup.log in the app data folder for details.`,
+    );
+    app.exit(1);
+  }
+});
 
 // ── Deep link protocol ───────────────────────────────────────────────────
 
@@ -320,37 +364,46 @@ function startLocalServer(): Promise<string> {
   const distDir = join(__dirname, "../dist");
   const indexPath = join(distDir, "index.html");
 
-  return new Promise((resolveUrl, reject) => {
-    const server = createServer((req, res) => {
-      const pathname = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
-      const safePath = resolve(distDir, pathname.replace(/^\/+/, ""));
+  function tryListen(port: number): Promise<string> {
+    return new Promise((resolveUrl, reject) => {
+      const server = createServer((req, res) => {
+        const pathname = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
+        const safePath = resolve(distDir, pathname.replace(/^\/+/, ""));
 
-      if (!safePath.startsWith(distDir)) {
-        res.writeHead(403);
-        res.end();
-        return;
-      }
+        if (!safePath.startsWith(distDir)) {
+          res.writeHead(403);
+          res.end();
+          return;
+        }
 
-      const filePath = existsSync(safePath) && statSync(safePath).isFile() ? safePath : indexPath;
-      const ext = extname(filePath).toLowerCase();
-      const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
+        const filePath = existsSync(safePath) && statSync(safePath).isFile() ? safePath : indexPath;
+        const ext = extname(filePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
-      res.writeHead(200, { "Content-Type": contentType });
-      createReadStream(filePath).pipe(res);
+        res.writeHead(200, { "Content-Type": contentType });
+        createReadStream(filePath).pipe(res);
+      });
+
+      server.listen(port, "127.0.0.1", () => {
+        const addr = server.address();
+        if (!addr || typeof addr === "string") {
+          reject(new Error("Failed to start local server"));
+          return;
+        }
+        localServer = server;
+        resolveUrl(`http://127.0.0.1:${addr.port}`);
+      });
+
+      server.on("error", reject);
     });
+  }
 
-    server.listen(15738, "127.0.0.1", () => {
-      const addr = server.address();
-      if (!addr || typeof addr === "string") {
-        reject(new Error("Failed to start local server"));
-        return;
-      }
-      localServer = server;
-      const url = `http://127.0.0.1:${addr.port}`;
-      resolveUrl(url);
-    });
-
-    server.on("error", reject);
+  return tryListen(15738).catch((err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      startupLog("Port 15738 in use, falling back to OS-assigned port");
+      return tryListen(0);
+    }
+    throw err;
   });
 }
 
@@ -423,6 +476,25 @@ function createMainWindow(): void {
 
   mainWindow.on("blur", () => {
     mainWindow?.webContents.send("window-focus-change", false);
+  });
+
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    startupLog(`Render process gone: ${details.reason} (exit code ${details.exitCode})`);
+    if (details.reason !== "clean-exit") {
+      dialog.showMessageBox({
+        type: "error",
+        title: "Gryt — Renderer Crashed",
+        message: "The app encountered an error and needs to restart.",
+        detail: "If this keeps happening, try disabling hardware acceleration in Settings.",
+        buttons: ["Restart", "Quit"],
+      }).then(({ response }) => {
+        if (response === 0) {
+          app.relaunch();
+        }
+        isQuitting = true;
+        app.quit();
+      });
+    }
   });
 }
 
@@ -670,13 +742,23 @@ if (!gotSingleInstanceLock) {
 
     if (!process.env.VITE_DEV_SERVER_URL) {
       localServerUrl = await startLocalServer();
+      startupLog(`Local server started: ${localServerUrl}`);
     }
 
-    initUiohook();
+    try {
+      initUiohook();
+      startupLog("uiohook initialized");
+    } catch (err) {
+      startupLog(`uiohook failed (PTT disabled): ${err instanceof Error ? err.message : String(err)}`);
+    }
+
     createMainWindow();
+    startupLog("Main window created");
     createTray();
+    startupLog("Tray created");
 
     if (startHiddenOnLaunch) {
+      startupLog("Starting hidden (auto-start)");
       initBackgroundUpdater();
       autoUpdater.checkForUpdates().catch(() => {});
     } else {
@@ -687,6 +769,7 @@ if (!gotSingleInstanceLock) {
         // Ensure main window shows even if splash/updater fails
       }
       closeSplashAndShowMain();
+      startupLog("Main window shown");
       initBackgroundUpdater();
     }
 
@@ -862,6 +945,21 @@ if (!gotSingleInstanceLock) {
         mainWindow?.show();
       }
     });
+  }).catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    startupLog(`FATAL startup error: ${err instanceof Error ? (err.stack ?? err.message) : msg}`);
+    dialog.showErrorBox(
+      "Gryt — Failed to Start",
+      `${msg}\n\nCheck gryt-startup.log in the app data folder for details.`,
+    );
+    app.exit(1);
+  });
+
+  app.on("child-process-gone", (_event, details) => {
+    startupLog(`Child process gone: type=${details.type} reason=${details.reason}`);
+    if (details.type === "GPU" && details.reason !== "clean-exit") {
+      startupLog("GPU process crashed — consider disabling hardware acceleration");
+    }
   });
 
   app.on("before-quit", () => {
