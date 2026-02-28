@@ -309,11 +309,15 @@ export const MessageRow = memo(({
 
   return (
     <motion.div
-      layout
+      layout="position"
       style={{ width: "100%" }}
-      initial={isNew ? { opacity: 0, y: 8 } : false}
+      initial={isNew ? { opacity: 0, y: 4 } : false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      transition={{
+        layout: { type: "spring", stiffness: 170, damping: 26 },
+        opacity: { duration: 0.2, ease: "easeOut" },
+        y: { type: "spring", stiffness: 170, damping: 22 },
+      }}
     >
       {content}
       {isReactionPickerOpen && (
