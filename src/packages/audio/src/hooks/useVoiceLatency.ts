@@ -67,6 +67,7 @@ export function useVoiceLatency(enabled: boolean) {
 
   const [latency, setLatency] = useState<LatencyBreakdown>(EMPTY);
   const prevBytesRef = useRef<{ bytes: number; ts: number } | null>(null);
+  const prevJitterBufRef = useRef<{ delay: number; count: number } | null>(null);
 
   const computeLocalPipeline = useCallback(() => {
     if (!audioContext) return { baseMs: null, outputMs: null, rnnoiseMs: null, totalMs: null };
@@ -97,6 +98,7 @@ export function useVoiceLatency(enabled: boolean) {
     if (!enabled) {
       setLatency(EMPTY);
       prevBytesRef.current = null;
+      prevJitterBufRef.current = null;
       return;
     }
 
@@ -171,7 +173,15 @@ export function useVoiceLatency(enabled: boolean) {
                 packetsReceived = stat.packetsReceived;
               }
               if (typeof stat.jitterBufferDelay === "number" && typeof stat.jitterBufferEmittedCount === "number" && stat.jitterBufferEmittedCount > 0) {
-                jitterBufferMs = (stat.jitterBufferDelay / stat.jitterBufferEmittedCount) * 1000;
+                const prev = prevJitterBufRef.current;
+                if (prev) {
+                  const deltaCount = stat.jitterBufferEmittedCount - prev.count;
+                  if (deltaCount > 0) {
+                    const deltaDelay = stat.jitterBufferDelay - prev.delay;
+                    jitterBufferMs = (deltaDelay / deltaCount) * 1000;
+                  }
+                }
+                prevJitterBufRef.current = { delay: stat.jitterBufferDelay, count: stat.jitterBufferEmittedCount };
               }
               if (stat.codecId && codecMap.has(stat.codecId)) {
                 codec = codecMap.get(stat.codecId) || null;
@@ -251,6 +261,7 @@ export function useVoiceLatency(enabled: boolean) {
       cancelled = true;
       clearInterval(interval);
       prevBytesRef.current = null;
+      prevJitterBufRef.current = null;
     };
   }, [enabled, computeLocalPipeline, getPeerConnection, isConnected, activeSfuUrl]);
 
