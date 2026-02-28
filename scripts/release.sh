@@ -268,21 +268,6 @@ docker buildx build \
   --push .
 ok "Pushed ${DOCKER_IMAGE}:${NEW_VERSION} (${PLATFORMS})"
 
-# ── Deploy to beta ────────────────────────────────────────────────
-echo ""
-REPO_ROOT="$(cd "$CLIENT_DIR/../.." && pwd)"
-read -rp "$(echo -e "${CYAN}?${RESET}  Deploy to beta (pull & restart beta containers)? ${YELLOW}[Y/n]${RESET}: ")" DEPLOY_BETA
-DEPLOY_BETA="${DEPLOY_BETA:-Y}"
-if [[ "$DEPLOY_BETA" =~ ^[Yy]$ ]]; then
-  if [ -f "$REPO_ROOT/scripts/update-beta.sh" ]; then
-    info "Running beta deployment…"
-    bash "$REPO_ROOT/scripts/update-beta.sh"
-    ok "Beta deployment complete"
-  else
-    warn "update-beta.sh not found at $REPO_ROOT/scripts/update-beta.sh"
-  fi
-fi
-
 # ── Electron publish ────────────────────────────────────────────────────
 cd "$CLIENT_DIR"
 info "Packaging & publishing to ${BOLD}${OWNER}/${REPO}${RESET}…"
