@@ -1,10 +1,11 @@
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Flex } from "@radix-ui/themes";
+import { Flex, IconButton, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { MdChat } from "react-icons/md";
 
 import { useCamera as useLocalCamera, useScreenShare as useLocalScreenShare, useVoiceLatency } from "@/audio";
 import { useSettings } from "@/settings";
@@ -104,6 +105,8 @@ export const VoiceView = ({
   videoStreams,
   streamSources,
   onFocusChange,
+  chatHidden,
+  onToggleChat,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -125,6 +128,8 @@ export const VoiceView = ({
   videoStreams?: Record<string, MediaStream>;
   streamSources?: StreamSources;
   onFocusChange?: (focused: boolean) => void;
+  chatHidden?: boolean;
+  onToggleChat?: () => void;
 }) => {
   const { showPeerLatency, cameraMirrored } = useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
@@ -467,8 +472,22 @@ export const VoiceView = ({
         </div>
 
         {isFocused && currentServerConnected && (
-          <Flex justify="center" py="2" flexShrink="0">
+          <Flex justify="center" align="center" py="2" flexShrink="0" style={{ position: "relative" }}>
             <Controls onDisconnect={onDisconnect} />
+            {onToggleChat && (
+              <Flex style={{ position: "absolute", right: 0 }}>
+                <Tooltip content={chatHidden ? "Show chat" : "Hide chat"} delayDuration={300}>
+                  <IconButton
+                    variant="soft"
+                    color="gray"
+                    onClick={onToggleChat}
+                    style={{ opacity: chatHidden ? 0.5 : 1 }}
+                  >
+                    <MdChat size={16} />
+                  </IconButton>
+                </Tooltip>
+              </Flex>
+            )}
           </Flex>
         )}
       </Flex>

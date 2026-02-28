@@ -139,6 +139,7 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.channel = "latest";
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
 autoUpdater.logger = console;
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
@@ -298,6 +299,9 @@ function runSplashUpdateCheck(): Promise<void> {
 
 function friendlyUpdateError(err: Error): string {
   const msg = err.message;
+  if (msg.includes("status 404") || msg.includes("HttpError: 404")) {
+    return "The update file was not found. A new release may not have all artifacts uploaded yet — try again in a few minutes.";
+  }
   if (msg.includes("latest.yml") || msg.includes("latest-linux.yml") || msg.includes("latest-mac.yml")) {
     return "No update available for this channel yet. The release may still be building — try again in a few minutes.";
   }

@@ -5,6 +5,7 @@ const SIDEBAR_HOVER_PX = 8;
 const SIDEBAR_CLOSE_DELAY = 1000;
 const VOICE_MIN_WIDTH = 200;
 const MIN_CHAT_WIDTH = 200;
+const FOCUSED_CHAT_RATIO = 0.25;
 
 interface UseMediaAutoShowParams {
   showVoiceView: boolean;
@@ -157,6 +158,13 @@ function useVoiceResize({
     ? Math.max(0, voiceContainerWidth - MIN_CHAT_WIDTH)
     : 0;
 
+  const focusedChatWidth = voiceContainerWidth > 0
+    ? Math.max(MIN_CHAT_WIDTH, Math.round(voiceContainerWidth * FOCUSED_CHAT_RATIO))
+    : MIN_CHAT_WIDTH;
+  const focusedVoiceMaxWidth = voiceContainerWidth > 0
+    ? Math.max(0, voiceContainerWidth - focusedChatWidth)
+    : 0;
+
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsDraggingResize(true);
@@ -211,12 +219,12 @@ function useVoiceResize({
     voiceFocused, setVoiceFocused,
     isDraggingResize,
     voiceContainerRef, voiceMaxWidth,
+    focusedChatWidth, focusedVoiceMaxWidth,
     handleResizeMouseDown,
   };
 }
 
 export {
-  MIN_CHAT_WIDTH,
   SIDEBAR_HOVER_PX,
   SIDEBAR_WIDTH_PX,
   useMediaAutoShow,

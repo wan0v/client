@@ -17,6 +17,8 @@ interface ServerSettings {
   setCurrentlyViewingServer: (host: string | null) => void;
   lastSelectedChannels: Record<string, string>;
   setLastSelectedChannel: (host: string, channelId: string) => void;
+  serverOrder: string[];
+  setServerOrder: (order: string[]) => void;
 }
 
 function useServerSettingsHook(): ServerSettings {
@@ -25,6 +27,7 @@ function useServerSettingsHook(): ServerSettings {
   const [servers, setServersRaw] = useState<Servers>({});
   const [currentlyViewingServer, setCurrentlyViewingServer] = useState<Server | null>(null);
   const [lastSelectedChannels, setLastSelectedChannelsRaw] = useState<Record<string, string>>({});
+  const [serverOrder, setServerOrderRaw] = useState<string[]>([]);
   const hasAutoFocused = useRef(false);
 
   useEffect(() => {
@@ -42,6 +45,7 @@ function useServerSettingsHook(): ServerSettings {
       console.log("[ServerSettings] Loaded servers for", userId, "→", Object.keys(loaded).length, "servers:", Object.keys(loaded).join(", "));
       setServersRaw(loaded);
       setLastSelectedChannelsRaw(getUserValue<Record<string, string>>("lastSelectedChannels", {}));
+      setServerOrderRaw(getUserValue<string[]>("serverOrder", []));
     })();
 
     return () => { cancelled = true; };
@@ -82,6 +86,13 @@ function useServerSettingsHook(): ServerSettings {
     });
   }, []);
 
+  const updateServerOrder = useCallback((order: string[]) => {
+    setServerOrderRaw(order);
+    if (userIdRef.current) {
+      setUserValue("serverOrder", order);
+    }
+  }, []);
+
   useEffect(() => {
     const serverKeys = Object.keys(servers);
     if (serverKeys.length > 0 && !hasAutoFocused.current) {
@@ -109,6 +120,8 @@ function useServerSettingsHook(): ServerSettings {
     setCurrentlyViewingServer: updateCurrentlyViewingServer,
     lastSelectedChannels,
     setLastSelectedChannel: updateLastSelectedChannel,
+    serverOrder,
+    setServerOrder: updateServerOrder,
   };
 }
 
@@ -119,6 +132,8 @@ const init: ServerSettings = {
   setCurrentlyViewingServer: () => {},
   lastSelectedChannels: {},
   setLastSelectedChannel: () => {},
+  serverOrder: [],
+  setServerOrder: () => {},
 };
 
 export const useServerSettings = singletonHook(init, useServerSettingsHook);

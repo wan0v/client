@@ -1,4 +1,4 @@
-import { useCallback, useEffect,useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { singletonHook } from "react-singleton-hook";
 
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
@@ -10,12 +10,14 @@ interface ServerManagement {
   currentlyViewingServer: Server | null;
   showAddServer: boolean;
   showRemoveServer: string | null;
+  orderedServerHosts: string[];
   
   // Actions
   addServer: (server: Server, focusNewServer?: boolean) => void;
   removeServer: (host: string) => void;
   switchToServer: (host: string) => void;
   reconnectServer: (host: string) => void;
+  reorderServers: (orderedHosts: string[]) => void;
   setShowAddServer: (show: boolean) => void;
   setShowRemoveServer: (host: string | null) => void;
   
@@ -29,11 +31,27 @@ interface ServerManagement {
 }
 
 function useServerManagementHook(): ServerManagement {
-  const { servers, setServers, currentlyViewingServer, setCurrentlyViewingServer, lastSelectedChannels, setLastSelectedChannel } = useServerSettings();
+  const { servers, setServers, currentlyViewingServer, setCurrentlyViewingServer, lastSelectedChannels, setLastSelectedChannel, serverOrder, setServerOrder } = useServerSettings();
   
   const [showAddServer, setShowAddServer] = useState(false);
   const [showRemoveServer, setShowRemoveServer] = useState<string | null>(null);
   const [pendingFocusServer, setPendingFocusServer] = useState<string | null>(null);
+
+  const orderedServerHosts = useMemo(() => {
+    const allHosts = Object.keys(servers);
+    const ordered: string[] = [];
+    for (const host of serverOrder) {
+      if (allHosts.includes(host)) ordered.push(host);
+    }
+    for (const host of allHosts) {
+      if (!ordered.includes(host)) ordered.push(host);
+    }
+    return ordered;
+  }, [servers, serverOrder]);
+
+  const reorderServers = useCallback((orderedHosts: string[]) => {
+    setServerOrder(orderedHosts);
+  }, [setServerOrder]);
 
   // Handle pending server focus after servers state is updated
   useEffect(() => {
@@ -162,12 +180,14 @@ function useServerManagementHook(): ServerManagement {
     currentlyViewingServer,
     showAddServer,
     showRemoveServer,
+    orderedServerHosts,
     
     // Actions
     addServer,
     removeServer,
     switchToServer,
     reconnectServer,
+    reorderServers,
     setShowAddServer,
     setShowRemoveServer,
     
@@ -187,12 +207,14 @@ const init: ServerManagement = {
   currentlyViewingServer: null,
   showAddServer: false,
   showRemoveServer: null,
+  orderedServerHosts: [],
   
   // Actions
   addServer: () => {},
   removeServer: () => {},
   switchToServer: () => {},
   reconnectServer: () => {},
+  reorderServers: () => {},
   setShowAddServer: () => {},
   setShowRemoveServer: () => {},
   

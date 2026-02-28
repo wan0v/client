@@ -132,8 +132,9 @@ if [ "$RERELEASE" = false ]; then
   fi
 fi
 
-# All releases are prerelease until promoted via promote-beta.sh.
-# This gates Electron auto-updates behind the promotion step.
+# All releases are prerelease until promoted via scripts/promote-beta.sh.
+# This gates stable-channel Electron auto-updates behind the promotion step.
+# Beta-channel users see prereleases immediately.
 RELEASE_TYPE="prerelease"
 
 cd "$CLIENT_DIR"
@@ -332,6 +333,27 @@ fi
 
 echo ""
 ok "Release ${BOLD}v${NEW_VERSION}${RESET} published to ${GREEN}https://github.com/${OWNER}/${REPO}/releases${RESET}"
+
+# ── Ensure latest.yml exists (cross-channel updates) ─────────────────
+# electron-builder names the manifest after the semver prerelease tag
+# (e.g. "beta.yml" for 1.0.115-beta). The client always reads latest.yml
+# so we copy the channel-specific manifests to latest*.yml when needed.
+if [ "$BETA_RELEASE" = true ]; then
+  CHANNEL="${NEW_VERSION##*-}"  # e.g. "beta"
+  info "Uploading latest.yml aliases (from ${CHANNEL}.yml)…"
+  TMPDIR_YML=$(mktemp -d)
+  for SUFFIX in "" "-linux" "-mac"; do
+    SRC="${CHANNEL}${SUFFIX}.yml"
+    DST="latest${SUFFIX}.yml"
+    if gh release download "v${NEW_VERSION}" --repo "${OWNER}/${REPO}" -p "$SRC" -O "${TMPDIR_YML}/${DST}" 2>/dev/null; then
+      gh release upload "v${NEW_VERSION}" --repo "${OWNER}/${REPO}" "${TMPDIR_YML}/${DST}" --clobber
+      ok "${SRC} → ${DST}"
+    else
+      warn "Could not download ${SRC} — ${DST} not uploaded"
+    fi
+  done
+  rm -rf "$TMPDIR_YML"
+fi
 
 # ── Verify update manifests ──────────────────────────────────────────
 info "Verifying auto-update manifests…"

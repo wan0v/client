@@ -1,5 +1,5 @@
 import { Flex } from "@radix-ui/themes";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
@@ -15,7 +15,7 @@ import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
 import { useServerState } from "../hooks/useServerState";
-import { MIN_CHAT_WIDTH, SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, useVoiceResize } from "../hooks/useServerViewLayout";
+import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, useVoiceResize } from "../hooks/useServerViewLayout";
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { ChatView } from "./ChatView";
@@ -64,8 +64,14 @@ export const ServerView = () => {
 
   const {
     voiceFocused, setVoiceFocused, isDraggingResize,
-    voiceContainerRef, voiceMaxWidth, handleResizeMouseDown,
+    voiceContainerRef, voiceMaxWidth,
+    focusedChatWidth, focusedVoiceMaxWidth,
+    handleResizeMouseDown,
   } = useVoiceResize({ voiceWidth, userVoiceWidth, setVoiceWidth, setUserVoiceWidth, setShowVoiceView });
+
+  const [focusedChatHidden, setFocusedChatHidden] = useState(false);
+  useEffect(() => { if (!voiceFocused) setFocusedChatHidden(false); }, [voiceFocused]);
+  const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
 
   const {
     leftSidebarOpen, rightSidebarOpen,
@@ -313,7 +319,11 @@ export const ServerView = () => {
             <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
-                voiceWidth={voiceFocused ? (voiceMaxWidth > 0 ? `${voiceMaxWidth}px` : voiceWidth) : voiceWidth}
+                voiceWidth={voiceFocused
+                  ? (focusedChatHidden
+                    ? "100%"
+                    : (focusedVoiceMaxWidth > 0 ? `${focusedVoiceMaxWidth}px` : voiceWidth))
+                  : voiceWidth}
                 maxWidth={voiceMaxWidth}
                 serverHost={host}
                 currentServerConnected={currentServerConnected}
@@ -332,6 +342,8 @@ export const ServerView = () => {
                 videoStreams={videoStreams}
                 streamSources={streamSources}
                 onFocusChange={setVoiceFocused}
+                chatHidden={focusedChatHidden}
+                onToggleChat={toggleFocusedChat}
               />
               {!isCompact && !voiceFocused && (isDraggingResize || (showVoiceView && voiceWidth !== "0px")) && (
                 <div
@@ -351,7 +363,9 @@ export const ServerView = () => {
                 </div>
               )}
               <div style={{
-                display: "flex", flex: voiceFocused ? `0 0 ${MIN_CHAT_WIDTH}px` : 1, minWidth: 0,
+                display: (voiceFocused && focusedChatHidden) ? "none" : "flex",
+                flex: voiceFocused ? `0 0 ${focusedChatWidth}px` : 1,
+                minWidth: 0,
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
                 transition: "opacity 0.3s ease",
               }}>
