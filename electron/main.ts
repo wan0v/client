@@ -139,7 +139,6 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
-autoUpdater.channel = "latest";
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
 autoUpdater.logger = console;
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
