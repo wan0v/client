@@ -285,7 +285,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
               </TextField.Root>
 
               <Button
-                onClick={getServerInfo}
+                onClick={() => getServerInfo()}
                 disabled={isSearching || isJoining || serverHost.length === 0}
               >
                 {isSearching ? (

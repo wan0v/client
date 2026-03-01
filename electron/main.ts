@@ -1,3 +1,4 @@
+import Bonjour from "bonjour-service";
 import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
 import { appendFileSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "fs";
@@ -5,8 +6,6 @@ import { createServer, Server } from "http";
 import { dirname, extname, join, resolve } from "path";
 import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
-
-import Bonjour from "bonjour-service";
 
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
 import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";

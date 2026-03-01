@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getElectronAPI, type LanServer } from "@/lib/electron";
+import { getElectronAPI, type LanServer } from "../../../../lib/electron";
 
 function serverKey(host: string, port: number): string {
   return `${host}:${port}`;
