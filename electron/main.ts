@@ -229,18 +229,19 @@ function runSplashUpdateCheck(): Promise<void> {
     const onChecking = () => sendToSplash("checking");
 
     const onAvailable = (info: UpdateInfo) => {
+      pendingUpdateVersion = info.version;
       sendToSplash("available", { version: info.version });
       autoUpdater.downloadUpdate().catch(() => onError());
     };
 
     const onNotAvailable = (info: UpdateInfo) => {
       sendToSplash("not-available", { version: info.version });
-      // Brief pause so the user sees "Up to date!"
       setTimeout(done, 800);
     };
 
     const onProgress = (progress: { percent: number; transferred: number; total: number }) => {
       sendToSplash("downloading", {
+        version: pendingUpdateVersion,
         percent: Math.round(progress.percent),
         transferred: progress.transferred,
         total: progress.total,
@@ -317,10 +318,12 @@ function friendlyUpdateError(err: Error): string {
 }
 
 let userInitiatedCheck = false;
+let pendingUpdateVersion: string | undefined;
 
 function initBackgroundUpdater() {
   autoUpdater.on("checking-for-update", () => sendToMain("checking"));
   autoUpdater.on("update-available", (info) => {
+    pendingUpdateVersion = info.version;
     sendToMain("available", { version: info.version });
     if (!userInitiatedCheck) {
       autoUpdater.downloadUpdate().catch(() => {});
@@ -328,7 +331,7 @@ function initBackgroundUpdater() {
   });
   autoUpdater.on("update-not-available", (info) => sendToMain("not-available", { version: info.version }));
   autoUpdater.on("download-progress", (p) =>
-    sendToMain("downloading", { percent: Math.round(p.percent), transferred: p.transferred, total: p.total })
+    sendToMain("downloading", { version: pendingUpdateVersion, percent: Math.round(p.percent), transferred: p.transferred, total: p.total })
   );
   autoUpdater.on("update-downloaded", (info) => sendToMain("downloaded", { version: info.version }));
   autoUpdater.on("error", (err) => sendToMain("error", { message: friendlyUpdateError(err) }));
