@@ -17,7 +17,6 @@ import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality,useCame
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
-import { voiceLog } from "../hooks/voiceLogger";
 
 import { isElectron } from "../../../../lib/electron";
 import { voiceLog } from "../hooks/voiceLogger";
