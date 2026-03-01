@@ -57,7 +57,15 @@ export function useNativeAudioCapture(): NativeAudioCapture {
     }
 
     probe(1);
-    return () => { cancelled = true; };
+
+    const unsubDiag = api.onNativeAudioDiagnostic((msg: string) => {
+      console.log(`[NativeAudioCapture:main] ${msg}`);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubDiag();
+    };
   }, []);
 
   const stop = useCallback(() => {

@@ -136,6 +136,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("native-audio-stopped", handler);
   },
 
+  onNativeAudioDiagnostic(callback: (msg: string) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, msg: string) => callback(msg);
+    ipcRenderer.on("native-audio-diagnostic", handler);
+    return () => ipcRenderer.removeListener("native-audio-diagnostic", handler);
+  },
+
   onWindowFocusChange(callback: (focused: boolean) => void) {
     const handler = (_event: Electron.IpcRendererEvent, focused: boolean) => callback(focused);
     ipcRenderer.on("window-focus-change", handler);

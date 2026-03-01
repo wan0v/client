@@ -16,6 +16,18 @@ import { existsSync } from "fs";
 import { join } from "path";
 
 let captureProcess: ChildProcess | null = null;
+let diagnosticWindow: BrowserWindow | null = null;
+
+function sendDiag(msg: string): void {
+  try {
+    if (diagnosticWindow && !diagnosticWindow.isDestroyed()) {
+      diagnosticWindow.webContents.send("native-audio-diagnostic", msg);
+    }
+  } catch {
+    // Window might be mid-destruction
+  }
+  console.log("[NativeAudioCapture]", msg);
+}
 
 function getNativeBinaryPath(): string | null {
   const platform = process.platform;
@@ -75,9 +87,11 @@ export function startNativeAudioCapture(
     stopNativeAudioCapture();
   }
 
+  diagnosticWindow = window;
+
   const binaryPath = getNativeBinaryPath();
   if (!binaryPath) {
-    console.warn("[NativeAudioCapture] binary not found, cannot start");
+    sendDiag("binary not found, cannot start");
     return false;
   }
 
@@ -87,7 +101,7 @@ export function startNativeAudioCapture(
   if (sourceId && sourceId.startsWith("window:")) {
     const windowPid = resolveWindowPid(sourceId);
     if (!windowPid) {
-      console.warn(`[NativeAudioCapture] could not resolve PID for ${sourceId}, falling back to exclude mode`);
+      sendDiag(`could not resolve PID for ${sourceId}, falling back to exclude mode`);
       mode = "exclude";
       targetPid = process.pid;
     } else {
@@ -99,19 +113,32 @@ export function startNativeAudioCapture(
     targetPid = process.pid;
   }
 
-  console.log(
-    `[NativeAudioCapture] spawning: binary=${binaryPath} mode=${mode} targetPID=${targetPid} sourceId=${sourceId ?? "none"}`,
-  );
+  sendDiag(`spawning: binary=${binaryPath} mode=${mode} targetPID=${targetPid} sourceId=${sourceId ?? "none"}`);
 
   captureProcess = spawn(binaryPath, [mode, targetPid.toString()], {
     stdio: ["pipe", "pipe", "pipe"],
   });
 
   const childPid = captureProcess.pid;
-  console.log(`[NativeAudioCapture] child process PID=${childPid}`);
+  sendDiag(`child process PID=${childPid}`);
+
+  if (!childPid) {
+    sendDiag("FAILED to spawn child process (no PID)");
+    captureProcess = null;
+    return false;
+  }
 
   let bytesReceived = 0;
+  let chunksReceived = 0;
   let firstDataLogged = false;
+
+  const statsInterval = setInterval(() => {
+    if (chunksReceived > 0) {
+      sendDiag(`main-process stats: ${chunksReceived} stdout chunks, ${(bytesReceived / 1024).toFixed(0)} KB total`);
+    } else {
+      sendDiag("main-process stats: 0 stdout chunks (binary producing no data)");
+    }
+  }, 5000);
 
   captureProcess.stdout?.on("data", (chunk: Buffer) => {
     if (window.isDestroyed()) {
@@ -119,10 +146,9 @@ export function startNativeAudioCapture(
       return;
     }
     bytesReceived += chunk.byteLength;
+    chunksReceived++;
     if (!firstDataLogged) {
-      console.log(
-        `[NativeAudioCapture] first PCM data received: ${chunk.byteLength} bytes`,
-      );
+      sendDiag(`first PCM data from binary: ${chunk.byteLength} bytes`);
       firstDataLogged = true;
     }
     const ab = chunk.buffer.slice(
@@ -133,14 +159,21 @@ export function startNativeAudioCapture(
   });
 
   captureProcess.stderr?.on("data", (data: Buffer) => {
-    console.error("[NativeAudioCapture]", data.toString().trimEnd());
+    const msg = data.toString().trimEnd();
+    sendDiag(`[stderr] ${msg}`);
   });
 
-  captureProcess.on("exit", (code) => {
-    console.log(
-      `[NativeAudioCapture] exited code=${code} totalBytes=${bytesReceived}`,
-    );
+  captureProcess.on("error", (err) => {
+    sendDiag(`spawn error: ${err.message}`);
+    clearInterval(statsInterval);
     captureProcess = null;
+  });
+
+  captureProcess.on("exit", (code, signal) => {
+    sendDiag(`exited code=${code} signal=${signal} totalBytes=${bytesReceived} chunks=${chunksReceived}`);
+    clearInterval(statsInterval);
+    captureProcess = null;
+    diagnosticWindow = null;
     if (!window.isDestroyed()) {
       window.webContents.send("native-audio-stopped");
     }
@@ -152,6 +185,8 @@ export function startNativeAudioCapture(
 export function stopNativeAudioCapture(): void {
   if (!captureProcess) return;
 
+  sendDiag("stopping capture...");
+
   try {
     captureProcess.stdin?.write("\n");
     captureProcess.stdin?.end();
@@ -161,6 +196,7 @@ export function stopNativeAudioCapture(): void {
 
   const proc = captureProcess;
   captureProcess = null;
+  diagnosticWindow = null;
   setTimeout(() => {
     try {
       proc.kill();
