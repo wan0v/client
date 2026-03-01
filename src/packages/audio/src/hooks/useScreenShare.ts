@@ -172,6 +172,10 @@ function useScreenShareHook(): ScreenShareInterface {
       rawStreamRef.current = stream;
       setScreenShareActive(true);
 
+      console.log(
+        `[ScreenShare] captured stream id=${stream.id} totalTracks=${stream.getTracks().length} audioTracks=${stream.getAudioTracks().length} videoTracks=${stream.getVideoTracks().length}`,
+      );
+
       const videoTracks = stream.getVideoTracks();
       if (videoTracks.length > 0) {
         videoTracks[0].contentHint = "motion";
@@ -206,11 +210,28 @@ function useScreenShareHook(): ScreenShareInterface {
       setScreenShareActive(false);
     }
 
+    function logTrackDetails(label: string, tracks: MediaStreamTrack[]) {
+      console.log(
+        `[ScreenShare] ${label}: ${tracks.length} track(s)`,
+        tracks.map((t) => ({
+          id: t.id,
+          label: t.label,
+          enabled: t.enabled,
+          readyState: t.readyState,
+          muted: t.muted,
+        })),
+      );
+    }
+
     function extractRawAudio(mediaStream: MediaStream) {
       const audioTracks = mediaStream.getAudioTracks();
+      logTrackDetails("extractRawAudio", audioTracks);
       if (audioTracks.length > 0) {
-        setScreenAudioStream(new MediaStream(audioTracks));
+        const audioStream = new MediaStream(audioTracks);
+        console.log(`[ScreenShare] screenAudioStream SET id=${audioStream.id}`);
+        setScreenAudioStream(audioStream);
       } else {
+        console.warn("[ScreenShare] screenAudioStream SET null (no audio tracks in raw stream)");
         setScreenAudioStream(null);
       }
     }
@@ -219,6 +240,11 @@ function useScreenShareHook(): ScreenShareInterface {
   // Sync native capture stream → screenAudioStream
   useEffect(() => {
     if (usingNativeAudioRef.current && nativeStream) {
+      const tracks = nativeStream.getAudioTracks();
+      console.log(
+        `[ScreenShare] native stream synced → screenAudioStream id=${nativeStream.id} audioTracks=${tracks.length}`,
+        tracks.map((t) => ({ id: t.id, label: t.label, enabled: t.enabled, readyState: t.readyState, muted: t.muted })),
+      );
       setScreenAudioStream(nativeStream);
     }
   }, [nativeStream]);

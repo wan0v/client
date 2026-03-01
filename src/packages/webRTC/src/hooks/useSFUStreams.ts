@@ -176,6 +176,7 @@ export function useSFUStreams({
     });
 
     if (hasChanges) {
+      voiceLog.info("WEBRTC", `streamSources updated – keys: [${Object.keys(newStreamSources).join(", ")}]`);
       setStreamSources(newStreamSources);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

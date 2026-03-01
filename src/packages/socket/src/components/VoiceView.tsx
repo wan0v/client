@@ -17,6 +17,7 @@ import { usePopoutStreams } from "../hooks/usePopoutStreams";
 import type { Client } from "../types/clients";
 import { FocusedVideoView } from "./FocusedVideoView";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
+import { UserContextMenu } from "./UserContextMenu";
 import type { FocusedStreamInfo } from "./VoiceParticipantCard";
 import { VoiceParticipantCard } from "./VoiceParticipantCard";
 
@@ -362,18 +363,52 @@ export const VoiceView = ({
           ref={gridRef}
           style={{ flexGrow: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}
         >
-          {isFocused && (
-            <FocusedVideoView
-              stream={focusedStream.stream}
-              title={focusedStream.title}
-              audioStreamId={focusedStream.audioStreamId}
-              streamSources={streamSources}
-              objectFit={focusedStream.objectFit}
-              mirrored={focusedStream.mirrored}
-              onClose={handleCloseFocus}
-              onPopout={handleFocusedPopout}
-            />
-          )}
+          {isFocused && (() => {
+            const isScreenTile = focusedStream.itemId.startsWith("screen:");
+            const focusClientId = isScreenTile ? focusedStream.itemId.slice(7) : focusedStream.itemId;
+            const focusClient = clientsForHost[focusClientId];
+            const focusIsSelf = focusClientId === currentConnectionId;
+            const focusServerUserId = focusClient?.serverUserId;
+            const focusMember = focusServerUserId ? memberByServerUserId.get(focusServerUserId) : undefined;
+
+            const focusedView = (
+              <FocusedVideoView
+                stream={focusedStream.stream}
+                title={focusedStream.title}
+                audioStreamId={focusedStream.audioStreamId}
+                streamSources={streamSources}
+                objectFit={focusedStream.objectFit}
+                mirrored={focusedStream.mirrored}
+                onClose={handleCloseFocus}
+                onPopout={handleFocusedPopout}
+              />
+            );
+
+            if (!focusClient) return focusedView;
+
+            return (
+              <UserContextMenu
+                serverUserId={focusServerUserId}
+                nickname={focusClient.nickname}
+                isSelf={focusIsSelf}
+                canDisconnect={!!onDisconnectUser}
+                isInVoice={true}
+                onDisconnectFromVoice={onDisconnectUser && focusServerUserId ? () => onDisconnectUser(focusServerUserId) : undefined}
+                role={currentUserRole}
+                targetRole={focusMember?.role}
+                isServerMuted={focusMember?.isServerMuted}
+                isServerDeafened={focusMember?.isServerDeafened}
+                onKick={adminActions?.onKickUser && focusServerUserId ? () => adminActions.onKickUser!(focusServerUserId) : undefined}
+                onBan={adminActions?.onBanUser && focusServerUserId ? () => adminActions.onBanUser!(focusServerUserId) : undefined}
+                onServerMute={adminActions?.onServerMuteUser && focusServerUserId ? (muted) => adminActions.onServerMuteUser!(focusServerUserId, muted) : undefined}
+                onServerDeafen={adminActions?.onServerDeafenUser && focusServerUserId ? (deafened) => adminActions.onServerDeafenUser!(focusServerUserId, deafened) : undefined}
+                onChangeRole={adminActions?.onChangeRole && focusServerUserId ? (role) => adminActions.onChangeRole!(focusServerUserId, role) : undefined}
+                onPopoutVideo={handleFocusedPopout}
+              >
+                {focusedView}
+              </UserContextMenu>
+            );
+          })()}
 
           <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={orderedItems} strategy={rectSortingStrategy}>

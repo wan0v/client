@@ -180,7 +180,7 @@ export function VoiceParticipantCard({
     if (!isSelf) {
       const found = !!screenStream;
       console.log(
-        `[ScreenShare] VoiceParticipantCard: screenStreamID=${client.screenShareVideoStreamID || "empty"} found=${found} videoStreamKeys=[${Object.keys(videoStreams ?? {}).join(", ")}]`,
+        `[ScreenShare] VoiceParticipantCard: screenStreamID=${client.screenShareVideoStreamID || "empty"} found=${found} audioStreamID=${client.screenShareAudioStreamID || "empty"} videoStreamKeys=[${Object.keys(videoStreams ?? {}).join(", ")}]`,
       );
     }
     if (!screenStream) return null;

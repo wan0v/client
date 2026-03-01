@@ -140,10 +140,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (screenShareActive && screenAudioStream) {
       const audioTrack = screenAudioStream.getAudioTracks()[0];
       if (audioTrack) {
+        voiceLog.info("SCREEN", `controls: syncing audio track=${audioTrack.id} enabled=${audioTrack.enabled} readyState=${audioTrack.readyState} muted=${audioTrack.muted} stream=${screenAudioStream.id}`);
         addScreenAudioTrack(audioTrack, screenAudioStream);
         prevScreenAudioRef.current = screenAudioStream;
+      } else {
+        voiceLog.info("SCREEN", `controls: screenAudioStream present (id=${screenAudioStream.id}) but has NO audio tracks`);
       }
     } else if (prevScreenAudioRef.current) {
+      voiceLog.info("SCREEN", `controls: removing audio track, prevStream=${prevScreenAudioRef.current.id}`);
       removeScreenAudioTrack();
       prevScreenAudioRef.current = null;
     }
@@ -172,6 +176,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
         audioStreamId: screenAudioStream?.id || "",
       };
       voiceLog.info("SCREEN", `controls: emitting voice:screen:state`, payload);
+      if (screenShareActive && !payload.audioStreamId) {
+        voiceLog.info("SCREEN", `controls: WARNING – screen share active but audioStreamId is empty (no audio captured)`);
+      }
       socket.emit("voice:screen:state", payload);
     }
   }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets]);

@@ -69,6 +69,13 @@ export function FocusedVideoView({
 
   const hasAudio = !!(audioStreamId && streamSources?.[audioStreamId]);
 
+  useEffect(() => {
+    const sourceKeys = streamSources ? Object.keys(streamSources) : [];
+    console.log(
+      `[ScreenShare] FocusedVideoView: audioStreamId=${audioStreamId ?? "undefined"} inStreamSources=${!!(audioStreamId && streamSources?.[audioStreamId])} hasAudio=${hasAudio} streamSourceKeys=[${sourceKeys.join(", ")}]`,
+    );
+  }, [audioStreamId, streamSources, hasAudio]);
+
   const handleVolumeChange = useCallback(
     (values: number[]) => {
       const v = values[0];
