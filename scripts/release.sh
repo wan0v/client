@@ -355,10 +355,12 @@ if [ -n "$SNAP_FILE" ] && command -v snapcraft &>/dev/null; then
       SNAP_CHANNEL="stable"
     fi
     info "Uploading ${BOLD}$(basename "$SNAP_FILE")${RESET} to Snap Store (${SNAP_CHANNEL})…"
-    if snapcraft upload "$SNAP_FILE" --release="$SNAP_CHANNEL"; then
+    if SNAPCRAFT_STORE_CREDENTIALS="${SNAPCRAFT_STORE_CREDENTIALS:-$(cat "$SNAP_CREDS_FILE" 2>/dev/null)}" \
+       snapcraft upload "$SNAP_FILE" --release="$SNAP_CHANNEL"; then
       ok "Snap published to ${SNAP_CHANNEL} channel"
     else
-      warn "Snap upload failed — you can retry manually: snapcraft upload \"$SNAP_FILE\" --release=${SNAP_CHANNEL}"
+      warn "Snap upload failed — you can retry manually:"
+      warn "  SNAPCRAFT_STORE_CREDENTIALS=\$(cat $SNAP_CREDS_FILE) snapcraft upload \"$SNAP_FILE\" --release=${SNAP_CHANNEL}"
     fi
   fi
 elif [ -n "$SNAP_FILE" ]; then
