@@ -1,19 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MdCheck, MdCloudDownload, MdImage } from "react-icons/md";
 
+import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 
 type ZoomLevel = "fit" | "2x" | "full";
-
-function triggerDownload(url: string, fileName?: string) {
-  const a = document.createElement("a");
-  a.href = url.includes("?") ? `${url}&download=1` : `${url}?download=1`;
-  a.download = fileName || "";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
 
 export const ImageLightbox = ({
   src,
@@ -160,7 +151,7 @@ export const ImageLightbox = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            triggerDownload(src, alt);
+            void triggerDownload(src, alt);
           }}
           title="Save image"
           aria-label="Save image"

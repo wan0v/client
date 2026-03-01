@@ -12,6 +12,7 @@ import {
   MdReply,
 } from "react-icons/md";
 
+import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getRecentReactions } from "../utils/recentReactions";
 import { EmojiText } from "./EmojiText";
@@ -42,15 +43,6 @@ interface MessageContextMenuProps {
   serverHost?: string;
 }
 
-function triggerDownload(url: string, fileName?: string | null) {
-  const a = document.createElement("a");
-  a.href = url.includes("?") ? `${url}&download=1` : `${url}?download=1`;
-  a.download = fileName || "";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
 
 async function copyToClipboard(text: string) {
   try {
@@ -78,7 +70,7 @@ function MediaItems({ media }: { media: MediaProps }) {
           </Flex>
         </ContextMenu.Item>
       )}
-      <ContextMenu.Item onClick={() => triggerDownload(media.src, media.fileName)}>
+      <ContextMenu.Item onClick={() => void triggerDownload(media.src, media.fileName)}>
         <Flex align="center" gap="1">
           <MdCloudDownload size={14} />
           Save As

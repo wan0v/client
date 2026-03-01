@@ -1,8 +1,11 @@
 import { Flex, Text } from "@radix-ui/themes";
+import { useCallback } from "react";
 import { MdAudioFile, MdCode, MdDescription, MdDownload, MdFolderZip, MdImage, MdInsertDriveFile, MdVideoFile } from "react-icons/md";
 const FaFilePdf = MdDescription;
 
 import { getUploadsFileUrl } from "@/common";
+
+import { triggerDownload } from "../utils/downloadFile";
 
 function getFileIcon(mime: string | null) {
   if (!mime) return <MdInsertDriveFile size={24} />;
@@ -52,8 +55,12 @@ export const FileCard = ({
   originalName: string | null;
   serverHost: string;
 }) => {
-  const downloadUrl = `${getUploadsFileUrl(serverHost, fileId)}?download=1`;
+  const fileUrl = getUploadsFileUrl(serverHost, fileId);
   const displayName = originalName || `${fileId.slice(0, 8)}...`;
+
+  const handleDownload = useCallback(() => {
+    void triggerDownload(fileUrl, originalName);
+  }, [fileUrl, originalName]);
 
   return (
     <Flex className="chat-file-card" align="center" gap="3">
@@ -68,14 +75,14 @@ export const FileCard = ({
           {mimeToLabel(mime)}{size != null ? ` \u2022 ${formatFileSize(size)}` : ""}
         </Text>
       </Flex>
-      <a
-        href={downloadUrl}
+      <button
+        type="button"
+        onClick={handleDownload}
         className="chat-file-card-download"
         title="Download"
-        download
       >
         <MdDownload size={14} />
-      </a>
+      </button>
     </Flex>
   );
 };
