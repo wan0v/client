@@ -34,6 +34,7 @@ export type FetchInfo = {
   name: string;
   description?: string;
   members: string;
+  lanOpen?: boolean;
 };
 
 interface AddNewServerProps {
@@ -61,6 +62,15 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     [serverHost, servers],
   );
 
+  const isLanDiscovered = useMemo(() => {
+    if (!serverHost) return false;
+    const nh = normalizeHost(serverHost);
+    return lanServers.some((s) => {
+      const addr = s.port === 443 ? s.host : `${s.host}:${s.port}`;
+      return normalizeHost(addr) === nh;
+    });
+  }, [serverHost, lanServers]);
+
   function closeDialog() {
     if (!isSearching && !isJoining) {
       setServerInfo(null);
@@ -83,8 +93,9 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     const normalizedHost = normalizeHost(serverHost);
     if (!normalizedHost) return;
 
-    const code = inviteRequired ? normalizeCode(inviteCode) : "";
-    if (inviteRequired && code.length === 0) {
+    const lanBypass = !!(isLanDiscovered && serverInfo.lanOpen);
+    const code = (inviteRequired && !lanBypass) ? normalizeCode(inviteCode) : "";
+    if (inviteRequired && !lanBypass && code.length === 0) {
       setJoinError("Invite code required to join this server.");
       return;
     }
@@ -397,7 +408,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                   </AnimatePresence>
 
                   <AnimatePresence>
-                    {inviteRequired && (
+                    {inviteRequired && !(isLanDiscovered && serverInfo.lanOpen) && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
@@ -423,7 +434,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                     disabled={
                       !!servers[serverHost] ||
                       isJoining ||
-                      (inviteRequired && normalizeCode(inviteCode).length === 0)
+                      (inviteRequired && !(isLanDiscovered && serverInfo.lanOpen) && normalizeCode(inviteCode).length === 0)
                     }
                     onClick={() => {
                       void joinServer();
@@ -435,7 +446,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                       <>
                         <SkeletonBase width="16px" height="16px" borderRadius="50%" /> Joining…
                       </>
-                    ) : inviteRequired ? (
+                    ) : inviteRequired && !(isLanDiscovered && serverInfo.lanOpen) ? (
                       <>Join with code</>
                     ) : (
                       <>Join {serverInfo.name}</>

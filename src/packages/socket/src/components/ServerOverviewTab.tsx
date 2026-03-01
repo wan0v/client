@@ -4,6 +4,7 @@ import {
   Button,
   Flex,
   Select,
+  Switch,
   Text,
   TextArea,
   TextField,
@@ -32,6 +33,7 @@ type ServerSettingsPayload = {
   profanityMode?: ProfanityMode;
   profanityCensorStyle?: CensorStyle;
   systemChannelId?: string | null;
+  lanOpen?: boolean;
 };
 
 export type ServerOverviewInitialSettings = {
@@ -76,6 +78,7 @@ export function ServerOverviewTab({
   const [profanityMode, setProfanityMode] = useState<ProfanityMode>("censor");
   const [censorStyle, setCensorStyle] = useState<CensorStyle>("emoji");
   const [systemChannelId, setSystemChannelId] = useState<string | null>(null);
+  const [lanOpen, setLanOpen] = useState(false);
 
   const [autosaving, setAutosaving] = useState(false);
   const pendingSaveCountRef = useRef(0);
@@ -88,6 +91,7 @@ export function ServerOverviewTab({
     profanityMode: ProfanityMode;
     profanityCensorStyle: CensorStyle;
     systemChannelId: string | null;
+    lanOpen: boolean;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -141,6 +145,7 @@ export function ServerOverviewTab({
       setProfanityMode(payload.profanityMode ?? "censor");
       setCensorStyle(payload.profanityCensorStyle ?? "emoji");
       setSystemChannelId(payload.systemChannelId ?? null);
+      setLanOpen(!!payload.lanOpen);
 
       if (!wasSaving) {
         setDisplayName(payload.displayName || "");
@@ -164,6 +169,7 @@ export function ServerOverviewTab({
         profanityMode: payload.profanityMode ?? "censor",
         profanityCensorStyle: payload.profanityCensorStyle ?? "emoji",
         systemChannelId: payload.systemChannelId ?? null,
+        lanOpen: !!payload.lanOpen,
       };
     };
 
@@ -198,6 +204,7 @@ export function ServerOverviewTab({
     profanityMode: ProfanityMode;
     profanityCensorStyle: CensorStyle;
     systemChannelId: string | null;
+    lanOpen: boolean;
   }>) => {
     if (!host) return;
     if (!socket || !socket.connected) return;
@@ -647,6 +654,27 @@ export function ServerOverviewTab({
             ))}
           </Select.Content>
         </Select.Root>
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Text size="2" weight="medium">
+          LAN access
+        </Text>
+        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+          When enabled, clients on the same local network can join without an invite code. Remote connections still require an invite.
+        </Text>
+        <Flex align="center" gap="2">
+          <Switch
+            checked={lanOpen}
+            onCheckedChange={(v) => {
+              setLanOpen(v);
+              saveIfChanged({ lanOpen: v });
+            }}
+            disabled={!isOwner}
+            size="1"
+          />
+          <Text size="2">Allow anyone on LAN to join</Text>
+        </Flex>
       </Flex>
 
       {autosaving ? (
