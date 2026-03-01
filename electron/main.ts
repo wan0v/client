@@ -781,7 +781,10 @@ if (!gotSingleInstanceLock) {
     createTray();
     startupLog("Tray created");
 
-    if (startHiddenOnLaunch) {
+    if (process.env.VITE_DEV_SERVER_URL) {
+      startupLog("Dev mode — skipping splash/update check");
+      mainWindow?.show();
+    } else if (startHiddenOnLaunch) {
       startupLog("Starting hidden (auto-start)");
       initBackgroundUpdater();
       autoUpdater.checkForUpdates().catch(() => {});
