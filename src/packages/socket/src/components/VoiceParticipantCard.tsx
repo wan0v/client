@@ -71,12 +71,12 @@ export function VideoCard({
         autoPlay
         playsInline
         muted
-        onContextMenu={(e) => e.preventDefault()}
         style={{
           width: "100%",
           height: "100%",
           objectFit,
           transform: mirrored ? "scaleX(-1)" : undefined,
+          pointerEvents: "none",
         }}
       />
       <Flex

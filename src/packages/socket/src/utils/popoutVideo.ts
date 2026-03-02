@@ -97,7 +97,7 @@ function setupPopupWindow(
       pinned = !pinned;
       pinBtn.classList.toggle("pinned", pinned);
       pinBtn.innerHTML = `${PIN_SVG} ${pinned ? "Pinned" : "Pin"}`;
-      electronAPI.toggleAlwaysOnTop(pinned);
+      electronAPI.toggleAlwaysOnTop(pinned, title);
     };
     toolbar.appendChild(pinBtn);
   }

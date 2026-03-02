@@ -1,6 +1,8 @@
 import { Flex, Slider, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  MdCloseFullscreen,
+  MdFullscreen,
   MdFullscreenExit,
   MdOpenInNew,
   MdVolumeOff,
@@ -45,8 +47,10 @@ export function FocusedVideoView({
   onPopout?: () => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [volume, setVolume] = useState(100);
   const [controlsVisible, setControlsVisible] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -54,8 +58,25 @@ export function FocusedVideoView({
   }, [stream]);
 
   useEffect(() => {
+    const onChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!containerRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      containerRef.current.requestFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !document.fullscreenElement) onClose();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -119,14 +140,14 @@ export function FocusedVideoView({
   return (
     <Flex direction="column" style={{ flex: 1, minHeight: 0 }}>
       <div
-        onClick={onClose}
-        onContextMenu={(e) => e.preventDefault()}
+        ref={containerRef}
+        onClick={isFullscreen ? toggleFullscreen : onClose}
         onMouseMove={showControls}
         onMouseLeave={hideControls}
         style={{
           flex: 1,
           position: "relative",
-          borderRadius: "var(--radius-3)",
+          borderRadius: isFullscreen ? 0 : "var(--radius-3)",
           overflow: "hidden",
           background: "#000",
           minHeight: 0,
@@ -225,10 +246,19 @@ export function FocusedVideoView({
           <button
             type="button"
             style={iconBtnStyle}
-            onClick={onClose}
-            aria-label="Exit fullscreen"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
           >
-            <MdFullscreenExit size={16} />
+            {isFullscreen ? <MdFullscreenExit size={16} /> : <MdFullscreen size={16} />}
+          </button>
+
+          <button
+            type="button"
+            style={iconBtnStyle}
+            onClick={onClose}
+            aria-label="Minimize"
+          >
+            <MdCloseFullscreen size={16} />
           </button>
         </Flex>
       </div>

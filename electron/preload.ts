@@ -100,8 +100,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-badge-count", count);
   },
 
-  toggleAlwaysOnTop(pinned: boolean) {
-    ipcRenderer.send("toggle-always-on-top", pinned);
+  toggleAlwaysOnTop(pinned: boolean, windowTitle?: string) {
+    ipcRenderer.send("toggle-always-on-top", pinned, windowTitle);
   },
 
   getScreenCaptureAccess(): Promise<string> {

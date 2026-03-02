@@ -978,8 +978,16 @@ if (!gotSingleInstanceLock) {
       }
     });
 
-    ipcMain.on("toggle-always-on-top", (event, pinned: boolean) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
+    ipcMain.on("toggle-always-on-top", (event, pinned: boolean, windowTitle?: string) => {
+      let win: BrowserWindow | null = null;
+      if (windowTitle) {
+        win = BrowserWindow.getAllWindows().find(
+          w => w.getTitle() === windowTitle
+        ) ?? null;
+      }
+      if (!win) {
+        win = BrowserWindow.fromWebContents(event.sender);
+      }
       if (win) {
         win.setAlwaysOnTop(pinned, "floating");
       }
