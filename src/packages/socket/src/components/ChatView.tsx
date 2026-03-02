@@ -2,12 +2,14 @@ import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChat, MdCloudUpload, MdVolumeUp } from "react-icons/md";
+import { Socket } from "socket.io-client";
 
 import { getUploadsFileUrl } from "@/common";
 import { useSettings } from "@/settings";
 
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
+import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import type { ChatEditorHandle } from "./ChatEditor";
@@ -18,6 +20,7 @@ import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatVi
 import { EmojiText } from "./EmojiText";
 import { ImageLightbox } from "./ImageLightbox";
 import { MessageRow } from "./MessageRow";
+import { TypingIndicator } from "./TypingIndicator";
 
 export type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 
@@ -115,6 +118,11 @@ export const ChatView = memo(({
     editorRef,
     forceScrollToBottomRef,
   });
+
+  const { typingUsers, emitTyping, emitStopTyping } = useTypingIndicator(
+    (socketConnection as Socket) ?? null,
+    conversationKey ?? "",
+  );
 
   // ── Custom emoji ──────────────────────────────────────────────
   const [customEmojiList, setCustomEmojiList] = useState<CustomEmojiEntry[]>([]);
@@ -337,6 +345,7 @@ export const ChatView = memo(({
             </div>
           ) : null}
 
+          <TypingIndicator typingUsers={typingUsers} serverHost={serverHost} />
           <ChatEditorBar
             replyingTo={replyingTo}
             editingMessage={editingMessage}
@@ -350,6 +359,8 @@ export const ChatView = memo(({
             onCancelEditing={cancelEditing}
             onSend={handleEditorSend}
             onArrowUpEmpty={handleArrowUpEmpty}
+            onTyping={emitTyping}
+            onStopTyping={emitStopTyping}
             serverHost={serverHost}
           />
         </Flex>

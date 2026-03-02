@@ -8,7 +8,7 @@ import {
   useUserId,
 } from "@/common";
 
-import { type ScreenShareCodec, settingsInit } from "./settingsStorage";
+import { type ScalabilityMode, type ScreenShareCodec, settingsInit } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
 
@@ -43,6 +43,7 @@ function useSettingsHook() {
   const [screenShareGamingMode, setScreenShareGamingModeState] = useState(true);
   const [screenShareCodec, setScreenShareCodecState] = useState<ScreenShareCodec>("auto");
   const [screenShareMaxBitrate, setScreenShareMaxBitrateState] = useState(0);
+  const [screenShareScalabilityMode, setScreenShareScalabilityModeState] = useState<ScalabilityMode>("L1T3");
 
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
   const [showVoiceView, setShowVoiceView] = useState(true);
@@ -85,6 +86,7 @@ function useSettingsHook() {
       setScreenShareGamingModeState(getUserValue("screenShareGamingMode", true));
       setScreenShareCodecState(getUserValue<ScreenShareCodec>("screenShareCodec", "auto"));
       setScreenShareMaxBitrateState(getUserValue("screenShareMaxBitrate", 0));
+      setScreenShareScalabilityModeState(getUserValue<ScalabilityMode>("screenShareScalabilityMode", "L1T3"));
       setUserVolumes(getUserValue("userVolumes", {}));
       setPinChannelsSidebarState(getUserValue("pinChannelsSidebar", true));
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
@@ -231,6 +233,11 @@ function useSettingsHook() {
     setUserValue("screenShareMaxBitrate", bps);
   }
 
+  function updateScreenShareScalabilityMode(mode: ScalabilityMode) {
+    setScreenShareScalabilityModeState(mode);
+    setUserValue("screenShareScalabilityMode", mode);
+  }
+
   function updateUserVolume(serverUserId: string, volume: number) {
     setUserVolumes((prev) => {
       const next = { ...prev, [serverUserId]: volume };
@@ -330,6 +337,8 @@ function useSettingsHook() {
     setScreenShareCodec: updateScreenShareCodec,
     screenShareMaxBitrate,
     setScreenShareMaxBitrate: updateScreenShareMaxBitrate,
+    screenShareScalabilityMode,
+    setScreenShareScalabilityMode: updateScreenShareScalabilityMode,
     userVolumes,
     updateUserVolume,
     resetUserVolume,

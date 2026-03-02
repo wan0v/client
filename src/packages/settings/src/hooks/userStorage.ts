@@ -242,6 +242,7 @@ export const SETTINGS_KEYS = [
   "screenShareGamingMode",
   "screenShareCodec",
   "screenShareMaxBitrate",
+  "screenShareScalabilityMode",
   "userVolumes",
   "pinChannelsSidebar",
   "pinMembersSidebar",

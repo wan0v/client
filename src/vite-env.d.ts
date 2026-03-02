@@ -10,6 +10,10 @@ declare global {
       GRYT_OIDC_CLIENT_ID?: string;
     };
   }
+
+  interface RTCRtpEncodingParameters {
+    scalabilityMode?: string;
+  }
 }
 
 export {};

@@ -4,7 +4,7 @@ import { MdClose, MdExpandLess, MdExpandMore, MdMonitor, MdScreenShare, MdWindow
 
 import type { ScreenShareFps, ScreenShareQuality } from "@/audio";
 import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@/audio";
-import type { ScreenShareCodec } from "@/settings";
+import type { ScalabilityMode, ScreenShareCodec } from "@/settings";
 
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
 
@@ -22,6 +22,8 @@ interface ScreenSharePickerModalProps {
   onCodecChange: (codec: ScreenShareCodec) => void;
   maxBitrate: number;
   onMaxBitrateChange: (bps: number) => void;
+  scalabilityMode: ScalabilityMode;
+  onScalabilityModeChange: (mode: ScalabilityMode) => void;
   onStart: (opts: { sourceId?: string; withAudio: boolean }) => void;
 }
 
@@ -65,6 +67,12 @@ const BITRATE_OPTIONS: { value: number; label: string }[] = [
   { value: 50_000_000, label: "50 Mbps" },
 ];
 
+const SVC_OPTIONS: { value: ScalabilityMode; label: string }[] = [
+  { value: "L1T1", label: "Off (L1T1)" },
+  { value: "L1T2", label: "2 layers (L1T2)" },
+  { value: "L1T3", label: "3 layers (L1T3)" },
+];
+
 function getAvailableCodecs(): ScreenShareCodec[] {
   const caps = typeof RTCRtpSender !== "undefined"
     ? RTCRtpSender.getCapabilities?.("video")
@@ -100,6 +108,7 @@ export function ScreenSharePickerModal({
   gamingMode, onGamingModeChange,
   codec, onCodecChange,
   maxBitrate, onMaxBitrateChange,
+  scalabilityMode, onScalabilityModeChange,
   onStart,
 }: ScreenSharePickerModalProps) {
   const [sources, setSources] = useState<DesktopSource[]>([]);
@@ -423,10 +432,23 @@ export function ScreenSharePickerModal({
                       </Select.Content>
                     </Select.Root>
                   </Flex>
+
+                  <Flex align="center" gap="2">
+                    <Text size="2">SVC layers</Text>
+                    <Select.Root value={scalabilityMode} onValueChange={(v) => onScalabilityModeChange(v as ScalabilityMode)}>
+                      <Select.Trigger variant="soft" />
+                      <Select.Content position="popper" sideOffset={4}>
+                        {SVC_OPTIONS.map((o) => (
+                          <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select.Root>
+                  </Flex>
                 </Flex>
 
                 <Text size="1" color="gray">
                   Auto codec prefers H.264 for universal hardware encoding. AV1 offers better compression on newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+).
+                  SVC layers enable temporal scalability — bandwidth-constrained receivers get lower framerate instead of degraded quality.
                 </Text>
               </Flex>
             )}

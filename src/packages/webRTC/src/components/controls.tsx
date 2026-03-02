@@ -53,6 +53,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     screenShareGamingMode, setScreenShareGamingMode,
     screenShareCodec, setScreenShareCodec,
     screenShareMaxBitrate, setScreenShareMaxBitrate,
+    screenShareScalabilityMode, setScreenShareScalabilityMode,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
     cameraFlipped, setCameraFlipped,
@@ -140,6 +141,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
               if (params.encodings && params.encodings.length > 0) {
                 params.encodings[0].maxBitrate = bitrate;
                 params.encodings[0].maxFramerate = screenShareFps;
+                if (screenShareScalabilityMode !== "L1T1") {
+                  params.encodings[0].scalabilityMode = screenShareScalabilityMode;
+                }
               }
               screenSender.setParameters(params).catch(() => {});
             }
@@ -151,7 +155,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, getPeerConnection]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, getPeerConnection]);
 
   // Sync screen share audio track to WebRTC
   useEffect(() => {
@@ -333,6 +337,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
         onCodecChange={setScreenShareCodec}
         maxBitrate={screenShareMaxBitrate}
         onMaxBitrateChange={setScreenShareMaxBitrate}
+        scalabilityMode={screenShareScalabilityMode}
+        onScalabilityModeChange={setScreenShareScalabilityMode}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>

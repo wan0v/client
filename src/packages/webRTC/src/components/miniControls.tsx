@@ -57,6 +57,10 @@ export function MiniControls({
     screenShareQuality, setScreenShareQuality,
     screenShareFps, setScreenShareFps,
     experimentalScreenShare,
+    screenShareGamingMode, setScreenShareGamingMode,
+    screenShareCodec, setScreenShareCodec,
+    screenShareMaxBitrate, setScreenShareMaxBitrate,
+    screenShareScalabilityMode, setScreenShareScalabilityMode,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
     cameraFlipped, setCameraFlipped,
@@ -209,6 +213,14 @@ export function MiniControls({
         fps={screenShareFps}
         onFpsChange={setScreenShareFps}
         experimentalScreenShare={experimentalScreenShare}
+        gamingMode={screenShareGamingMode}
+        onGamingModeChange={setScreenShareGamingMode}
+        codec={screenShareCodec}
+        onCodecChange={setScreenShareCodec}
+        maxBitrate={screenShareMaxBitrate}
+        onMaxBitrateChange={setScreenShareMaxBitrate}
+        scalabilityMode={screenShareScalabilityMode}
+        onScalabilityModeChange={setScreenShareScalabilityMode}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>

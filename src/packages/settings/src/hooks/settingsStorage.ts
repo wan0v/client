@@ -1,6 +1,7 @@
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
 export type ScreenShareCodec = "auto" | "h264" | "vp9" | "av1";
+export type ScalabilityMode = "L1T1" | "L1T2" | "L1T3";
 
 export interface Settings {
   micID?: string;
@@ -152,6 +153,9 @@ export interface Settings {
   screenShareMaxBitrate: number;
   setScreenShareMaxBitrate: (bps: number) => void;
 
+  screenShareScalabilityMode: ScalabilityMode;
+  setScreenShareScalabilityMode: (mode: ScalabilityMode) => void;
+
   userVolumes: Record<string, number>;
   updateUserVolume: (serverUserId: string, volume: number) => void;
   resetUserVolume: (serverUserId: string) => void;
@@ -296,6 +300,9 @@ export const settingsInit: Settings = {
 
   screenShareMaxBitrate: 0,
   setScreenShareMaxBitrate: noop,
+
+  screenShareScalabilityMode: "L1T3",
+  setScreenShareScalabilityMode: noop,
 
   userVolumes: {},
   updateUserVolume: noop,

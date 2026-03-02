@@ -1,3 +1,6 @@
+// Types
+export type { ScalabilityMode, ScreenShareCodec } from "./src/hooks/settingsStorage";
+
 // Hooks
 export * from "./src/hooks/useServerSettings";
 export * from "./src/hooks/useSettings";

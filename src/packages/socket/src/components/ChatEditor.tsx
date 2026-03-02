@@ -37,6 +37,8 @@ interface ChatEditorProps {
   onSend: (markdown: string, files: File[]) => void;
   onArrowUpEmpty?: () => void;
   onCancel?: () => void;
+  onTyping?: () => void;
+  onStopTyping?: () => void;
   isEditing?: boolean;
   memberList?: MentionMember[];
   serverHost?: string;
@@ -226,7 +228,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, isEditing, memberList, serverHost }, ref) => {
+  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -235,6 +237,10 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const onSendRef = useRef(onSend);
     onSendRef.current = onSend;
+    const onTypingRef = useRef(onTyping);
+    onTypingRef.current = onTyping;
+    const onStopTypingRef = useRef(onStopTyping);
+    onStopTypingRef.current = onStopTyping;
 
     const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
     const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -278,6 +284,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       setEmojiQuery(null);
       setShowMentionAutocomplete(false);
       setMentionQuery(null);
+      onStopTypingRef.current?.();
     }, []);
 
     const addFiles = useCallback((files: FileList | File[]) => {
@@ -359,6 +366,12 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const handleInput = useCallback(() => {
       if (editorRef.current) autoResize(editorRef.current);
       updateAutocompleteQueries();
+      const hasContent = editorRef.current ? serializeContentEditable(editorRef.current).trim().length > 0 : false;
+      if (hasContent) {
+        onTypingRef.current?.();
+      } else {
+        onStopTypingRef.current?.();
+      }
     }, [updateAutocompleteQueries]);
 
     const handleEmojiSelect = useCallback((entry: EmojiEntry) => {
