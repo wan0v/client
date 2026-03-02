@@ -415,10 +415,11 @@ function useSfuHook(): SFUInterface {
     };
   }, [disconnect]);
 
-  // Reconnect voice after the signaling server restarts.
-  // The SFU/WebRTC connection may still be alive, but the server lost all
-  // in-memory state, so a full disconnect + reconnect is the only way to
-  // restore speaking indicators, stream mapping, and member-list voice status.
+  // Reconnect voice after the signaling server reconnects. When only the
+  // Socket.IO transport dropped (e.g. Cloudflare Tunnel reset) but the SFU
+  // WebSocket + WebRTC peer connection are still alive, we skip the full SFU
+  // teardown and let the server's grace-period restore voice state. If the SFU
+  // connection also died, we fall back to a full reconnect with a short delay.
   const connectionStateRef = useRef(connectionState);
   useEffect(() => { connectionStateRef.current = connectionState; }, [connectionState]);
   const connectRef = useRef(connect);
@@ -435,7 +436,6 @@ function useSfuHook(): SFUInterface {
 
       const cs = connectionStateRef.current;
 
-      // If voice is connected/connecting to a *different* server, don't interfere
       if (
         (cs.state === SFUConnectionState.CONNECTED || cs.state === SFUConnectionState.CONNECTING) &&
         cs.serverId !== host
@@ -443,13 +443,34 @@ function useSfuHook(): SFUInterface {
         return;
       }
 
-      console.info("[Voice Recovery] Server reconnected — will rejoin voice channel:", channelId);
-
       reconnectAttemptsRef.current = 0;
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
+
+      const sfuWs = sfuWebSocketRef.current;
+      const pc = peerConnectionRef.current;
+      const sfuAlive =
+        sfuWs?.readyState === WebSocket.OPEN &&
+        pc?.connectionState === "connected";
+
+      if (
+        sfuAlive &&
+        cs.state === SFUConnectionState.CONNECTED &&
+        cs.serverId === host
+      ) {
+        // SFU is still connected — the server's grace-period will restore
+        // voice state during session restoration, so no teardown needed.
+        console.info(
+          "[Voice Recovery] Server reconnected — SFU still alive, skipping teardown (channel:",
+          channelId, ")",
+        );
+        return;
+      }
+
+      // SFU died or was not connected — full reconnect with short delay
+      console.info("[Voice Recovery] Server reconnected — SFU not alive, full reconnect for channel:", channelId);
 
       const doReconnect = () => {
         intentionalDisconnectRef.current = false;
@@ -466,12 +487,12 @@ function useSfuHook(): SFUInterface {
       if (voiceStillActive) {
         disconnectRef.current(false).then(() => {
           intentionalDisconnectRef.current = false;
-          setTimeout(doReconnect, 2500);
+          setTimeout(doReconnect, 500);
         }).catch((error) => {
           console.error("[Voice Recovery] Error during disconnect:", error);
         });
       } else {
-        setTimeout(doReconnect, 1000);
+        setTimeout(doReconnect, 500);
       }
     };
 
