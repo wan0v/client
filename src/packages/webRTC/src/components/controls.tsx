@@ -110,7 +110,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
       if (videoTrack) {
         voiceLog.info("SCREEN", `controls: syncing video track=${videoTrack.id} stream=${screenVideoStream.id} prev=${prevScreenVideoRef.current?.id ?? "null"}`);
         addScreenVideoTrack(videoTrack, screenVideoStream);
-        webrtcScreenVideoStreamId.current = screenVideoStream.id;
+        if (!webrtcScreenVideoStreamId.current) {
+          webrtcScreenVideoStreamId.current = screenVideoStream.id;
+        }
         prevScreenVideoRef.current = screenVideoStream;
 
         const bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
@@ -134,7 +136,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
       voiceLog.info("SCREEN", `controls: removing video track, prevStream=${prevScreenVideoRef.current.id}`);
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
-      webrtcScreenVideoStreamId.current = null;
     }
   }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, getPeerConnection]);
 
@@ -146,7 +147,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
       if (audioTrack) {
         voiceLog.info("SCREEN", `controls: syncing audio track=${audioTrack.id} enabled=${audioTrack.enabled} readyState=${audioTrack.readyState} muted=${audioTrack.muted} stream=${screenAudioStream.id}`);
         addScreenAudioTrack(audioTrack, screenAudioStream);
-        webrtcScreenAudioStreamId.current = screenAudioStream.id;
+        if (!webrtcScreenAudioStreamId.current) {
+          webrtcScreenAudioStreamId.current = screenAudioStream.id;
+        }
         prevScreenAudioRef.current = screenAudioStream;
       } else {
         voiceLog.info("SCREEN", `controls: screenAudioStream present (id=${screenAudioStream.id}) but has NO audio tracks`);
@@ -155,7 +158,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
       voiceLog.info("SCREEN", `controls: removing audio track, prevStream=${prevScreenAudioRef.current.id}`);
       removeScreenAudioTrack();
       prevScreenAudioRef.current = null;
-      webrtcScreenAudioStreamId.current = null;
     }
   }, [screenShareActive, screenAudioStream, isConnected, addScreenAudioTrack, removeScreenAudioTrack]);
 
