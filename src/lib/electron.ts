@@ -59,6 +59,10 @@ export interface ElectronAPI {
   loadUserData(userId: string): Promise<Record<string, unknown>>;
   saveUserData(userId: string, data: Record<string, unknown>): void;
   setUserData(userId: string, key: string, value: unknown): void;
+  loadGlobalStore(): Promise<Record<string, unknown>>;
+  setGlobalData(key: string, value: unknown): void;
+  deleteGlobalData(key: string): void;
+  saveGlobalStore(data: Record<string, unknown>): void;
   onAuthCallback(callback: (url: string) => void): () => void;
   onLanServerDiscovered(callback: (server: LanServer) => void): () => void;
   onLanServerRemoved(callback: (server: { host: string; port: number }) => void): () => void;

@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MdClose, MdInfoOutline, MdRadar, MdWarning, MdWifi } from "react-icons/md";
 
 import {
+  getServerAccessToken,
   getServerHttpBase,
   normalizeCode,
   normalizeHost,
@@ -56,6 +57,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
   const [inviteRequired, setInviteRequired] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
+  const [serverPrivate, setServerPrivate] = useState(false);
 
   const alreadyMember = useMemo(
     () => serverHost.length > 0 && !!servers[normalizeHost(serverHost)],
@@ -82,18 +84,19 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
       setInviteRequired(false);
       setInviteCode("");
       setJoinError("");
+      setServerPrivate(false);
       setShowAddServer(false);
     }
   }
 
   async function joinServer() {
-    if (!serverInfo) return;
+    if (!serverInfo && !serverPrivate) return;
     if (servers[serverHost]) return;
 
     const normalizedHost = normalizeHost(serverHost);
     if (!normalizedHost) return;
 
-    const lanBypass = !!(isLanDiscovered && serverInfo.lanOpen);
+    const lanBypass = !!(isLanDiscovered && serverInfo?.lanOpen);
     const code = (inviteRequired && !lanBypass) ? normalizeCode(inviteCode) : "";
     if (inviteRequired && !lanBypass && code.length === 0) {
       setJoinError("Invite code required to join this server.");
@@ -137,11 +140,11 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
 
     addServer(
       {
-        name: serverInfo.name,
+        name: serverInfo?.name || normalizedHost,
         host: normalizedHost,
       },
-      true
-    ); // Auto-focus the new server
+      true,
+    );
 
     closeDialog();
     setServerHost("");
@@ -153,6 +156,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     setInviteRequired(false);
     setInviteCode("");
     setJoinError("");
+    setServerPrivate(false);
   }, [serverHost]);
 
   useEffect(() => {
@@ -170,17 +174,28 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     setIsSearching(true);
     setHasError("");
     setServerInfo(null);
+    setServerPrivate(false);
     setInviteRequired(false);
     setInviteCode("");
     setJoinError("");
 
     const base = getServerHttpBase(normalizedHost);
-    fetch(`${base}/info`, { signal: controller.signal })
+    const headers: Record<string, string> = {};
+    const storedToken = getServerAccessToken(normalizedHost);
+    if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
+
+    fetch(`${base}/info`, { signal: controller.signal, headers })
       .then((res) => {
+        if (res.status === 404) {
+          setServerPrivate(true);
+          setServerHost(normalizedHost);
+          return;
+        }
         if (!res.ok) throw new Error(`Server responded with ${res.status}`);
         return res.json() as Promise<FetchInfo>;
       })
       .then((info) => {
+        if (!info) return;
         setServerInfo(info);
         setServerHost(normalizedHost);
       })
@@ -347,6 +362,94 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                       )
                     </Callout.Text>
                   </Callout.Root>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {serverPrivate && !serverInfo && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  style={{
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  <Callout.Root color="amber">
+                    <Callout.Icon>
+                      <MdInfoOutline size={16} />
+                    </Callout.Icon>
+                    <Callout.Text>
+                      This server has public info disabled. If you are an existing member or have an invite code, you can still join.
+                    </Callout.Text>
+                  </Callout.Root>
+
+                  <AnimatePresence>
+                    {joinError.length > 0 && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                      >
+                        <Callout.Root color="red" role="alert">
+                          <Callout.Icon>
+                            <MdWarning size={16} />
+                          </Callout.Icon>
+                          <Callout.Text>{joinError}</Callout.Text>
+                        </Callout.Root>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {inviteRequired && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                      >
+                        <Flex direction="column" gap="2">
+                          <Text size="2" color="gray" weight="bold">
+                            Invite code
+                          </Text>
+                          <TextField.Root
+                            disabled={isJoining}
+                            radius="full"
+                            placeholder="Paste invite code"
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(normalizeCode(e.target.value))}
+                          />
+                        </Flex>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <Button
+                    disabled={
+                      !!servers[serverHost] ||
+                      isJoining ||
+                      (inviteRequired && normalizeCode(inviteCode).length === 0)
+                    }
+                    onClick={() => {
+                      void joinServer();
+                    }}
+                  >
+                    {servers[serverHost] ? (
+                      "You are already a member"
+                    ) : isJoining ? (
+                      <>
+                        <SkeletonBase width="16px" height="16px" borderRadius="50%" /> Joining…
+                      </>
+                    ) : inviteRequired ? (
+                      <>Join with code</>
+                    ) : (
+                      <>Join server</>
+                    )}
+                  </Button>
                 </motion.div>
               )}
             </AnimatePresence>

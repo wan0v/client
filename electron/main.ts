@@ -8,6 +8,7 @@ import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
+import { deleteGlobalValue, flushGlobalStore, initGlobalStore, loadGlobalStore, saveGlobalStore, setGlobalValue } from "./globalStore";
 import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -122,6 +123,7 @@ function handleDeepLink(url: string): void {
 
 const configPath = join(app.getPath("userData"), "gryt-config.json");
 initUserStore(app.getPath("userData"));
+initGlobalStore(app.getPath("userData"));
 
 function readConfig(): Record<string, unknown> {
   try { return JSON.parse(readFileSync(configPath, "utf8")); }
@@ -745,6 +747,18 @@ if (!gotSingleInstanceLock) {
       saveUser(userId, data);
     });
 
+    // ── Global file store (backs localStorage) ───────────────────────
+    ipcMain.handle("global-store:load", () => loadGlobalStore());
+    ipcMain.on("global-store:set", (_event, key: string, value: unknown) => {
+      setGlobalValue(key, value);
+    });
+    ipcMain.on("global-store:delete", (_event, key: string) => {
+      deleteGlobalValue(key);
+    });
+    ipcMain.on("global-store:save", (_event, data: Record<string, unknown>) => {
+      saveGlobalStore(data);
+    });
+
     // Apply at startup (default enabled on Windows).
     applyStartWithWindowsSetting(startWithWindows);
 
@@ -1036,8 +1050,9 @@ if (!gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
-    console.log("[Main] will-quit: flushing user store and cleaning up");
+    console.log("[Main] will-quit: flushing stores and cleaning up");
     flushUserStore();
+    flushGlobalStore();
     uIOhook.stop();
     localServer?.close();
     localServer = null;

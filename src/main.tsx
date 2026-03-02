@@ -11,6 +11,7 @@ import { useTheme, useZoomShortcuts } from "@/common";
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
 import { Titlebar } from "./components/titlebar";
+import { initGlobalStorage } from "./lib/globalStorage";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function ThemedApp() {
@@ -62,8 +63,10 @@ function ThemedApp() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ThemedApp />
-  </React.StrictMode>
-);
+initGlobalStorage().then(() => {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ThemedApp />
+    </React.StrictMode>,
+  );
+});

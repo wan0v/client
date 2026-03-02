@@ -171,6 +171,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("user-store:set", userId, key, value);
   },
 
+  // ── Global file store (backs localStorage) ─────────────────────
+  loadGlobalStore(): Promise<Record<string, unknown>> {
+    return ipcRenderer.invoke("global-store:load");
+  },
+
+  setGlobalData(key: string, value: unknown) {
+    ipcRenderer.send("global-store:set", key, value);
+  },
+
+  deleteGlobalData(key: string) {
+    ipcRenderer.send("global-store:delete", key);
+  },
+
+  saveGlobalStore(data: Record<string, unknown>) {
+    ipcRenderer.send("global-store:save", data);
+  },
+
   onLanServerDiscovered(callback: (server: { name: string; host: string; port: number; version: string | null }) => void) {
     const handler = (_event: Electron.IpcRendererEvent, data: { name: string; host: string; port: number; version: string | null }) =>
       callback(data);

@@ -34,6 +34,7 @@ type ServerSettingsPayload = {
   profanityCensorStyle?: CensorStyle;
   systemChannelId?: string | null;
   lanOpen?: boolean;
+  discoverable?: boolean;
 };
 
 export type ServerOverviewInitialSettings = {
@@ -79,6 +80,7 @@ export function ServerOverviewTab({
   const [censorStyle, setCensorStyle] = useState<CensorStyle>("emoji");
   const [systemChannelId, setSystemChannelId] = useState<string | null>(null);
   const [lanOpen, setLanOpen] = useState(false);
+  const [discoverable, setDiscoverable] = useState(true);
 
   const [autosaving, setAutosaving] = useState(false);
   const pendingSaveCountRef = useRef(0);
@@ -92,6 +94,7 @@ export function ServerOverviewTab({
     profanityCensorStyle: CensorStyle;
     systemChannelId: string | null;
     lanOpen: boolean;
+    discoverable: boolean;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -146,6 +149,7 @@ export function ServerOverviewTab({
       setCensorStyle(payload.profanityCensorStyle ?? "emoji");
       setSystemChannelId(payload.systemChannelId ?? null);
       setLanOpen(!!payload.lanOpen);
+      setDiscoverable(payload.discoverable !== false);
 
       if (!wasSaving) {
         setDisplayName(payload.displayName || "");
@@ -170,6 +174,7 @@ export function ServerOverviewTab({
         profanityCensorStyle: payload.profanityCensorStyle ?? "emoji",
         systemChannelId: payload.systemChannelId ?? null,
         lanOpen: !!payload.lanOpen,
+        discoverable: payload.discoverable !== false,
       };
     };
 
@@ -205,6 +210,7 @@ export function ServerOverviewTab({
     profanityCensorStyle: CensorStyle;
     systemChannelId: string | null;
     lanOpen: boolean;
+    discoverable: boolean;
   }>) => {
     if (!host) return;
     if (!socket || !socket.connected) return;
@@ -674,6 +680,27 @@ export function ServerOverviewTab({
             size="1"
           />
           <Text size="2">Allow anyone on LAN to join</Text>
+        </Flex>
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Text size="2" weight="medium">
+          Discoverability
+        </Text>
+        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+          When disabled, the server&rsquo;s public info endpoint is hidden. Non-members will not be able to see the server name, description, or member count before joining.
+        </Text>
+        <Flex align="center" gap="2">
+          <Switch
+            checked={discoverable}
+            onCheckedChange={(v) => {
+              setDiscoverable(v);
+              saveIfChanged({ discoverable: v });
+            }}
+            disabled={!isOwner}
+            size="1"
+          />
+          <Text size="2">Allow public server info</Text>
         </Flex>
       </Flex>
 
