@@ -84,9 +84,18 @@ export function useSFUStreams({
     const staleIds = Object.keys(streamSources).filter((id) => streams[id] === undefined);
     if (staleIds.length === 0) return;
 
+    // Only disconnect audio nodes if no other (non-stale) entry shares them.
+    // Aliases reuse the same object reference, so check identity.
+    const survivingEntries = new Set(
+      Object.entries(streamSources)
+        .filter(([id]) => streams[id] !== undefined)
+        .map(([, entry]) => entry),
+    );
+
     staleIds.forEach((id) => {
+      const source = streamSources[id];
+      if (survivingEntries.has(source)) return;
       try {
-        const source = streamSources[id];
         source.gain.disconnect();
         source.analyser.disconnect();
         source.stream.disconnect();
@@ -115,15 +124,36 @@ export function useSFUStreams({
     const newStreamSources: StreamSources = { ...streamSources };
     let hasChanges = false;
 
+    // Build a map from MediaStream.id → streamSources key so we can detect
+    // aliases (multiple stream keys pointing at the same underlying MediaStream)
+    // and reuse a single playback pipeline instead of creating duplicates.
+    const mediaStreamToSourceKey = new Map<string, string>();
+    for (const [key] of Object.entries(newStreamSources)) {
+      const streamData = streams[key];
+      if (streamData) {
+        mediaStreamToSourceKey.set(streamData.stream.id, key);
+      }
+    }
+
     Object.keys(streams).forEach((streamID) => {
       const stream = streams[streamID];
 
       if (stream.isLocal) return;
-      if (streamSources[streamID]) return;
+      if (newStreamSources[streamID]) return;
 
       const audioTracks = stream.stream.getAudioTracks();
       if (!audioTracks.length) {
         voiceLog.warn("WEBRTC", `Remote stream ${streamID} has 0 audio tracks — skipping`);
+        return;
+      }
+
+      // If another stream key already created playback for this exact
+      // MediaStream, reuse that pipeline instead of creating a duplicate.
+      const existingKey = mediaStreamToSourceKey.get(stream.stream.id);
+      if (existingKey && newStreamSources[existingKey]) {
+        voiceLog.info("WEBRTC", `Stream ${streamID} shares MediaStream ${stream.stream.id} with ${existingKey} — reusing playback pipeline`);
+        newStreamSources[streamID] = newStreamSources[existingKey];
+        hasChanges = true;
         return;
       }
 
@@ -162,12 +192,15 @@ export function useSFUStreams({
           destinationChannels: audioContext.destination.maxChannelCount,
         });
 
-        newStreamSources[streamID] = {
+        const entry = {
           gain: gainNode,
           analyser: analyserNode,
           stream: sourceNode,
           audioElement: audioEl,
         };
+
+        newStreamSources[streamID] = entry;
+        mediaStreamToSourceKey.set(stream.stream.id, streamID);
 
         hasChanges = true;
       } catch (error) {

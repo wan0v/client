@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MdClose } from "react-icons/md";
 
-import { getServerAccessToken, getServerHttpBase } from "@/common";
+import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
 import {
   getInstagramEmbedSrc,
@@ -248,13 +248,14 @@ export const VimeoEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => v
 };
 
 export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost: string; onDismiss: () => void }) => {
+  const { resolvedAppearance } = useTheme();
   const [html, setHtml] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     setHtml(null);
     setFailed(false);
-  }, [url]);
+  }, [url, resolvedAppearance]);
 
   useEffect(() => {
     if (html || failed) return;
@@ -262,7 +263,7 @@ export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost
     if (!accessToken) { setFailed(true); return; }
     const base = getServerHttpBase(serverHost);
     let cancelled = false;
-    fetch(`${base}/api/oembed?url=${encodeURIComponent(url)}`, {
+    fetch(`${base}/api/oembed?url=${encodeURIComponent(url)}&theme=${resolvedAppearance}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("oembed_failed"))))
@@ -274,7 +275,7 @@ export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost
       })
       .catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
-  }, [url, serverHost, html, failed]);
+  }, [url, serverHost, html, failed, resolvedAppearance]);
 
   if (failed) return null;
   if (!html) {
@@ -288,7 +289,11 @@ export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost
     );
   }
 
-  const srcDoc = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>html,body{margin:0;padding:0;background:transparent;}body{display:flex;justify-content:center;}blockquote{margin:0!important;}</style></head><body>${html}<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></body></html>`;
+  const themedHtml = html.replace(
+    /class="twitter-tweet"/,
+    `class="twitter-tweet" data-theme="${resolvedAppearance}"`,
+  );
+  const srcDoc = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>html,body{margin:0;padding:0;background:transparent;}body{display:flex;justify-content:center;}blockquote{margin:0!important;}</style></head><body>${themedHtml}<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></body></html>`;
 
   return (
     <div className="link-embed-container">

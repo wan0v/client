@@ -56,10 +56,12 @@ const BASE_BITRATES_30FPS: Record<ScreenShareQuality, number | null> = {
   "4p": 1_000,
 };
 
+const MAX_BITRATE = 20_000_000;
+
 export function estimateBitrate(quality: ScreenShareQuality, fps: number): number | null {
   const base = BASE_BITRATES_30FPS[quality];
   if (base === null) return null;
-  return Math.round(base * (fps / 30));
+  return Math.min(Math.round(base * Math.pow(fps / 30, 0.7)), MAX_BITRATE);
 }
 
 export interface ScreenShareInterface {
@@ -178,7 +180,7 @@ function useScreenShareHook(): ScreenShareInterface {
 
       const videoTracks = stream.getVideoTracks();
       if (videoTracks.length > 0) {
-        videoTracks[0].contentHint = "motion";
+        videoTracks[0].contentHint = "detail";
 
         const videoOnly = new MediaStream(videoTracks);
         setScreenVideoStream(videoOnly);

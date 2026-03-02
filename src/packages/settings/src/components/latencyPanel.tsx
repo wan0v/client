@@ -39,9 +39,6 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
   if (latency.oneWayNetworkMs !== null && latency.oneWayNetworkMs > 0) {
     segments.push({ label: "Network", ms: latency.oneWayNetworkMs, color: "var(--green-9)" });
   }
-  if (latency.jitterBufferMs !== null && latency.jitterBufferMs > 0) {
-    segments.push({ label: "Jitter buf", ms: latency.jitterBufferMs, color: "var(--purple-9)" });
-  }
 
   const total = segments.reduce((sum, s) => sum + s.ms, 0);
   if (total === 0) return null;
@@ -180,7 +177,6 @@ export function LatencyPanel() {
             value={latency.jitterMs}
             color={latency.jitterMs !== null && latency.jitterMs > 20 ? "var(--orange-11)" : undefined}
           />
-          <LatencyRow label="Jitter buffer" value={latency.jitterBufferMs} />
         </Flex>
       )}
 

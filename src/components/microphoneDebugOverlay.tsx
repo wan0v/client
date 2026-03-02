@@ -213,7 +213,6 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
           <div>Socket RTT: {socketRttMs == null ? "—" : `${Math.round(socketRttMs)} ms`}</div>
           <div>WebRTC RTT: {latency.networkRttMs == null ? "—" : `${latency.networkRttMs.toFixed(1)} ms`}</div>
           <div>Jitter: {latency.jitterMs == null ? "—" : `${latency.jitterMs.toFixed(1)} ms`}</div>
-          <div>Jitter buffer: {latency.jitterBufferMs == null ? "—" : `${latency.jitterBufferMs.toFixed(1)} ms`}</div>
           <div>Packets lost: {latency.packetsLost == null ? "—" : `${latency.packetsLost}`}</div>
           <div>Avail out: {latency.availableOutKbps == null ? "—" : `${Math.round(latency.availableOutKbps)} kbps`}</div>
           <div>Bitrate: {latency.bitrateKbps == null ? "—" : `${latency.bitrateKbps.toFixed(1)} kbps`}</div>

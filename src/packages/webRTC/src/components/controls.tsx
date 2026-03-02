@@ -123,9 +123,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
             const screenSender = senders.find(s => s.track === videoTrack);
             if (screenSender) {
               const params = screenSender.getParameters();
-              params.degradationPreference = "maintain-framerate";
+              params.degradationPreference = "maintain-resolution";
               if (params.encodings && params.encodings.length > 0) {
                 params.encodings[0].maxBitrate = bitrate;
+                params.encodings[0].maxFramerate = screenShareFps;
               }
               screenSender.setParameters(params).catch(() => {});
             }

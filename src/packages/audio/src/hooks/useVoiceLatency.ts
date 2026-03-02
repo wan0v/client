@@ -15,7 +15,6 @@ export interface LatencyBreakdown {
   networkRttMs: number | null;
   oneWayNetworkMs: number | null;
   jitterMs: number | null;
-  jitterBufferMs: number | null;
   packetsLost: number | null;
   packetsSent: number | null;
   packetsReceived: number | null;
@@ -44,7 +43,6 @@ const EMPTY: LatencyBreakdown = {
   networkRttMs: null,
   oneWayNetworkMs: null,
   jitterMs: null,
-  jitterBufferMs: null,
   packetsLost: null,
   packetsSent: null,
   packetsReceived: null,
@@ -67,7 +65,6 @@ export function useVoiceLatency(enabled: boolean) {
 
   const [latency, setLatency] = useState<LatencyBreakdown>(EMPTY);
   const prevBytesRef = useRef<{ bytes: number; ts: number } | null>(null);
-  const prevJitterBufRef = useRef<{ delay: number; count: number } | null>(null);
 
   const computeLocalPipeline = useCallback(() => {
     if (!audioContext) return { baseMs: null, outputMs: null, rnnoiseMs: null, totalMs: null };
@@ -98,7 +95,6 @@ export function useVoiceLatency(enabled: boolean) {
     if (!enabled) {
       setLatency(EMPTY);
       prevBytesRef.current = null;
-      prevJitterBufRef.current = null;
       return;
     }
 
@@ -111,7 +107,6 @@ export function useVoiceLatency(enabled: boolean) {
 
       let networkRttMs: number | null = null;
       let jitterMs: number | null = null;
-      let jitterBufferMs: number | null = null;
       let packetsLost: number | null = null;
       let packetsSent: number | null = null;
       let packetsReceived: number | null = null;
@@ -172,17 +167,6 @@ export function useVoiceLatency(enabled: boolean) {
               if (typeof stat.packetsReceived === "number") {
                 packetsReceived = stat.packetsReceived;
               }
-              if (typeof stat.jitterBufferDelay === "number" && typeof stat.jitterBufferEmittedCount === "number" && stat.jitterBufferEmittedCount > 0) {
-                const prev = prevJitterBufRef.current;
-                if (prev) {
-                  const deltaCount = stat.jitterBufferEmittedCount - prev.count;
-                  const deltaDelay = stat.jitterBufferDelay - prev.delay;
-                  if (deltaCount > 0 && deltaDelay >= 0) {
-                    jitterBufferMs = (deltaDelay / deltaCount) * 1000;
-                  }
-                }
-                prevJitterBufRef.current = { delay: stat.jitterBufferDelay, count: stat.jitterBufferEmittedCount };
-              }
               if (stat.codecId && codecMap.has(stat.codecId)) {
                 codec = codecMap.get(stat.codecId) || null;
               }
@@ -221,7 +205,6 @@ export function useVoiceLatency(enabled: boolean) {
         let hasData = false;
         if (local.totalMs !== null) { sum += local.totalMs; hasData = true; }
         if (oneWayNetworkMs !== null) { sum += oneWayNetworkMs; hasData = true; }
-        if (jitterBufferMs !== null) { sum += jitterBufferMs; hasData = true; }
         estimatedOneWayMs = hasData ? Math.max(0, sum) : null;
       }
 
@@ -235,7 +218,6 @@ export function useVoiceLatency(enabled: boolean) {
           networkRttMs,
           oneWayNetworkMs,
           jitterMs,
-          jitterBufferMs,
           packetsLost,
           packetsSent,
           packetsReceived,
@@ -260,7 +242,6 @@ export function useVoiceLatency(enabled: boolean) {
       cancelled = true;
       clearInterval(interval);
       prevBytesRef.current = null;
-      prevJitterBufRef.current = null;
     };
   }, [enabled, computeLocalPipeline, getPeerConnection, isConnected, activeSfuUrl]);
 
