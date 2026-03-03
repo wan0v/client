@@ -1,5 +1,5 @@
 import { Box, Dialog, Flex, IconButton, Tabs } from "@radix-ui/themes";
-import { MdChat, MdClose, MdDesktopWindows, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
+import { MdChat, MdClose, MdDesktopWindows, MdFavorite, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
@@ -14,6 +14,7 @@ import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
 import { ProfileSettings } from "./profileSettings";
 import { SecuritySettings } from "./securitySettings";
+import { SupportSettings } from "./supportSettings";
 import { AppearanceSettings } from "./theme/appearanceSettings";
 import { VoiceSettings } from "./voiceSettings";
 
@@ -87,6 +88,12 @@ const TAB_CONFIG = [
     label: "Advanced",
     icon: MdTune,
     content: <AdvancedSettings />,
+  },
+  {
+    value: "support",
+    label: "Support Gryt",
+    icon: MdFavorite,
+    content: <SupportSettings />,
   },
   {
     value: "about",
