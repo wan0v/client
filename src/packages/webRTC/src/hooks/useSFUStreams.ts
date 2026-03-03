@@ -81,20 +81,41 @@ export function useSFUStreams({
     previousRemoteStreamsRef.current = currentRemoteStreams;
   }, [streams, isConnected, connectionServerId, sockets, previousRemoteStreamsRef]);
 
-  // Cleanup stale streamSources when streams are removed
+  // Cleanup stale streamSources when streams are removed or their underlying
+  // MediaStream is replaced (e.g. alias swap after SFU renegotiation).
   useEffect(() => {
-    const staleIds = Object.keys(streamSources).filter((id) => streams[id] === undefined);
-    if (staleIds.length === 0) return;
+    const removedIds = Object.keys(streamSources).filter((id) => streams[id] === undefined);
+
+    // Detect pipelines whose source MediaStream no longer matches the current
+    // stream entry — this happens when an alias updates streams[id] to a new
+    // MediaStream while the old pipeline still references the previous one.
+    const mismatchedIds = Object.keys(streamSources).filter((id) => {
+      const streamData = streams[id];
+      if (!streamData) return false;
+      const sourceNode = streamSources[id].stream;
+      if ("mediaStream" in sourceNode) {
+        return (sourceNode as MediaStreamAudioSourceNode).mediaStream !== streamData.stream;
+      }
+      return false;
+    });
+
+    const allStaleIds = [...removedIds, ...mismatchedIds];
+    if (allStaleIds.length === 0) return;
+
+    if (mismatchedIds.length > 0) {
+      voiceLog.info("WEBRTC", `Stale pipeline cleanup: ${mismatchedIds.length} mismatched source(s): [${mismatchedIds.join(", ")}]`);
+    }
 
     // Only disconnect audio nodes if no other (non-stale) entry shares them.
     // Aliases reuse the same object reference, so check identity.
+    const staleSet = new Set(allStaleIds);
     const survivingEntries = new Set(
       Object.entries(streamSources)
-        .filter(([id]) => streams[id] !== undefined)
+        .filter(([id]) => !staleSet.has(id))
         .map(([, entry]) => entry),
     );
 
-    staleIds.forEach((id) => {
+    allStaleIds.forEach((id) => {
       const source = streamSources[id];
       if (survivingEntries.has(source)) return;
       try {
@@ -111,7 +132,7 @@ export function useSFUStreams({
 
     setStreamSources((prev) => {
       const next = { ...prev };
-      staleIds.forEach((id) => delete next[id]);
+      allStaleIds.forEach((id) => delete next[id]);
       return next;
     });
   }, [streams, streamSources, setStreamSources]);
@@ -130,10 +151,16 @@ export function useSFUStreams({
     // aliases (multiple stream keys pointing at the same underlying MediaStream)
     // and reuse a single playback pipeline instead of creating duplicates.
     const mediaStreamToSourceKey = new Map<string, string>();
+    // Track-level dedup: catches the case where the same audio track is
+    // re-wrapped in a new MediaStream after SFU renegotiation.
+    const audioTrackToSourceKey = new Map<string, string>();
     for (const [key] of Object.entries(newStreamSources)) {
       const streamData = streams[key];
       if (streamData) {
         mediaStreamToSourceKey.set(streamData.stream.id, key);
+        for (const t of streamData.stream.getAudioTracks()) {
+          audioTrackToSourceKey.set(t.id, key);
+        }
       }
     }
 
@@ -155,6 +182,17 @@ export function useSFUStreams({
       if (existingKey && newStreamSources[existingKey]) {
         voiceLog.info("WEBRTC", `Stream ${streamID} shares MediaStream ${stream.stream.id} with ${existingKey} — reusing playback pipeline`);
         newStreamSources[streamID] = newStreamSources[existingKey];
+        hasChanges = true;
+        return;
+      }
+
+      // Same audio track served via a new MediaStream (renegotiation alias)
+      const existingByTrack = audioTracks
+        .map(t => audioTrackToSourceKey.get(t.id))
+        .find(key => key !== undefined && newStreamSources[key]);
+      if (existingByTrack) {
+        voiceLog.info("WEBRTC", `Stream ${streamID} shares audio track(s) with ${existingByTrack} — reusing playback pipeline`);
+        newStreamSources[streamID] = newStreamSources[existingByTrack];
         hasChanges = true;
         return;
       }
