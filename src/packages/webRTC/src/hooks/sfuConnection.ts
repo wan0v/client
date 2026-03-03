@@ -179,6 +179,16 @@ export async function connectToSfuWebSocket(
                 event: "answer",
                 data: JSON.stringify(answer),
               }));
+
+              const transceivers = peerConnectionRef.current.getTransceivers();
+              for (const t of transceivers) {
+                if (t.sender?.track && t.mid) {
+                  const codec = t.sender.getParameters().codecs?.[0];
+                  if (codec) {
+                    voiceLog.info("SFU-WS", `Negotiated send codec mid=${t.mid} kind=${t.sender.track.kind}: ${codec.mimeType} pt=${codec.payloadType} ${codec.sdpFmtpLine || ""}`);
+                  }
+                }
+              }
             } else {
               throw new Error("No local description available");
             }

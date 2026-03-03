@@ -5,6 +5,7 @@ export * from "./src/hooks/useDeviceEnumeration";
 export * from "./src/hooks/useGlobalHotkeys";
 export * from "./src/hooks/useHandles";
 export * from "./src/hooks/useMicrophone";
+export * from "./src/hooks/useNativeScreenCapture";
 export * from "./src/hooks/useScreenShare";
 export * from "./src/hooks/useSpeakers";
 export type { LatencyBreakdown } from "./src/hooks/useVoiceLatency";

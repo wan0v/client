@@ -351,19 +351,25 @@ function useSfuHook(): SFUInterface {
       const caps = RTCRtpSender.getCapabilities("video");
       if (caps) {
         const mimeMap: Record<string, string> = {
-          h264: "video/H264",
-          vp9: "video/VP9",
-          av1: "video/AV1",
+          h264: "video/h264",
+          vp9: "video/vp9",
+          av1: "video/av1",
         };
-        const targetMime = preferredCodec && preferredCodec !== "auto"
+        const targetMimeLower = preferredCodec && preferredCodec !== "auto"
           ? mimeMap[preferredCodec]
-          : "video/H264";
+          : "video/h264";
 
-        if (targetMime) {
-          const preferred = caps.codecs.filter(c => c.mimeType === targetMime);
-          const rest = caps.codecs.filter(c => c.mimeType !== targetMime);
-          transceiver.setCodecPreferences([...preferred, ...rest]);
-          voiceLog.info("SCREEN", `setCodecPreferences: ${targetMime} preferred (${preferred.length} matched, ${rest.length} other)`);
+        if (targetMimeLower) {
+          const preferred = caps.codecs.filter(c => c.mimeType.toLowerCase() === targetMimeLower);
+          const rest = caps.codecs.filter(c => c.mimeType.toLowerCase() !== targetMimeLower);
+
+          if (preferred.length === 0) {
+            const availableMimes = [...new Set(caps.codecs.map(c => c.mimeType))];
+            voiceLog.warn("SCREEN", `Codec "${preferredCodec}" (${targetMimeLower}) NOT found in browser capabilities. Available: [${availableMimes.join(", ")}]. Falling back to browser default order.`);
+          } else {
+            transceiver.setCodecPreferences([...preferred, ...rest]);
+            voiceLog.info("SCREEN", `setCodecPreferences: ${preferredCodec} preferred (${preferred.length} matched, ${rest.length} other)`);
+          }
         }
       }
     }

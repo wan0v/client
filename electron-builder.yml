@@ -61,7 +61,6 @@ mac:
   target:
     - dmg
     - zip
-  identity: null
   category: public.app-category.social-networking
   extendInfo:
     NSMicrophoneUsageDescription: "Gryt Chat uses your microphone for voice chat."

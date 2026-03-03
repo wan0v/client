@@ -142,6 +142,30 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("native-audio-diagnostic", handler);
   },
 
+  isNativeScreenCaptureAvailable(): Promise<boolean> {
+    return ipcRenderer.invoke("native-screen-capture:available");
+  },
+
+  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number): Promise<boolean> {
+    return ipcRenderer.invoke("native-screen-capture:start", monitorIndex, fps, maxWidth, maxHeight);
+  },
+
+  stopNativeScreenCapture() {
+    ipcRenderer.send("native-screen-capture:stop");
+  },
+
+  onNativeScreenFrame(callback: (frame: { width: number; height: number; timestampUs: number; data: ArrayBuffer }) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, frame: { width: number; height: number; timestampUs: number; data: ArrayBuffer }) => callback(frame);
+    ipcRenderer.on("native-screen-capture:frame", handler);
+    return () => ipcRenderer.removeListener("native-screen-capture:frame", handler);
+  },
+
+  onNativeScreenCaptureStopped(callback: () => void) {
+    const handler = () => callback();
+    ipcRenderer.on("native-screen-capture:stopped", handler);
+    return () => ipcRenderer.removeListener("native-screen-capture:stopped", handler);
+  },
+
   onWindowFocusChange(callback: (focused: boolean) => void) {
     const handler = (_event: Electron.IpcRendererEvent, focused: boolean) => callback(focused);
     ipcRenderer.on("window-focus-change", handler);

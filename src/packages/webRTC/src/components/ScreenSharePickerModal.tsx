@@ -1,4 +1,4 @@
-import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MdClose, MdExpandLess, MdExpandMore, MdMonitor, MdScreenShare, MdWindow } from "react-icons/md";
 
@@ -24,6 +24,7 @@ interface ScreenSharePickerModalProps {
   onMaxBitrateChange: (bps: number) => void;
   scalabilityMode: ScalabilityMode;
   onScalabilityModeChange: (mode: ScalabilityMode) => void;
+  nativeScreenCaptureAvailable?: boolean;
   onStart: (opts: { sourceId?: string; withAudio: boolean }) => void;
 }
 
@@ -78,10 +79,10 @@ function getAvailableCodecs(): ScreenShareCodec[] {
     ? RTCRtpSender.getCapabilities?.("video")
     : null;
   if (!caps) return ["auto", "h264", "vp9"];
-  const mimes = new Set(caps.codecs.map(c => c.mimeType));
+  const mimes = new Set(caps.codecs.map(c => c.mimeType.toLowerCase()));
   const available: ScreenShareCodec[] = ["auto"];
   for (const opt of CODEC_OPTIONS) {
-    if (opt.value !== "auto" && mimes.has(opt.mime)) {
+    if (opt.value !== "auto" && mimes.has(opt.mime.toLowerCase())) {
       available.push(opt.value);
     }
   }
@@ -109,6 +110,7 @@ export function ScreenSharePickerModal({
   codec, onCodecChange,
   maxBitrate, onMaxBitrateChange,
   scalabilityMode, onScalabilityModeChange,
+  nativeScreenCaptureAvailable = false,
   onStart,
 }: ScreenSharePickerModalProps) {
   const [sources, setSources] = useState<DesktopSource[]>([]);
@@ -182,21 +184,37 @@ export function ScreenSharePickerModal({
   }, [selectedSource, quality, onQualityChange]);
 
   const fpsOptions = useMemo(() => {
-    const options: { value: ScreenShareFps; label: string }[] = STANDARD_FPS_OPTIONS.map(
-      (f) => ({ value: f, label: `${f} FPS` }),
+    const options: { value: ScreenShareFps; label: string; disabled: boolean }[] = STANDARD_FPS_OPTIONS.map(
+      (f) => {
+        const needsNative = f > 60;
+        const disabled = needsNative && !nativeScreenCaptureAvailable;
+        let label = `${f} FPS`;
+        if (needsNative && nativeScreenCaptureAvailable) label += " (Native)";
+        else if (needsNative && !inElectron) label += " (Desktop app)";
+        else if (needsNative) label += " (Unavailable)";
+        return { value: f, label, disabled };
+      },
     );
     if (experimentalScreenShare) {
       for (const f of EXPERIMENTAL_FPS_OPTIONS) {
-        options.push({ value: f, label: `${f} FPS (Experimental)` });
+        const needsNative = f > 60;
+        const disabled = needsNative && !nativeScreenCaptureAvailable;
+        let label = `${f} FPS`;
+        if (needsNative && nativeScreenCaptureAvailable) label += " (Native)";
+        else if (needsNative && !inElectron) label += " (Desktop app)";
+        else if (needsNative) label += " (Unavailable)";
+        options.push({ value: f, label, disabled });
       }
     }
     return options;
-  }, [experimentalScreenShare]);
+  }, [experimentalScreenShare, nativeScreenCaptureAvailable, inElectron]);
 
   const estimatedBps = useMemo(
     () => estimateBitrate(quality, fps),
     [quality, fps],
   );
+
+  const svcDisabled = codec === "h264" || codec === "auto";
 
   const handleShare = () => {
     onStart({ sourceId: selected ?? undefined, withAudio: includeAudio });
@@ -350,18 +368,24 @@ export function ScreenSharePickerModal({
           </div>
 
           <Flex align="center" gap="4" wrap="wrap">
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <Checkbox size="1" checked={includeAudio} onCheckedChange={(v) => setIncludeAudio(v === true)} />
-              Include audio
-            </Text>
+            <Tooltip content="Capture desktop/application audio alongside the screen" delayDuration={300}>
+              <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                <Checkbox size="1" checked={includeAudio} onCheckedChange={(v) => setIncludeAudio(v === true)} />
+                Include audio
+              </Text>
+            </Tooltip>
 
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <Checkbox size="1" checked={gamingMode} onCheckedChange={(v) => onGamingModeChange(v === true)} />
-              Gaming mode
-            </Text>
+            <Tooltip content="Optimizes for fast-paced content like games. Allocates 50% more bitrate for smoother motion." delayDuration={300}>
+              <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                <Checkbox size="1" checked={gamingMode} onCheckedChange={(v) => onGamingModeChange(v === true)} />
+                Gaming mode
+              </Text>
+            </Tooltip>
 
             <Flex align="center" gap="2" ml="auto">
-              <Text size="2">Quality</Text>
+              <Tooltip content="Capture resolution. Lower values use less bandwidth." delayDuration={300}>
+                <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Quality</Text>
+              </Tooltip>
               <Select.Root value={quality} onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}>
                 <Select.Trigger variant="soft" />
                 <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
@@ -373,12 +397,14 @@ export function ScreenSharePickerModal({
             </Flex>
 
             <Flex align="center" gap="2">
-              <Text size="2">FPS</Text>
+              <Tooltip content="Frames per second. Values above 60 use native DXGI screen capture (Windows desktop app only) to bypass browser FPS limits." delayDuration={300}>
+                <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>FPS</Text>
+              </Tooltip>
               <Select.Root value={String(fps)} onValueChange={(v) => onFpsChange(Number(v))}>
                 <Select.Trigger variant="soft" />
                 <Select.Content position="popper" sideOffset={4}>
                   {fpsOptions.map((o) => (
-                    <Select.Item key={o.value} value={String(o.value)}>{o.label}</Select.Item>
+                    <Select.Item key={o.value} value={String(o.value)} disabled={o.disabled}>{o.label}</Select.Item>
                   ))}
                 </Select.Content>
               </Select.Root>
@@ -410,7 +436,9 @@ export function ScreenSharePickerModal({
               >
                 <Flex align="center" gap="4" wrap="wrap">
                   <Flex align="center" gap="2">
-                    <Text size="2">Codec</Text>
+                    <Tooltip content="H.264 has the widest hardware support. VP9/AV1 offer better compression but need newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+)." delayDuration={300}>
+                      <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Codec</Text>
+                    </Tooltip>
                     <Select.Root value={codec} onValueChange={(v) => onCodecChange(v as ScreenShareCodec)}>
                       <Select.Trigger variant="soft" />
                       <Select.Content position="popper" sideOffset={4}>
@@ -422,7 +450,9 @@ export function ScreenSharePickerModal({
                   </Flex>
 
                   <Flex align="center" gap="2">
-                    <Text size="2">Max bitrate</Text>
+                    <Tooltip content="Fixed encoding bitrate. Auto estimates based on resolution and FPS. Higher values mean sharper video but require more upload bandwidth." delayDuration={300}>
+                      <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Bitrate</Text>
+                    </Tooltip>
                     <Select.Root value={String(maxBitrate)} onValueChange={(v) => onMaxBitrateChange(Number(v))}>
                       <Select.Trigger variant="soft" />
                       <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
@@ -433,9 +463,14 @@ export function ScreenSharePickerModal({
                     </Select.Root>
                   </Flex>
 
-                  <Flex align="center" gap="2">
-                    <Text size="2">SVC layers</Text>
-                    <Select.Root value={scalabilityMode} onValueChange={(v) => onScalabilityModeChange(v as ScalabilityMode)}>
+                  <Flex align="center" gap="2" style={svcDisabled ? { opacity: 0.5 } : undefined}>
+                    <Tooltip content={svcDisabled
+                      ? "SVC is not supported with H.264. Switch to VP9 or AV1 to enable temporal scalability layers."
+                      : "Temporal scalability layers (VP9/AV1 only). Encodes multiple frame-rate tiers into a single stream."
+                    } delayDuration={300}>
+                      <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>SVC layers</Text>
+                    </Tooltip>
+                    <Select.Root value={scalabilityMode} onValueChange={(v) => onScalabilityModeChange(v as ScalabilityMode)} disabled={svcDisabled}>
                       <Select.Trigger variant="soft" />
                       <Select.Content position="popper" sideOffset={4}>
                         {SVC_OPTIONS.map((o) => (
@@ -445,14 +480,27 @@ export function ScreenSharePickerModal({
                     </Select.Root>
                   </Flex>
                 </Flex>
-
-                <Text size="1" color="gray">
-                  Auto codec prefers H.264 for universal hardware encoding. AV1 offers better compression on newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+).
-                  SVC layers enable temporal scalability — bandwidth-constrained receivers get lower framerate instead of degraded quality.
-                </Text>
               </Flex>
             )}
           </Flex>
+
+          {fps > 60 && nativeScreenCaptureAvailable && (
+            <Flex
+              align="center"
+              gap="2"
+              px="3"
+              py="1"
+              style={{
+                borderRadius: "var(--radius-2)",
+                background: "var(--green-3)",
+              }}
+            >
+              <Badge color="green" variant="soft" size="1">Native capture</Badge>
+              <Text size="1" color="green">
+                DXGI Desktop Duplication will be used for {fps} FPS capture
+              </Text>
+            </Flex>
+          )}
 
           {(maxBitrate > 0 || estimatedBps !== null) && (
             <Flex
@@ -466,7 +514,7 @@ export function ScreenSharePickerModal({
               }}
             >
               <Text size="2" weight="medium">
-                {maxBitrate > 0 ? "Max bitrate:" : "Estimated bandwidth:"}
+                {maxBitrate > 0 ? "Bitrate:" : "Estimated bitrate:"}
               </Text>
               <Badge
                 color={bitrateColor(maxBitrate > 0 ? maxBitrate : estimatedBps!)}

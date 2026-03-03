@@ -5,6 +5,7 @@ import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 import { useNativeAudioCapture } from "./useNativeAudioCapture";
+import { useNativeScreenCapture } from "./useNativeScreenCapture";
 import { useSpeakers } from "./useSpeakers";
 
 export type ScreenShareQuality =
@@ -70,6 +71,8 @@ export interface ScreenShareInterface {
   screenShareActive: boolean;
   /** True when OS-native audio capture is active (no phase cancellation needed). */
   nativeAudioActive: boolean;
+  /** True when native DXGI screen capture is available for high-FPS capture. */
+  nativeScreenCaptureAvailable: boolean;
   startScreenShare: (withAudio: boolean, sourceId?: string) => Promise<void>;
   stopScreenShare: () => void;
 }
@@ -84,16 +87,27 @@ function useScreenShareHook(): ScreenShareInterface {
     start: nativeStart,
     stop: nativeStop,
   } = useNativeAudioCapture();
+  const {
+    available: nativeScreenAvailable,
+    videoStream: nativeVideoStream,
+    start: nativeScreenStart,
+    stop: nativeScreenStop,
+  } = useNativeScreenCapture();
   const [screenVideoStream, setScreenVideoStream] = useState<MediaStream | null>(null);
   const [screenAudioStream, setScreenAudioStream] = useState<MediaStream | null>(null);
   const [screenShareActive, setScreenShareActive] = useState(false);
   const rawStreamRef = useRef<MediaStream | null>(null);
   const usingNativeAudioRef = useRef(false);
+  const usingNativeVideoRef = useRef(false);
 
   const stopScreenShare = useCallback(() => {
     if (usingNativeAudioRef.current) {
       nativeStop();
       usingNativeAudioRef.current = false;
+    }
+    if (usingNativeVideoRef.current) {
+      nativeScreenStop();
+      usingNativeVideoRef.current = false;
     }
     if (rawStreamRef.current) {
       rawStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -102,15 +116,44 @@ function useScreenShareHook(): ScreenShareInterface {
     setScreenVideoStream(null);
     setScreenAudioStream(null);
     setScreenShareActive(false);
-  }, [nativeStop]);
+  }, [nativeStop, nativeScreenStop]);
 
   const startScreenShare = useCallback(async (withAudio: boolean, sourceId?: string) => {
     const res = RESOLUTION_CONSTRAINTS[screenShareQuality as ScreenShareQuality] ?? RESOLUTION_CONSTRAINTS.native;
     const fps = screenShareFps || 30;
     const useNativeAudio = withAudio && nativeAvailable;
+
+    // Use native DXGI capture for high-FPS screen capture when available.
+    // Source IDs for screens look like "screen:<index>:0".
+    const screenMatch = sourceId?.match(/^screen:(\d+):/);
+    const useNativeVideo = nativeScreenAvailable && isElectron() && !!screenMatch && fps > 60;
+
     console.log(
-      `[ScreenShare] startScreenShare withAudio=${withAudio} nativeAvailable=${nativeAvailable} useNativeAudio=${useNativeAudio} isElectron=${isElectron()} sourceId=${sourceId ?? "none"}`,
+      `[ScreenShare] startScreenShare withAudio=${withAudio} nativeAudio=${useNativeAudio} nativeVideo=${useNativeVideo} isElectron=${isElectron()} sourceId=${sourceId ?? "none"} fps=${fps} quality=${screenShareQuality}`,
     );
+
+    if (useNativeVideo && screenMatch) {
+      try {
+        const monitorIndex = parseInt(screenMatch[1], 10);
+        const started = await nativeScreenStart(monitorIndex, fps, res.width, res.height);
+        if (!started) {
+          console.warn("[ScreenShare] native screen capture failed, falling back to getDisplayMedia");
+        } else {
+          usingNativeVideoRef.current = true;
+          setScreenShareActive(true);
+          // Audio is handled separately below via nativeStart or getDisplayMedia fallback
+          if (useNativeAudio && audioContext) {
+            const audioStarted = await nativeStart(audioContext, sourceId);
+            if (audioStarted) {
+              usingNativeAudioRef.current = true;
+            }
+          }
+          return;
+        }
+      } catch (err) {
+        console.error("[ScreenShare] native screen capture error:", err);
+      }
+    }
 
     try {
       let stream: MediaStream;
@@ -119,6 +162,7 @@ function useScreenShareHook(): ScreenShareInterface {
         type ChromeDesktopMandatory = {
           chromeMediaSource: "desktop";
           chromeMediaSourceId: string;
+          minFrameRate?: number;
           maxFrameRate?: number;
           maxWidth?: number;
           maxHeight?: number;
@@ -128,6 +172,7 @@ function useScreenShareHook(): ScreenShareInterface {
         const mandatory: ChromeDesktopMandatory = {
           chromeMediaSource: "desktop",
           chromeMediaSourceId: sourceId,
+          minFrameRate: fps,
           maxFrameRate: fps,
         };
         if (res.width) {
@@ -181,7 +226,26 @@ function useScreenShareHook(): ScreenShareInterface {
 
       const videoTracks = stream.getVideoTracks();
       if (videoTracks.length > 0) {
-        videoTracks[0].contentHint = screenShareGamingMode ? "motion" : "detail";
+        const vt = videoTracks[0];
+        const settingsBefore = vt.getSettings();
+        console.log(
+          `[ScreenShare] captured video track settings BEFORE applyConstraints: fps=${settingsBefore.frameRate ?? "?"} ` +
+          `res=${settingsBefore.width ?? "?"}x${settingsBefore.height ?? "?"} requested fps=${fps}`,
+        );
+
+        try {
+          await vt.applyConstraints({ frameRate: { ideal: fps, max: fps } });
+        } catch (e) {
+          console.warn("[ScreenShare] applyConstraints(frameRate) failed:", e);
+        }
+
+        const settingsAfter = vt.getSettings();
+        console.log(
+          `[ScreenShare] captured video track settings AFTER applyConstraints: fps=${settingsAfter.frameRate ?? "?"} ` +
+          `res=${settingsAfter.width ?? "?"}x${settingsAfter.height ?? "?"}`,
+        );
+
+        vt.contentHint = screenShareGamingMode ? "motion" : "detail";
 
         const videoOnly = new MediaStream(videoTracks);
         setScreenVideoStream(videoOnly);
@@ -238,7 +302,15 @@ function useScreenShareHook(): ScreenShareInterface {
         setScreenAudioStream(null);
       }
     }
-  }, [screenShareQuality, screenShareFps, screenShareGamingMode, stopScreenShare, nativeAvailable, nativeStart, audioContext]);
+  }, [screenShareQuality, screenShareFps, screenShareGamingMode, stopScreenShare, nativeAvailable, nativeStart, nativeScreenAvailable, nativeScreenStart, audioContext]);
+
+  // Sync native video capture stream → screenVideoStream
+  useEffect(() => {
+    if (usingNativeVideoRef.current && nativeVideoStream) {
+      console.log(`[ScreenShare] native video stream synced → screenVideoStream id=${nativeVideoStream.id}`);
+      setScreenVideoStream(nativeVideoStream);
+    }
+  }, [nativeVideoStream]);
 
   // Sync native capture stream → screenAudioStream
   useEffect(() => {
@@ -265,6 +337,7 @@ function useScreenShareHook(): ScreenShareInterface {
     screenAudioStream,
     screenShareActive,
     nativeAudioActive: usingNativeAudioRef.current && nativeActive,
+    nativeScreenCaptureAvailable: nativeScreenAvailable,
     startScreenShare,
     stopScreenShare,
   };
@@ -275,6 +348,7 @@ const screenShareInit: ScreenShareInterface = {
   screenAudioStream: null,
   screenShareActive: false,
   nativeAudioActive: false,
+  nativeScreenCaptureAvailable: false,
   startScreenShare: async () => {},
   stopScreenShare: () => {},
 };

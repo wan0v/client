@@ -4,6 +4,7 @@ export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useGlobalHotkeys } from "./hooks/useGlobalHotkeys";
 export { useHandles } from "./hooks/useHandles";
 export { useMicrophone } from "./hooks/useMicrophone";
+export { useNativeScreenCapture } from "./hooks/useNativeScreenCapture";
 export type { ScreenShareFps, ScreenShareQuality } from "./hooks/useScreenShare";
 export { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS, useScreenShare } from "./hooks/useScreenShare";
 export { useSpeakers } from "./hooks/useSpeakers";

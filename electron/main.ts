@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
 import { deleteGlobalValue, flushGlobalStore, initGlobalStore, loadGlobalStore, saveGlobalStore, setGlobalValue } from "./globalStore";
+import { isNativeScreenCaptureAvailable, startNativeScreenCapture, stopNativeScreenCapture } from "./screenCaptureManager";
 import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -796,6 +797,17 @@ if (!gotSingleInstanceLock) {
     });
     ipcMain.on("stop-native-audio-capture", () => {
       stopNativeAudioCapture();
+    });
+
+    ipcMain.handle("native-screen-capture:available", () => {
+      return isNativeScreenCaptureAvailable();
+    });
+    ipcMain.handle("native-screen-capture:start", (_event, monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number) => {
+      if (!mainWindow) return false;
+      return startNativeScreenCapture(mainWindow, monitorIndex, fps, maxWidth, maxHeight);
+    });
+    ipcMain.on("native-screen-capture:stop", () => {
+      stopNativeScreenCapture();
     });
 
     createMainWindow();

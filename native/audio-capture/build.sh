@@ -23,18 +23,27 @@ build_macos() {
   echo "Built: $OUT_DIR/audio-capture"
 }
 
+build_screen_capture_windows_msvc() {
+  echo "Building Windows screen-capture binary (MSVC)..."
+  cl.exe /EHsc /O2 /Fe:"$OUT_DIR/screen-capture.exe" \
+    "$SCRIPT_DIR/../screen-capture/windows/main.cpp" \
+    /link d3d11.lib dxgi.lib
+  echo "Built: $OUT_DIR/screen-capture.exe"
+}
+
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
     build_windows_msvc
+    build_screen_capture_windows_msvc
     ;;
   Darwin)
     build_macos
     ;;
   Linux)
-    echo "No native audio capture binary for Linux."
-    echo "Windows audio-capture.exe is built on Windows via native/audio-capture/windows/build.bat"
+    echo "No native capture binaries for Linux yet."
+    echo "Windows binaries are built on Windows via native/*/windows/build.bat"
     ;;
   *)
-    echo "No native audio capture binary for this platform ($(uname -s)). Skipping."
+    echo "No native capture binaries for this platform ($(uname -s)). Skipping."
     ;;
 esac

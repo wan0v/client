@@ -22,6 +22,13 @@ export interface LanServer {
   version: string | null;
 }
 
+export interface NativeScreenFrame {
+  width: number;
+  height: number;
+  timestampUs: number;
+  data: ArrayBuffer;
+}
+
 export interface ElectronAPI {
   isElectron: true;
   getAppVersion(): Promise<string>;
@@ -53,6 +60,11 @@ export interface ElectronAPI {
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void): () => void;
   onNativeAudioStopped(callback: () => void): () => void;
   onNativeAudioDiagnostic(callback: (msg: string) => void): () => void;
+  isNativeScreenCaptureAvailable(): Promise<boolean>;
+  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number): Promise<boolean>;
+  stopNativeScreenCapture(): void;
+  onNativeScreenFrame(callback: (frame: NativeScreenFrame) => void): () => void;
+  onNativeScreenCaptureStopped(callback: () => void): () => void;
   onWindowFocusChange(callback: (focused: boolean) => void): () => void;
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;

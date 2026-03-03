@@ -42,7 +42,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     getPeerConnection,
   } = useSFU();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
-  const { screenVideoStream, screenAudioStream, screenShareActive, startScreenShare, stopScreenShare } = useScreenShare();
+  const { screenVideoStream, screenAudioStream, screenShareActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
   const { sockets } = useSockets();
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
@@ -137,9 +137,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             const screenSender = senders.find(s => s.track === videoTrack);
             if (screenSender) {
               const params = screenSender.getParameters();
-              params.degradationPreference = screenShareGamingMode
-                ? "maintain-framerate"
-                : "maintain-resolution";
+              params.degradationPreference = "maintain-framerate";
               if (params.encodings && params.encodings.length > 0) {
                 params.encodings[0].maxBitrate = bitrate;
                 params.encodings[0].maxFramerate = screenShareFps;
@@ -148,6 +146,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
                   params.encodings[0].scalabilityMode = screenShareScalabilityMode;
                 }
               }
+              const enc = params.encodings[0];
+              voiceLog.info("SCREEN", `setParameters: maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
               screenSender.setParameters(params).catch((err: unknown) => {
                 voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
               });
@@ -344,6 +344,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         onMaxBitrateChange={setScreenShareMaxBitrate}
         scalabilityMode={screenShareScalabilityMode}
         onScalabilityModeChange={setScreenShareScalabilityMode}
+        nativeScreenCaptureAvailable={nativeScreenCaptureAvailable}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>
