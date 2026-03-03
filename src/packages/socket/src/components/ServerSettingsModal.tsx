@@ -1,6 +1,6 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
-import { MdClose, MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings, MdSwapHoriz } from "react-icons/md";
+import { MdClose, MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings, MdSwapHoriz, MdWebhook } from "react-icons/md";
 
 import { getServerAccessToken } from "@/common";
 
@@ -11,6 +11,7 @@ import { ServerInvitesTab } from "./ServerInvitesTab";
 import { type ServerOverviewInitialSettings,ServerOverviewTab } from "./ServerOverviewTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
+import { ServerWebhooksTab } from "./ServerWebhooksTab";
 
 type SetupRequiredDetail = {
   host: string;
@@ -123,6 +124,12 @@ export function ServerSettingsModal() {
       label: "Audit Log",
       icon: MdFactCheck,
       content: <ServerAuditTab host={host} socket={socket} accessToken={accessToken} />,
+    },
+    {
+      value: "webhooks",
+      label: "Webhooks",
+      icon: MdWebhook,
+      content: <ServerWebhooksTab host={host} channels={host ? serverDetailsList[host]?.channels ?? [] : []} />,
     },
     ...(isOwner
       ? [

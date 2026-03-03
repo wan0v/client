@@ -26,6 +26,7 @@ export interface MessageMeta {
   isSelf: boolean;
   isFirstEdited: boolean;
   isSystem: boolean;
+  isWebhook: boolean;
 }
 
 interface MessageRowProps {
@@ -228,6 +229,25 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 <Text size="2" weight="bold" style={{ color: meta.isSelf ? "var(--accent-11)" : "var(--gray-12)" }}>
                   {meta.senderName}
                 </Text>
+                {meta.isWebhook && (
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "0 5px",
+                    height: 16,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    borderRadius: "var(--radius-1)",
+                    background: "var(--accent-9)",
+                    color: "var(--color-background)",
+                    letterSpacing: "0.02em",
+                    userSelect: "none",
+                    flexShrink: 0,
+                  }}>
+                    BOT
+                  </span>
+                )}
                 <MessageTimestamp date={toDate(m.created_at)} />
                 {meta.isFirstEdited && (
                   <Tooltip content={`Edited ${new Date(m.edited_at!).toLocaleString()}`} delayDuration={200}>

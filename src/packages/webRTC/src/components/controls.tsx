@@ -92,7 +92,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
             if (cameraSender) {
               const params = cameraSender.getParameters();
               params.degradationPreference = "maintain-framerate";
-              cameraSender.setParameters(params).catch(() => {});
+              cameraSender.setParameters(params).catch((err: unknown) => {
+                voiceLog.warn("CAMERA", `setParameters failed: ${err}`);
+              });
             }
           }
         }
@@ -141,11 +143,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
               if (params.encodings && params.encodings.length > 0) {
                 params.encodings[0].maxBitrate = bitrate;
                 params.encodings[0].maxFramerate = screenShareFps;
-                if (screenShareScalabilityMode !== "L1T1") {
+                const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
+                if (!isH264 && screenShareScalabilityMode !== "L1T1") {
                   params.encodings[0].scalabilityMode = screenShareScalabilityMode;
                 }
               }
-              screenSender.setParameters(params).catch(() => {});
+              screenSender.setParameters(params).catch((err: unknown) => {
+                voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
+              });
             }
           }
         }
@@ -163,7 +168,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (screenShareActive && screenAudioStream) {
       const audioTrack = screenAudioStream.getAudioTracks()[0];
       if (audioTrack) {
-        voiceLog.info("SCREEN", `controls: syncing audio track=${audioTrack.id} enabled=${audioTrack.enabled} readyState=${audioTrack.readyState} muted=${audioTrack.muted} stream=${screenAudioStream.id}`);
+        voiceLog.info("SCREEN", `controls: syncing audio track=${audioTrack.id} label="${audioTrack.label}" enabled=${audioTrack.enabled} readyState=${audioTrack.readyState} muted=${audioTrack.muted} stream=${screenAudioStream.id}`);
         addScreenAudioTrack(audioTrack, screenAudioStream);
         if (!webrtcScreenAudioStreamId.current) {
           webrtcScreenAudioStreamId.current = screenAudioStream.id;

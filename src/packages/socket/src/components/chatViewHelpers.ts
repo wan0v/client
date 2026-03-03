@@ -4,6 +4,7 @@ import type { MessageMeta } from "./MessageRow";
 
 export const GROUP_GAP_MS = 5 * 60 * 1000;
 export const SYSTEM_SENDER_ID = "system";
+export const WEBHOOK_PREFIX = "webhook:";
 
 export function getAttachmentPreview(msg: ChatMessage): string {
   const enriched = msg.enriched_attachments;
@@ -37,6 +38,7 @@ export function buildMessageMetadata(
     lastDay = dayKey;
 
     const isSystem = m.sender_server_id === SYSTEM_SENDER_ID;
+    const isWebhook = m.sender_server_id.startsWith(WEBHOOK_PREFIX);
 
     const timeSincePrev = prev ? d.getTime() - toDate(prev.created_at).getTime() : Infinity;
     const isFirstInGroup = isSystem ||
@@ -44,7 +46,7 @@ export function buildMessageMetadata(
 
     const showNewMessageDivider = !!(newMessageMarkerId && prev && prev.message_id === newMessageMarkerId);
 
-    const isSelf = !isSystem && !!currentUserId && m.sender_server_id === currentUserId;
+    const isSelf = !isSystem && !isWebhook && !!currentUserId && m.sender_server_id === currentUserId;
     const senderName = isSystem ? "System" : (isSelf ? (currentUserNickname || "You") : getSenderName(m));
     const avatarUrl = isSystem ? undefined : getSenderAvatarUrl(m);
     const isFirstEdited = isFirstInGroup && !!m.edited_at;
@@ -58,6 +60,7 @@ export function buildMessageMetadata(
       isSelf,
       isFirstEdited,
       isSystem,
+      isWebhook,
     };
   });
 }
