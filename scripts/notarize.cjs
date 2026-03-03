@@ -11,10 +11,11 @@ exports.default = async function notarizeHook(context) {
 
   // Only run when credentials are provided (so dev builds don't block)
   const appleApiKey = process.env.APPLE_API_KEY;
+  const appleApiKeyId = process.env.APPLE_API_KEY_ID;
   const appleApiIssuer = process.env.APPLE_API_ISSUER;
   const keychainProfile = process.env.APPLE_NOTARYTOOL_KEYCHAIN_PROFILE;
 
-  if (!keychainProfile && (!appleApiKey || !appleApiIssuer)) {
+  if (!keychainProfile && (!appleApiKey || !appleApiKeyId || !appleApiIssuer)) {
     console.log("[notarize] Skipping (no notarization credentials set).");
     return;
   }
@@ -30,7 +31,7 @@ exports.default = async function notarizeHook(context) {
   if (keychainProfile) {
     await notarize({ appPath, keychainProfile });
   } else {
-    await notarize({ appPath, appleApiKey, appleApiIssuer });
+    await notarize({ appPath, appleApiKey, appleApiKeyId, appleApiIssuer });
   }
 
   console.log("[notarize] Done");
