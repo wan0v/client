@@ -69,6 +69,7 @@ export function SignUpModal() {
             {registrationAllowed && (
               <Button
                 variant="outline"
+                disabled={loginInProgress}
                 onClick={async () => {
                   try {
                     setError(undefined);
