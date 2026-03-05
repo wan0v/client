@@ -45,23 +45,36 @@ function removeFrom(storage: Storage | undefined, key: string): void {
 
 export function getStoredAccessToken(key: string): string | null {
   const mode = getAccessTokenStorageMode();
-  // Backward compatible read: check both (session first when mode=session).
+  let result: string | null;
   if (mode === "session") {
-    return readFrom(sessionStorage, key) ?? readFrom(localStorage, key);
+    result = readFrom(sessionStorage, key) ?? readFrom(localStorage, key);
+  } else {
+    result = readFrom(localStorage, key) ?? readFrom(sessionStorage, key);
   }
-  return readFrom(localStorage, key) ?? readFrom(sessionStorage, key);
+  console.log("[TokenStorage] getStoredAccessToken:", key, "mode:", mode, "found:", result !== null, result ? `(${result.length} chars)` : "");
+  return result;
 }
 
 export function setStoredAccessToken(key: string, value: string): void {
   const mode = getAccessTokenStorageMode();
-  // Avoid stale duplicates.
+  console.log("[TokenStorage] setStoredAccessToken:", key, "mode:", mode, "length:", value.length);
   removeFrom(localStorage, key);
   removeFrom(sessionStorage, key);
   if (mode === "session") writeTo(sessionStorage, key, value);
   else writeTo(localStorage, key, value);
+
+  const readBack = mode === "session"
+    ? readFrom(sessionStorage, key)
+    : readFrom(localStorage, key);
+  if (readBack === null) {
+    console.error("[TokenStorage] VERIFICATION FAILED — read-back null for", key);
+  } else {
+    console.log("[TokenStorage] verified OK for", key);
+  }
 }
 
 export function removeStoredAccessToken(key: string): void {
+  console.log("[TokenStorage] removeStoredAccessToken:", key);
   removeFrom(localStorage, key);
   removeFrom(sessionStorage, key);
 }
@@ -93,7 +106,8 @@ export function removeServerRefreshToken(host: string): void {
 }
 
 export function clearAllServerTokens(): void {
-  const clear = (storage: Storage | undefined) => {
+  console.log("[TokenStorage] clearAllServerTokens called");
+  const clear = (storage: Storage | undefined, name: string) => {
     if (!storage) return;
     const keysToRemove: string[] = [];
     try {
@@ -101,13 +115,14 @@ export function clearAllServerTokens(): void {
         const key = storage.key(i);
         if (key && (key.startsWith("accessToken_") || key.startsWith("serverUserId_") || key.startsWith("refreshToken_"))) keysToRemove.push(key);
       }
+      console.log(`[TokenStorage] clearAllServerTokens: removing ${keysToRemove.length} keys from ${name}:`, keysToRemove.join(", "));
       keysToRemove.forEach((k) => storage.removeItem(k));
     } catch {
       // ignore
     }
   };
-  clear(localStorage);
-  clear(sessionStorage);
+  clear(localStorage, "localStorage");
+  clear(sessionStorage, "sessionStorage");
 }
 
 export function migrateAccessTokensToMode(mode: AccessTokenStorageMode): void {

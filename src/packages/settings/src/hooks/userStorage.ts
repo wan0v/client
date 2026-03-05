@@ -34,9 +34,13 @@ export async function loadForUser(userId: string): Promise<UserData> {
       }
     } else {
       const prefix = `user:${userId}:`;
+      const allLsKeys: string[] = [];
+      const matchedKeys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
+        if (k) allLsKeys.push(k);
         if (k?.startsWith(prefix)) {
+          matchedKeys.push(k);
           const short = k.slice(prefix.length);
           const raw = localStorage.getItem(k);
           if (raw !== null) {
@@ -48,7 +52,13 @@ export async function loadForUser(userId: string): Promise<UserData> {
           }
         }
       }
-      console.log("[UserStore] loadForUser: localStorage returned", Object.keys(data).length, "keys, hasServers:", data["servers"] !== undefined);
+      console.log("[UserStore] loadForUser: localStorage has", allLsKeys.length, "total keys");
+      console.log("[UserStore] loadForUser: matched", matchedKeys.length, "keys for prefix", JSON.stringify(prefix));
+      if (matchedKeys.length > 0) {
+        console.log("[UserStore] loadForUser: matched keys:", matchedKeys.join(", "));
+      }
+      console.log("[UserStore] loadForUser: all localStorage keys:", allLsKeys.join(", "));
+      console.log("[UserStore] loadForUser: parsed data keys:", Object.keys(data).join(", "));
     }
 
     const hasExistingData = Object.keys(data).length > 0;
@@ -74,7 +84,14 @@ export async function loadForUser(userId: string): Promise<UserData> {
 
 export function getUserValue<T>(key: string, fallback: T): T {
   const v = cache[key];
-  return v === undefined ? fallback : (v as T);
+  const result = v === undefined ? fallback : (v as T);
+  if (key === "servers" || key === "lastSelectedChannels" || key === "serverOrder") {
+    const preview = typeof result === "object" && result !== null
+      ? JSON.stringify(result).slice(0, 200)
+      : String(result);
+    console.log("[UserStore] getUserValue:", key, "→", v === undefined ? "(fallback)" : "(cached)", preview);
+  }
+  return result;
 }
 
 export function setUserValue(key: string, value: unknown): void {
@@ -85,22 +102,37 @@ export function setUserValue(key: string, value: unknown): void {
     return;
   }
 
-  if (key === "servers" && value && typeof value === "object") {
-    console.log("[UserStore] setUserValue: saving", Object.keys(value).length, "servers for", cachedUserId, "→", Object.keys(value).join(", "));
-  }
+  const valuePreview = typeof value === "object" && value !== null
+    ? JSON.stringify(value).slice(0, 200)
+    : String(value);
+  console.log("[UserStore] setUserValue:", key, "=", valuePreview, "for user", cachedUserId);
 
   if (isElectron()) {
     const api = getElectronAPI();
     if (api) {
+      console.log("[UserStore] setUserValue: writing via Electron IPC");
       api.setUserData(cachedUserId, key, value);
       return;
     }
   }
 
-  localStorage.setItem(webKey(cachedUserId, key), JSON.stringify(value));
+  const lsKey = webKey(cachedUserId, key);
+  const serialized = JSON.stringify(value);
+  console.log("[UserStore] setUserValue: writing to localStorage key", JSON.stringify(lsKey), "length:", serialized.length);
+  localStorage.setItem(lsKey, serialized);
+
+  const readBack = localStorage.getItem(lsKey);
+  if (readBack === null) {
+    console.error("[UserStore] setUserValue: VERIFICATION FAILED — read-back is null for", lsKey);
+  } else if (readBack !== serialized) {
+    console.error("[UserStore] setUserValue: VERIFICATION FAILED — read-back mismatch for", lsKey, "wrote:", serialized.length, "read:", readBack.length);
+  } else {
+    console.log("[UserStore] setUserValue: verified OK for", lsKey);
+  }
 }
 
 export function removeUserValue(key: string): void {
+  console.log("[UserStore] removeUserValue:", key, "for user", cachedUserId);
   delete cache[key];
 
   if (!cachedUserId) return;
@@ -117,6 +149,7 @@ export function removeUserValue(key: string): void {
 }
 
 export function clearUserCache(): void {
+  console.log("[UserStore] clearUserCache: clearing cache for", cachedUserId, "had", Object.keys(cache).length, "keys");
   cache = {};
   cachedUserId = null;
   pendingLoad = null;
@@ -128,7 +161,9 @@ export function clearUserCache(): void {
  * Called automatically on first sign-in after upgrade when no JSON file exists.
  */
 function migrateFromLocalStorage(userId: string, data: UserData): UserData {
+  console.log("[UserStore] migrateFromLocalStorage: starting for", userId);
   let migrated = false;
+  const migratedKeys: string[] = [];
 
   for (const key of SETTINGS_KEYS) {
     if (data[key] !== undefined) continue;
@@ -140,6 +175,7 @@ function migrateFromLocalStorage(userId: string, data: UserData): UserData {
     } catch {
       data[key] = raw;
     }
+    migratedKeys.push(key);
     migrated = true;
   }
 
@@ -182,16 +218,22 @@ function migrateFromLocalStorage(userId: string, data: UserData): UserData {
   }
 
   if (migrated) {
+    console.log("[UserStore] migrateFromLocalStorage: migrated keys:", migratedKeys.join(", "));
+    console.log("[UserStore] migrateFromLocalStorage: total data keys after migration:", Object.keys(data).join(", "));
     if (isElectron()) {
       const api = getElectronAPI();
       if (api) {
+        console.log("[UserStore] migrateFromLocalStorage: saving via Electron IPC");
         api.saveUserData(userId, { ...data });
       }
     } else {
+      console.log("[UserStore] migrateFromLocalStorage: saving to localStorage with prefix user:" + userId + ":");
       for (const [k, v] of Object.entries(data)) {
         localStorage.setItem(webKey(userId, k), JSON.stringify(v));
       }
     }
+  } else {
+    console.log("[UserStore] migrateFromLocalStorage: nothing to migrate");
   }
 
   return data;

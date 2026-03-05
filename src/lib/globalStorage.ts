@@ -60,11 +60,13 @@ export async function initGlobalStorage(): Promise<void> {
   const origRemoveItem = localStorage.removeItem.bind(localStorage);
 
   localStorage.setItem = (key: string, value: string) => {
+    console.log("[GlobalStorage] setItem:", key, "length:", value.length);
     origSetItem(key, value);
     api.setGlobalData(key, value);
   };
 
   localStorage.removeItem = (key: string) => {
+    console.log("[GlobalStorage] removeItem:", key);
     origRemoveItem(key);
     api.deleteGlobalData(key);
   };
