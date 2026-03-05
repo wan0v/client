@@ -251,6 +251,31 @@ export function setupPeerConnection(
       receiver.playoutDelayHint = 0;
     }
 
+    // Delayed codec report for incoming video tracks
+    if (event.track.kind === "video") {
+      setTimeout(() => {
+        event.receiver.getStats().then(stats => {
+          stats.forEach(report => {
+            if (report.type === "inbound-rtp" && report.kind === "video") {
+              const codecId = report.codecId;
+              if (codecId) {
+                stats.forEach(inner => {
+                  if (inner.id === codecId && inner.type === "codec") {
+                    voiceLog.ok("WEBRTC", "RECV-CODEC", `Incoming video codec mid=${mid}: ${inner.mimeType} pt=${inner.payloadType} ${inner.sdpFmtpLine || ""}`, {
+                      bytesReceived: report.bytesReceived,
+                      framesDecoded: report.framesDecoded,
+                      width: report.frameWidth,
+                      height: report.frameHeight,
+                    });
+                  }
+                });
+              }
+            }
+          });
+        }).catch(() => { /* stats unavailable */ });
+      }, 3000);
+    }
+
     let aliasStreamId: string | undefined;
     if (mid) {
       const original = midToOriginalStream.get(mid);

@@ -42,7 +42,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     getPeerConnection,
   } = useSFU();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
-  const { screenVideoStream, screenAudioStream, screenShareActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
+  const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
   const { sockets } = useSockets();
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
@@ -183,6 +183,50 @@ export function Controls({ onDisconnect }: ControlsProps) {
       prevScreenAudioRef.current = null;
     }
   }, [screenShareActive, screenAudioStream, isConnected, addScreenAudioTrack, removeScreenAudioTrack]);
+
+  // Log native audio capture status when screen share audio changes
+  useEffect(() => {
+    if (!screenShareActive || !screenAudioStream) return;
+    const tracks = screenAudioStream.getAudioTracks();
+    voiceLog.info("SCREEN", `controls: audio source → ${nativeAudioActive ? "NATIVE EXE CAPTURE" : "raw loopback / getDisplayMedia"}`, {
+      streamId: screenAudioStream.id,
+      trackCount: tracks.length,
+      tracks: tracks.map(t => ({ id: t.id, label: t.label, readyState: t.readyState })),
+    });
+  }, [screenShareActive, screenAudioStream, nativeAudioActive]);
+
+  // Delayed codec verification via getStats() — reports the actual codec once encoding starts
+  useEffect(() => {
+    if (!screenShareActive || !screenVideoStream || !getPeerConnection) return;
+    const timer = setTimeout(() => {
+      const pc = getPeerConnection();
+      if (!pc) return;
+      const videoTrack = screenVideoStream.getVideoTracks()[0];
+      if (!videoTrack) return;
+      const sender = pc.getSenders().find(s => s.track === videoTrack);
+      if (!sender) return;
+      sender.getStats().then(stats => {
+        stats.forEach(report => {
+          if (report.type === "outbound-rtp" && report.kind === "video") {
+            const codecId = report.codecId;
+            if (codecId) {
+              stats.forEach(inner => {
+                if (inner.id === codecId && inner.type === "codec") {
+                  voiceLog.ok("SCREEN", "CODEC", `Active screen share codec: ${inner.mimeType} pt=${inner.payloadType} clockRate=${inner.clockRate} ${inner.sdpFmtpLine || ""}`, {
+                    bytesSent: report.bytesSent,
+                    framesSent: report.framesEncoded,
+                    width: report.frameWidth,
+                    height: report.frameHeight,
+                  });
+                }
+              });
+            }
+          }
+        });
+      }).catch(() => { /* stats unavailable */ });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [screenShareActive, screenVideoStream, getPeerConnection]);
 
   // Emit camera state to server
   useEffect(() => {

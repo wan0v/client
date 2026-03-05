@@ -188,6 +188,12 @@ export async function connectToSfuWebSocket(
                     voiceLog.info("SFU-WS", `Negotiated send codec mid=${t.mid} kind=${t.sender.track.kind}: ${codec.mimeType} pt=${codec.payloadType} ${codec.sdpFmtpLine || ""}`);
                   }
                 }
+                if (t.receiver?.track && t.mid && t.direction !== "sendonly") {
+                  const rCodec = t.receiver.getParameters?.()?.codecs?.[0];
+                  if (rCodec) {
+                    voiceLog.info("SFU-WS", `Negotiated recv codec mid=${t.mid} kind=${t.receiver.track.kind}: ${rCodec.mimeType} pt=${rCodec.payloadType} ${rCodec.sdpFmtpLine || ""}`);
+                  }
+                }
               }
             } else {
               throw new Error("No local description available");

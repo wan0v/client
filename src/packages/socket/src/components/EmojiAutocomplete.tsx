@@ -24,6 +24,9 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
       setSelectedIndex(0);
       return;
     }
+    // Ignore hover until the user actually moves the mouse, so the popup
+    // appearing under an idle cursor doesn't steal focus from item 0.
+    keyboardNavRef.current = true;
     if (!query) {
       setResults(getRecentEmojis(8, serverHost));
       setIsRecent(true);
