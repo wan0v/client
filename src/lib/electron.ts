@@ -43,6 +43,7 @@ export interface ElectronAPI {
   switchUpdateChannel(enabled: boolean): void;
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;
+  setSignedIn(signedIn: boolean): void;
   getStartWithWindowsSupported(): Promise<boolean>;
   getStartWithWindows(): Promise<boolean>;
   setStartWithWindows(enabled: boolean): void;

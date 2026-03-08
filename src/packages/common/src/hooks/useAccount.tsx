@@ -24,6 +24,12 @@ function useAccountHook(): Account {
   const [loginInProgress, setLoginInProgress] = useState(false);
   const [registrationAllowed, setRegistrationAllowed] = useState(false);
 
+  useEffect(() => {
+    if (isSignedIn == null) return;
+    const api = getElectronAPI();
+    api?.setSignedIn(isSignedIn);
+  }, [isSignedIn]);
+
   // Wire up the Electron deep-link listener
   useEffect(() => {
     if (!isElectron()) return;

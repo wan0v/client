@@ -55,6 +55,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let closeToTray = true;
+let isUserSignedIn = false;
 let pttDown = false;
 let startHiddenOnLaunch = false;
 let localServer: Server | null = null;
@@ -480,7 +481,7 @@ function createMainWindow(): void {
   });
 
   mainWindow.on("close", (event) => {
-    if (!isQuitting && closeToTray) {
+    if (!isQuitting && closeToTray && isUserSignedIn) {
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -715,6 +716,10 @@ if (!gotSingleInstanceLock) {
     ipcMain.on("set-close-to-tray", (_event, enabled: boolean) => {
       closeToTray = enabled;
       writeConfig({ closeToTray: enabled });
+    });
+
+    ipcMain.on("set-signed-in", (_event, signedIn: boolean) => {
+      isUserSignedIn = signedIn;
     });
 
     ipcMain.handle("get-start-with-windows-supported", () => process.platform === "win32");

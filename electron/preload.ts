@@ -62,6 +62,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-close-to-tray", enabled);
   },
 
+  setSignedIn(signedIn: boolean) {
+    ipcRenderer.send("set-signed-in", signedIn);
+  },
+
   getStartWithWindowsSupported(): Promise<boolean> {
     return ipcRenderer.invoke("get-start-with-windows-supported");
   },
