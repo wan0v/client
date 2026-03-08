@@ -178,11 +178,33 @@ export function ServerOverviewTab({
       };
     };
 
+    const onError = (payload: unknown) => {
+      if (!payload || typeof payload !== "object") return;
+      const err = payload as { error?: string; message?: string };
+      if (err.error === "settings_update_failed" || err.error === "forbidden" || err.error === "token_invalid") {
+        if (pendingSaveCountRef.current > 0) {
+          pendingSaveCountRef.current = 0;
+          setAutosaving(false);
+          toast.error(err.message || "Failed to save settings.");
+          socket.emit("server:settings:get");
+        }
+      }
+    };
+
     socket.on("server:settings", onSettings);
+    socket.on("server:error", onError);
     socket.emit("server:settings:get");
+
+    const retryTimer = setTimeout(() => {
+      if (!lastSettingsRef.current) {
+        socket.emit("server:settings:get");
+      }
+    }, 3000);
 
     return () => {
       socket.off("server:settings", onSettings);
+      socket.off("server:error", onError);
+      clearTimeout(retryTimer);
     };
   }, [host, socket]);
 
@@ -200,7 +222,7 @@ export function ServerOverviewTab({
     if (!Number.isFinite(n) || n <= 0) return null;
     return Math.floor(n * 1024 * 1024);
   };
-  const emitSettingsUpdate = async (patch: Partial<{
+  const emitSettingsUpdate = (patch: Partial<{
     displayName: string;
     description: string;
     avatarMaxBytes: number | null;
@@ -211,14 +233,21 @@ export function ServerOverviewTab({
     systemChannelId: string | null;
     lanOpen: boolean;
     discoverable: boolean;
-  }>) => {
-    if (!host) return;
-    if (!socket || !socket.connected) return;
-    if (!effectiveAccessToken) { await ensureJoined(); return; }
-    if (!isOwner) return;
+  }>): boolean => {
+    if (!host || !socket || !socket.connected) {
+      toast.error("Not connected to the server.");
+      return false;
+    }
+    if (!effectiveAccessToken) {
+      ensureJoined();
+      toast.error("Missing access token. Try rejoining the server.");
+      return false;
+    }
+    if (!isOwner) {
+      toast.error("Only the server owner can change settings.");
+      return false;
+    }
 
-    // Update lastSettingsRef immediately so subsequent blur events
-    // correctly detect "no change" and don't double-save.
     if (lastSettingsRef.current) {
       lastSettingsRef.current = { ...lastSettingsRef.current, ...patch };
     }
@@ -229,16 +258,17 @@ export function ServerOverviewTab({
       accessToken: effectiveAccessToken,
       ...patch,
     });
+    return true;
   };
 
-  const saveIfChanged = (patch: Parameters<typeof emitSettingsUpdate>[0]) => {
+  const saveIfChanged = (patch: Parameters<typeof emitSettingsUpdate>[0]): boolean => {
     const last = lastSettingsRef.current;
     if (last) {
-      const entries = Object.entries(patch) as Array<[keyof typeof patch, string | number | null | undefined]>;
+      const entries = Object.entries(patch) as Array<[keyof typeof patch, string | number | null | boolean | undefined]>;
       const changed = entries.some(([k, v]) => last[k] !== v);
-      if (!changed) return;
+      if (!changed) return true;
     }
-    emitSettingsUpdate(patch).catch(() => undefined);
+    return emitSettingsUpdate(patch);
   };
 
   const uploadIcon = async (file: File) => {
@@ -674,7 +704,7 @@ export function ServerOverviewTab({
             checked={lanOpen}
             onCheckedChange={(v) => {
               setLanOpen(v);
-              saveIfChanged({ lanOpen: v });
+              if (!saveIfChanged({ lanOpen: v })) setLanOpen(!v);
             }}
             disabled={!isOwner}
             size="1"
@@ -695,7 +725,7 @@ export function ServerOverviewTab({
             checked={discoverable}
             onCheckedChange={(v) => {
               setDiscoverable(v);
-              saveIfChanged({ discoverable: v });
+              if (!saveIfChanged({ discoverable: v })) setDiscoverable(!v);
             }}
             disabled={!isOwner}
             size="1"
